@@ -10,7 +10,7 @@ target:
   type: "sqlite"
   database: "db/evo.db"
   
-# Placeholder für zukünftige Mapping-Definitionen
+# Placeholder fuer zukuenftige Mapping-Definitionen
 # tables:
 #   - name: "Artikel"
 #   - name: "category"
