@@ -75,15 +75,24 @@ echo "Test 5: Testing TransformRegistry...\n";
 $registry = new \Mapping\TransformRegistry();
 
 // Test basename transformation
-$testPath = 'C:\\Windows\\Path\\To\\File.jpg';
-$result = $registry->apply('basename', $testPath);
-if ($result === 'File.jpg') {
-    echo "✓ basename transformation works: '{$testPath}' -> '{$result}'\n";
+$testPathWin = 'C:\\Windows\\Path\\To\\File.jpg';
+$resultWin = $registry->apply('basename', $testPathWin);
+if ($resultWin === 'File.jpg') {
+    echo "✓ basename transformation works for Windows path: '{$testPathWin}' -> '{$resultWin}'\n";
 } else {
-    echo "✗ basename transformation failed: expected 'File.jpg', got '{$result}'\n";
+    echo "✗ basename transformation failed for Windows path: expected 'File.jpg', got '{$resultWin}'\n";
     exit(1);
 }
 
+// Also test Unix-style path
+$testPathUnix = '/usr/local/share/File.jpg';
+$resultUnix = $registry->apply('basename', $testPathUnix);
+if ($resultUnix === 'File.jpg') {
+    echo "✓ basename transformation works for Unix path: '{$testPathUnix}' -> '{$resultUnix}'\n";
+} else {
+    echo "✗ basename transformation failed for Unix path: expected 'File.jpg', got '{$resultUnix}'\n";
+    exit(1);
+}
 // Test trim transformation
 $testString = '  spaced string  ';
 $result = $registry->apply('trim', $testString);
