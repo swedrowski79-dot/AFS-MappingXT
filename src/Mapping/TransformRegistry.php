@@ -145,7 +145,15 @@ class TransformRegistry
         try {
             return $transformer($value);
         } catch (\Throwable $e) {
-            // Silently return original value on error
+            // Log the error before returning the original value
+            error_log(sprintf(
+                "TransformRegistry::apply() error in '%s': %s in %s on line %d\nStack trace:\n%s",
+                $name,
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine(),
+                $e->getTraceAsString()
+            ));
             return $value;
         }
     }
