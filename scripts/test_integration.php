@@ -19,78 +19,101 @@ echo "=== AFS_Get_Data Integration Test ===\n\n";
  */
 class MockMSSQL
 {
+    private const PRICE_TOLERANCE = 0.01;
+    
     public function fetchAll(string $sql, array $params = []): array
     {
-        // Detect which query is being run based on table name
+        // Detect which entity is being queried based on table name in SQL
+        // Note: In production, this would be handled by the actual database
         if (strpos($sql, 'FROM [Artikel]') !== false) {
-            return [
-                [
-                    'Artikel' => '12345',
-                    'Art' => '1',
-                    'Artikelnummer' => 'ART-001',
-                    'Bezeichnung' => 'Test Artikel',
-                    'EANNummer' => '1234567890123',
-                    'Bestand' => '100',
-                    'Bild1' => 'C:\\Images\\Product\\test1.jpg',
-                    'Bild2' => 'C:\\Images\\Product\\test2.jpg',
-                    'Bild3' => '',
-                    'Bild4' => '',
-                    'Bild5' => '',
-                    'Bild6' => '',
-                    'Bild7' => '',
-                    'Bild8' => '',
-                    'Bild9' => '',
-                    'Bild10' => '',
-                    'Preis' => '99,99',
-                    'Warengruppe' => '5',
-                    'Umsatzsteuer' => '19',
-                    'Mindestmenge' => '1',
-                    'Attribname1' => 'Farbe',
-                    'Attribname2' => 'Größe',
-                    'Attribname3' => '',
-                    'Attribname4' => '',
-                    'Attribvalue1' => 'Rot',
-                    'Attribvalue2' => 'XL',
-                    'Attribvalue3' => '',
-                    'Attribvalue4' => '',
-                    'Master' => '',
-                    'Bruttogewicht' => '1,5',
-                    'Online' => '1',
-                    'Einheit' => 'Stück',
-                    'Langtext' => 'Test Langtext',
-                    'Werbetext1' => 'Test Werbetext',
-                    'Bemerkung' => '<p>Test Bemerkung</p>',
-                    'Hinweis' => '<strong>Test Hinweis</strong>',
-                    'last_update' => '2024-01-15 10:30:00',
-                ],
-            ];
+            return $this->getArtikelTestData();
         } elseif (strpos($sql, 'FROM [Warengruppe]') !== false) {
-            return [
-                [
-                    'Warengruppe' => '5',
-                    'Art' => '1',
-                    'Parent' => '0',
-                    'Ebene' => '1',
-                    'Bezeichnung' => 'Test Kategorie',
-                    'Online' => '1',
-                    'Bild' => 'D:\\Files\\Categories\\cat.jpg',
-                    'Bild_gross' => 'D:\\Files\\Categories\\cat_large.jpg',
-                    'Beschreibung' => 'Test Beschreibung',
-                ],
-            ];
+            return $this->getWarengruppeTestData();
         } elseif (strpos($sql, 'FROM [Dokument]') !== false) {
-            return [
-                [
-                    'Zaehler' => '100',
-                    'Artikel' => '12345',
-                    'Dateiname' => 'E:\\Documents\\manual.pdf',
-                    'Titel' => 'E:\\Documents\\Manuals\\User Manual.pdf',
-                    'Art' => '2',
-                ],
-            ];
+            return $this->getDokumentTestData();
         }
         
         return [];
+    }
+    
+    private function getArtikelTestData(): array
+    {
+        return [
+            [
+                'Artikel' => '12345',
+                'Art' => '1',
+                'Artikelnummer' => 'ART-001',
+                'Bezeichnung' => 'Test Artikel',
+                'EANNummer' => '1234567890123',
+                'Bestand' => '100',
+                'Bild1' => 'C:\\Images\\Product\\test1.jpg',
+                'Bild2' => 'C:\\Images\\Product\\test2.jpg',
+                'Bild3' => '',
+                'Bild4' => '',
+                'Bild5' => '',
+                'Bild6' => '',
+                'Bild7' => '',
+                'Bild8' => '',
+                'Bild9' => '',
+                'Bild10' => '',
+                'Preis' => '99,99',
+                'Warengruppe' => '5',
+                'Umsatzsteuer' => '19',
+                'Mindestmenge' => '1',
+                'Attribname1' => 'Farbe',
+                'Attribname2' => 'Größe',
+                'Attribname3' => '',
+                'Attribname4' => '',
+                'Attribvalue1' => 'Rot',
+                'Attribvalue2' => 'XL',
+                'Attribvalue3' => '',
+                'Attribvalue4' => '',
+                'Master' => '',
+                'Bruttogewicht' => '1,5',
+                'Online' => '1',
+                'Einheit' => 'Stück',
+                'Langtext' => 'Test Langtext',
+                'Werbetext1' => 'Test Werbetext',
+                'Bemerkung' => '<p>Test Bemerkung</p>',
+                'Hinweis' => '<strong>Test Hinweis</strong>',
+                'last_update' => '2024-01-15 10:30:00',
+            ],
+        ];
+    }
+    
+    private function getWarengruppeTestData(): array
+    {
+        return [
+            [
+                'Warengruppe' => '5',
+                'Art' => '1',
+                'Parent' => '0',
+                'Ebene' => '1',
+                'Bezeichnung' => 'Test Kategorie',
+                'Online' => '1',
+                'Bild' => 'D:\\Files\\Categories\\cat.jpg',
+                'Bild_gross' => 'D:\\Files\\Categories\\cat_large.jpg',
+                'Beschreibung' => 'Test Beschreibung',
+            ],
+        ];
+    }
+    
+    private function getDokumentTestData(): array
+    {
+        return [
+            [
+                'Zaehler' => '100',
+                'Artikel' => '12345',
+                'Dateiname' => 'E:\\Documents\\manual.pdf',
+                'Titel' => 'E:\\Documents\\Manuals\\User Manual.pdf',
+                'Art' => '2',
+            ],
+        ];
+    }
+    
+    public static function getPriceTolerance(): float
+    {
+        return self::PRICE_TOLERANCE;
     }
 }
 
@@ -158,7 +181,8 @@ try {
     echo "✓ Boolean conversion works\n";
     
     // Check price conversion (99,99 -> 99.99)
-    if (abs($art['Preis'] - 99.99) > 0.01) {
+    $tolerance = MockMSSQL::getPriceTolerance();
+    if (abs($art['Preis'] - 99.99) > $tolerance) {
         echo "✗ Price conversion failed: expected 99.99, got {$art['Preis']}\n";
         exit(1);
     }
