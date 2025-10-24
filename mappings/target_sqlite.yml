@@ -1,5 +1,8 @@
 # target_sqlite.yml
 # Configuration for SQLite target mapping (xt:Commerce EVO)
+# Version: 1.0.0
+
+version: 1.0.0
 
 target:
   type: sqlite
@@ -14,88 +17,192 @@ connection:
 entities:
   articles:
     table: Artikel
-    primary_key: id
+    primary_key: ID
+    unique_key: Artikelnummer
     fields:
-      - name: id
+      ID:
         type: integer
         auto_increment: true
-      - name: products_id
+      AFS_ID:
         type: integer
         nullable: true
-      - name: products_model
+      XT_ID:
+        type: integer
+        nullable: true
+      Art:
         type: string
-        max_length: 255
-      - name: products_name
+        nullable: true
+      Artikelnummer:
         type: string
-      - name: products_price
-        type: decimal
-        precision: 15
-        scale: 4
-      - name: update
+        required: true
+      Bezeichnung:
+        type: string
+        required: true
+      EANNummer:
+        type: string
+        nullable: true
+      Bestand:
+        type: integer
+        nullable: true
+      Preis:
+        type: real
+        nullable: true
+      AFS_Warengruppe_ID:
+        type: integer
+        nullable: true
+      XT_Category_ID:
+        type: integer
+        nullable: true
+      Category:
+        type: integer
+        nullable: true
+      Master:
         type: integer
         default: 0
+        required: true
+      Masterartikel:
+        type: string
+        nullable: true
+      Mindestmenge:
+        type: integer
+        nullable: true
+      Gewicht:
+        type: real
+        nullable: true
+      Online:
+        type: integer
+        default: 0
+        required: true
+      Einheit:
+        type: string
+        nullable: true
+      Langtext:
+        type: string
+        nullable: true
+      Werbetext:
+        type: string
+        nullable: true
+      Meta_Title:
+        type: string
+        nullable: true
+      Meta_Description:
+        type: string
+        nullable: true
+      Bemerkung:
+        type: string
+        nullable: true
+      Hinweis:
+        type: string
+        nullable: true
+      update:
+        type: integer
+        default: 0
+        required: true
+      last_update:
+        type: string
+        nullable: true
 
   categories:
     table: category
-    primary_key: id
+    primary_key: ID
     fields:
-      - name: id
+      ID:
         type: integer
         auto_increment: true
-      - name: categories_id
+      AFS_ID:
         type: integer
-      - name: categories_name
+      Bezeichnung:
         type: string
-      - name: parent_id
+      Parent_ID:
         type: integer
         default: 0
-      - name: update
+      Ebene:
+        type: integer
+      Bild:
+        type: string
+        nullable: true
+      Bild_gross:
+        type: string
+        nullable: true
+      Beschreibung:
+        type: string
+        nullable: true
+      Online:
+        type: integer
+        default: 0
+      update:
         type: integer
         default: 0
 
   images:
     table: Bilder
-    primary_key: id
+    primary_key: ID
+    unique_key: Bildname
     fields:
-      - name: id
+      ID:
         type: integer
         auto_increment: true
-      - name: image_name
+      XT_ID:
+        type: integer
+        nullable: true
+      Bildname:
         type: string
-        max_length: 255
-      - name: image_path
+        required: true
+      md5:
         type: string
-      - name: update
+        nullable: true
+      update:
+        type: integer
+        default: 0
+      uploaded:
         type: integer
         default: 0
 
   documents:
     table: Dokumente
-    primary_key: id
+    primary_key: ID
+    unique_key: Titel
     fields:
-      - name: id
+      ID:
         type: integer
         auto_increment: true
-      - name: doc_title
+      XT_ID:
+        type: integer
+        nullable: true
+      Titel:
         type: string
-      - name: doc_path
+        required: true
+      Dateiname:
         type: string
-      - name: update
+        nullable: true
+      Art:
+        type: integer
+        nullable: true
+      md5:
+        type: string
+        nullable: true
+      update:
+        type: integer
+        default: 0
+      uploaded:
         type: integer
         default: 0
 
   attributes:
     table: Attribute
-    primary_key: id
+    primary_key: ID
+    unique_key: Attribname
     fields:
-      - name: id
+      ID:
         type: integer
         auto_increment: true
-      - name: attribute_name
+      XT_Attrib_ID:
+        type: integer
+        nullable: true
+      Attribname:
         type: string
-      - name: attribute_value
-        type: string
-      - name: update
+        required: true
+      update:
         type: integer
         default: 0
 
@@ -103,24 +210,90 @@ entities:
 relationships:
   article_images:
     table: Artikel_Bilder
+    foreign_keys:
+      - column: Artikel_ID
+        references: Artikel.ID
+      - column: Bild_ID
+        references: Bilder.ID
+    unique_constraint: [Artikel_ID, Bild_ID]
     fields:
-      - artikel_id
-      - bild_id
-      - update
+      ID:
+        type: integer
+        auto_increment: true
+      XT_ARTIKEL_ID:
+        type: integer
+        nullable: true
+      XT_Bild_ID:
+        type: integer
+        nullable: true
+      Artikel_ID:
+        type: integer
+        required: true
+      Bild_ID:
+        type: integer
+        required: true
+      update:
+        type: integer
+        default: 0
 
   article_documents:
     table: Artikel_Dokumente
+    foreign_keys:
+      - column: Artikel_ID
+        references: Artikel.ID
+      - column: Dokument_ID
+        references: Dokumente.ID
+    unique_constraint: [Artikel_ID, Dokument_ID]
     fields:
-      - artikel_id
-      - dokument_id
-      - update
+      ID:
+        type: integer
+        auto_increment: true
+      XT_ARTIKEL_ID:
+        type: integer
+        nullable: true
+      XT_Dokument_ID:
+        type: integer
+        nullable: true
+      Artikel_ID:
+        type: integer
+        required: true
+      Dokument_ID:
+        type: integer
+        required: true
+      update:
+        type: integer
+        default: 0
 
   article_attributes:
     table: Attrib_Artikel
+    foreign_keys:
+      - column: Artikel_ID
+        references: Artikel.ID
+      - column: Attribute_ID
+        references: Attribute.ID
+    unique_constraint: [Attribute_ID, Artikel_ID]
     fields:
-      - artikel_id
-      - attribut_id
-      - update
+      ID:
+        type: integer
+        auto_increment: true
+      XT_Attrib_ID:
+        type: integer
+        nullable: true
+      XT_Artikel_ID:
+        type: integer
+        nullable: true
+      Attribute_ID:
+        type: integer
+        required: true
+      Artikel_ID:
+        type: integer
+        required: true
+      Atrribvalue:
+        type: string
+        nullable: true
+      update:
+        type: integer
+        default: 0
 
 # Delta tracking configuration
 delta:

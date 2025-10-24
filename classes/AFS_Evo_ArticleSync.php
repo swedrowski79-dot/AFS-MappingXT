@@ -12,6 +12,8 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     private AFS_Evo_DocumentSync $documentSync;
     private AFS_Evo_AttributeSync $attributeSync;
     private AFS_Evo_CategorySync $categorySync;
+    private AFS_TargetMappingConfig $targetMapping;
+    private AFS_SqlBuilder $sqlBuilder;
 
     public function __construct(
         PDO $db,
@@ -20,13 +22,41 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         AFS_Evo_DocumentSync $documentSync,
         AFS_Evo_AttributeSync $attributeSync,
         AFS_Evo_CategorySync $categorySync,
-        ?AFS_Evo_StatusTracker $status = null
+        ?AFS_Evo_StatusTracker $status = null,
+        ?AFS_TargetMappingConfig $targetMapping = null
     ) {
         parent::__construct($db, $afs, $status);
         $this->imageSync = $imageSync;
         $this->documentSync = $documentSync;
         $this->attributeSync = $attributeSync;
         $this->categorySync = $categorySync;
+        
+        // Load target mapping configuration
+        if ($targetMapping === null) {
+            $mappingPath = __DIR__ . '/../mappings/target_sqlite.yml';
+            $this->targetMapping = new AFS_TargetMappingConfig($mappingPath);
+        } else {
+            $this->targetMapping = $targetMapping;
+        }
+        $this->sqlBuilder = new AFS_SqlBuilder($this->targetMapping);
+        
+        // Log mapping version
+        $this->logMappingVersion();
+    }
+    
+    /**
+     * Log the target mapping version being used
+     */
+    private function logMappingVersion(): void
+    {
+        $version = $this->targetMapping->getVersion();
+        if ($version !== null) {
+            $this->logInfo(
+                'Target-Mapping geladen',
+                ['version' => $version],
+                'artikel'
+            );
+        }
     }
 
     /**
@@ -54,65 +84,35 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
 
         $stats = ['processed'=>0,'inserted'=>0,'updated'=>0,'images'=>0,'documents'=>0,'attributes'=>0,'deactivated'=>0];
 
-        $upsertSql = '
-            INSERT INTO Artikel (
-                AFS_ID, XT_ID, Art, Artikelnummer, Bezeichnung, EANNummer, Bestand, Preis,
-                AFS_Warengruppe_ID, XT_Category_ID, Category, Master, Masterartikel, Mindestmenge,
-                Gewicht, Online, Einheit, Langtext, Werbetext, Meta_Title, Meta_Description, Bemerkung, Hinweis, "update", last_update
-            ) VALUES (
-                :afsid, NULL, :art, :artikelnummer, :bezeichnung, :ean, :bestand, :preis,
-                :afs_warengruppe_id, NULL, :category, :master, :masterartikel, :mindestmenge,
-                :gewicht, :online, :einheit, :langtext, :werbetext, :meta_title, :meta_description, :bemerkung, :hinweis, :needs_update, :last_update
-            )
-            ON CONFLICT(Artikelnummer) DO UPDATE SET
-                AFS_ID = excluded.AFS_ID,
-                Art = excluded.Art,
-                Bezeichnung = excluded.Bezeichnung,
-                EANNummer = excluded.EANNummer,
-                Bestand = excluded.Bestand,
-                Preis = excluded.Preis,
-                AFS_Warengruppe_ID = excluded.AFS_Warengruppe_ID,
-                Category = excluded.Category,
-                Master = excluded.Master,
-                Masterartikel = excluded.Masterartikel,
-                Mindestmenge = excluded.Mindestmenge,
-                Gewicht = excluded.Gewicht,
-                Online = excluded.Online,
-                Einheit = excluded.Einheit,
-                Langtext = excluded.Langtext,
-                Werbetext = excluded.Werbetext,
-                Meta_Title = excluded.Meta_Title,
-                Meta_Description = excluded.Meta_Description,
-                Bemerkung = excluded.Bemerkung,
-                Hinweis = excluded.Hinweis,
-                "update" = excluded."update",
-                last_update = excluded.last_update
-        ';
+        // Generate SQL statements dynamically from target mapping
+        $upsertSql = $this->sqlBuilder->buildEntityUpsert('articles');
+        $tableName = $this->targetMapping->getTableName('articles');
+        $selectIdSql = "SELECT ID FROM {$this->quoteIdent($tableName)} WHERE Artikelnummer = :artikelnummer";
+        
+        $insertImageSql = $this->buildRelationshipInsertSql('article_images');
+        $deleteImageSql = $this->buildRelationshipDeleteSql('article_images', ['Artikel_ID', 'Bild_ID']);
+        
+        $insertAttrSql = $this->buildRelationshipInsertSql('article_attributes');
+        $deleteAttrSql = $this->buildRelationshipDeleteSql('article_attributes', ['Artikel_ID', 'Attribute_ID']);
+        
+        $insertDocSql = $this->buildRelationshipInsertSql('article_documents');
+        $deleteDocSql = $this->buildRelationshipDeleteSql('article_documents', ['Artikel_ID', 'Dokument_ID']);
+        
+        $deactivateSql = "UPDATE {$this->quoteIdent($tableName)} SET Online = 0, " . $this->quoteIdent('update') . " = 1 WHERE ID = :id";
+        $markArticleUpdateSql = "UPDATE {$this->quoteIdent($tableName)} SET " . $this->quoteIdent('update') . " = 1 WHERE ID = :id";
 
         $this->db->beginTransaction();
         try {
             $upsert       = $this->db->prepare($upsertSql);
-            $selectId     = $this->db->prepare('SELECT ID FROM Artikel WHERE Artikelnummer = :artikelnummer');
-            $insertImage  = $this->db->prepare(
-                'INSERT INTO Artikel_Bilder (Artikel_ID, Bild_ID, "update")
-                 VALUES (:artikel_id, :bild_id, 1)
-                 ON CONFLICT(Artikel_ID, Bild_ID) DO UPDATE SET "update" = 1'
-            );
-            $deleteImage  = $this->db->prepare('DELETE FROM Artikel_Bilder WHERE Artikel_ID = :artikel_id AND Bild_ID = :bild_id');
-            $insertAttr   = $this->db->prepare(
-                'INSERT INTO Attrib_Artikel (Attribute_ID, Artikel_ID, Atrribvalue, "update")
-                 VALUES (:attribute_id, :artikel_id, :value, 1)
-                 ON CONFLICT(Attribute_ID, Artikel_ID) DO UPDATE SET Atrribvalue = excluded.Atrribvalue, "update" = 1'
-            );
-            $deleteAttr   = $this->db->prepare('DELETE FROM Attrib_Artikel WHERE Artikel_ID = :artikel_id AND Attribute_ID = :attribute_id');
-            $deleteDoc    = $this->db->prepare('DELETE FROM Artikel_Dokumente WHERE Artikel_ID = :artikel_id AND Dokument_ID = :dokument_id');
-            $insertDoc    = $this->db->prepare(
-                'INSERT INTO Artikel_Dokumente (Artikel_ID, Dokument_ID, "update")
-                 VALUES (:artikel_id, :dokument_id, 1)
-                 ON CONFLICT(Artikel_ID, Dokument_ID) DO UPDATE SET "update" = 1'
-            );
-            $deactivate   = $this->db->prepare('UPDATE Artikel SET Online = 0, "update" = 1 WHERE ID = :id');
-            $markArticleUpdate = $this->db->prepare('UPDATE Artikel SET "update" = 1 WHERE ID = :id');
+            $selectId     = $this->db->prepare($selectIdSql);
+            $insertImage  = $this->db->prepare($insertImageSql);
+            $deleteImage  = $this->db->prepare($deleteImageSql);
+            $insertAttr   = $this->db->prepare($insertAttrSql);
+            $deleteAttr   = $this->db->prepare($deleteAttrSql);
+            $deleteDoc    = $this->db->prepare($deleteDocSql);
+            $insertDoc    = $this->db->prepare($insertDocSql);
+            $deactivate   = $this->db->prepare($deactivateSql);
+            $markArticleUpdate = $this->db->prepare($markArticleUpdateSql);
 
         foreach ($rows as $row) {
             if (!is_array($row)) {
@@ -132,7 +132,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                 $oldEan     = $existing['ean'] ?? null;
                 $newTs      = $this->toTimestamp($payload['last_update'] ?? null);
 
-                $payload['ean'] = $this->sanitizeEan($payload['ean'], $artikelnummer, $eanMap);
+                $payload['eannummer'] = $this->sanitizeEan($payload['eannummer'], $artikelnummer, $eanMap);
 
                 $shouldUpdate = false;
                 if ($existing === null) {
@@ -158,7 +158,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                     continue;
                 }
 
-                $payload['needs_update'] = 1;
+                $payload['update'] = 1;
                 $upsert->execute($payload);
 
                 $artikelId = $existingId;
@@ -174,13 +174,13 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                             'last_update' => $payload['last_update'] ?? null,
                             'last_update_ts' => $newTs,
                             'online' => $payload['online'],
-                            'ean' => $payload['ean'],
+                            'ean' => $payload['eannummer'],
                             'meta_title' => $payload['meta_title'] ?? null,
                             'meta_description' => $payload['meta_description'] ?? null,
                             'seen' => true,
                         ];
-                        if ($payload['ean'] !== null) {
-                            $eanMap[$payload['ean']] = $artikelnummer;
+                        if ($payload['eannummer'] !== null) {
+                            $eanMap[$payload['eannummer']] = $artikelnummer;
                         }
                     }
                     $stats['inserted']++;
@@ -189,13 +189,13 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                     $artikelMap[$artikelnummer]['last_update'] = $payload['last_update'] ?? null;
                     $artikelMap[$artikelnummer]['last_update_ts'] = $newTs;
                     $artikelMap[$artikelnummer]['online'] = $payload['online'];
-                    if ($oldEan !== null && $oldEan !== $payload['ean'] && isset($eanMap[$oldEan]) && $eanMap[$oldEan] === $artikelnummer) {
+                    if ($oldEan !== null && $oldEan !== $payload['eannummer'] && isset($eanMap[$oldEan]) && $eanMap[$oldEan] === $artikelnummer) {
                         unset($eanMap[$oldEan]);
                     }
-                    if ($payload['ean'] !== null) {
-                        $eanMap[$payload['ean']] = $artikelnummer;
+                    if ($payload['eannummer'] !== null) {
+                        $eanMap[$payload['eannummer']] = $artikelnummer;
                     }
-                    $artikelMap[$artikelnummer]['ean'] = $payload['ean'];
+                    $artikelMap[$artikelnummer]['ean'] = $payload['eannummer'];
                     $artikelMap[$artikelnummer]['meta_title'] = $payload['meta_title'] ?? null;
                     $artikelMap[$artikelnummer]['meta_description'] = $payload['meta_description'] ?? null;
                     $artikelMap[$artikelnummer]['seen'] = true;
@@ -296,8 +296,11 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         foreach (array_keys($desired) as $bildId) {
             if (!isset($existingMap[$bildId])) {
                 $insertImage->execute([
+                    ':xt_artikel_id' => null,
+                    ':xt_bild_id' => null,
                     ':artikel_id' => $artikelId,
                     ':bild_id' => $bildId,
+                    ':update' => 1,
                 ]);
                 $added++;
             } else {
@@ -336,7 +339,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         $existingMap = array_fill_keys($existingDocIds, true);
 
         $desired = [];
-        $afsid = $payload['afsid'] ?? null;
+        $afsid = $payload['afs_id'] ?? null;
         if ($afsid !== null && isset($docsByArticle[$afsid])) {
             foreach ($docsByArticle[$afsid] as $title) {
                 $docId = $this->documentSync->resolveDocumentId($dokumentMap, $title);
@@ -350,8 +353,11 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         foreach (array_keys($desired) as $docId) {
             if (!isset($existingMap[$docId])) {
                 $insertDoc->execute([
+                    ':xt_artikel_id' => null,
+                    ':xt_dokument_id' => null,
                     ':artikel_id' => $artikelId,
                     ':dokument_id' => $docId,
+                    ':update' => 1,
                 ]);
                 $added++;
             } else {
@@ -397,9 +403,12 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         foreach ($desired as $attributeId => $value) {
             if (!array_key_exists($attributeId, $existing) || $existing[$attributeId] !== $value) {
                 $insertAttr->execute([
+                    ':xt_attrib_id' => null,
+                    ':xt_artikel_id' => null,
                     ':attribute_id' => $attributeId,
                     ':artikel_id' => $artikelId,
-                    ':value' => $value,
+                    ':atrribvalue' => $value,
+                    ':update' => 1,
                 ]);
                 $added++;
             }
@@ -445,7 +454,8 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     private function loadAllArticleImageRelations(): array
     {
         $map = [];
-        $sql = 'SELECT Artikel_ID, Bild_ID FROM Artikel_Bilder';
+        $tableName = $this->targetMapping->getRelationshipTableName('article_images');
+        $sql = "SELECT Artikel_ID, Bild_ID FROM {$this->quoteIdent($tableName)}";
         foreach ($this->db->query($sql, PDO::FETCH_ASSOC) as $row) {
             $artikelId = (int)$row['Artikel_ID'];
             $bildId = (int)$row['Bild_ID'];
@@ -464,7 +474,8 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     private function loadAllArticleDocumentRelations(): array
     {
         $map = [];
-        $sql = 'SELECT Artikel_ID, Dokument_ID FROM Artikel_Dokumente';
+        $tableName = $this->targetMapping->getRelationshipTableName('article_documents');
+        $sql = "SELECT Artikel_ID, Dokument_ID FROM {$this->quoteIdent($tableName)}";
         foreach ($this->db->query($sql, PDO::FETCH_ASSOC) as $row) {
             $artikelId = (int)$row['Artikel_ID'];
             $docId = (int)$row['Dokument_ID'];
@@ -483,7 +494,8 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     private function loadAllArticleAttributeRelations(): array
     {
         $map = [];
-        $sql = 'SELECT Artikel_ID, Attribute_ID, Atrribvalue FROM Attrib_Artikel';
+        $tableName = $this->targetMapping->getRelationshipTableName('article_attributes');
+        $sql = "SELECT Artikel_ID, Attribute_ID, Atrribvalue FROM {$this->quoteIdent($tableName)}";
         foreach ($this->db->query($sql, PDO::FETCH_ASSOC) as $row) {
             $artikelId = (int)$row['Artikel_ID'];
             $attrId = (int)$row['Attribute_ID'];
@@ -508,15 +520,18 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
 
         [$masterFlag, $masterArtikel] = $this->parseMasterField($row['Master'] ?? null);
 
+        // Build payload with lowercase parameter names for SQL binding
         return [
-            'afsid'             => isset($row['Artikel']) ? (int)$row['Artikel'] : null,
+            'afs_id'            => isset($row['Artikel']) ? (int)$row['Artikel'] : null,
+            'xt_id'             => null,
             'art'               => $this->nullIfEmpty($row['Art'] ?? null),
             'artikelnummer'     => $artikelnummer,
             'bezeichnung'       => $this->nullIfEmpty($row['Bezeichnung'] ?? null),
-            'ean'               => $this->nullIfEmpty($row['EANNummer'] ?? null),
+            'eannummer'         => $this->nullIfEmpty($row['EANNummer'] ?? null),
             'bestand'           => $this->intOrNull($row['Bestand'] ?? null),
             'preis'             => $this->floatOrNull($row['Preis'] ?? null),
             'afs_warengruppe_id'=> $warengruppe,
+            'xt_category_id'    => null,
             'category'          => $categoryId,
             'master'            => $masterFlag,
             'masterartikel'     => $masterArtikel,
@@ -530,15 +545,32 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
             'meta_description'  => $this->nullIfEmpty($row['Meta_Description'] ?? null),
             'bemerkung'         => $this->nullIfEmpty($row['Bemerkung'] ?? null),
             'hinweis'           => $this->nullIfEmpty($row['Hinweis'] ?? null),
-            'needs_update'      => 0,
+            'update'            => 0,
             'last_update'       => $this->nullIfEmpty($row['last_update'] ?? null),
         ];
+    }
+    
+    /**
+     * Build INSERT ... ON CONFLICT UPDATE SQL for relationship
+     */
+    private function buildRelationshipInsertSql(string $relationshipName): string
+    {
+        return $this->sqlBuilder->buildRelationshipUpsert($relationshipName);
+    }
+    
+    /**
+     * Build DELETE SQL for relationship
+     */
+    private function buildRelationshipDeleteSql(string $relationshipName, array $whereFields): string
+    {
+        return $this->sqlBuilder->buildRelationshipDelete($relationshipName, $whereFields);
     }
 
     private function loadArtikelnummerMap(): array
     {
         $map = [];
-        $sql = 'SELECT ID, Artikelnummer, Online, EANNummer, last_update, Meta_Title, Meta_Description FROM Artikel';
+        $tableName = $this->targetMapping->getTableName('articles');
+        $sql = "SELECT ID, Artikelnummer, Online, EANNummer, last_update, Meta_Title, Meta_Description FROM {$this->quoteIdent($tableName)}";
         foreach ($this->db->query($sql, PDO::FETCH_ASSOC) as $row) {
             $nummer = isset($row['Artikelnummer']) ? trim((string)$row['Artikelnummer']) : '';
             if ($nummer === '') {
