@@ -1,0 +1,130 @@
+# target_sqlite.yml
+# Configuration for SQLite target mapping (xt:Commerce EVO)
+
+target:
+  type: sqlite
+  name: xt:Commerce EVO
+  description: SQLite database for xt:Commerce EVO synchronization
+
+connection:
+  database: ${DATA_DB_PATH}
+  mode: readwrite
+
+# Entity mappings to target tables
+entities:
+  articles:
+    table: Artikel
+    primary_key: id
+    fields:
+      - name: id
+        type: integer
+        auto_increment: true
+      - name: products_id
+        type: integer
+        nullable: true
+      - name: products_model
+        type: string
+        max_length: 255
+      - name: products_name
+        type: string
+      - name: products_price
+        type: decimal
+        precision: 15
+        scale: 4
+      - name: update
+        type: integer
+        default: 0
+
+  categories:
+    table: category
+    primary_key: id
+    fields:
+      - name: id
+        type: integer
+        auto_increment: true
+      - name: categories_id
+        type: integer
+      - name: categories_name
+        type: string
+      - name: parent_id
+        type: integer
+        default: 0
+      - name: update
+        type: integer
+        default: 0
+
+  images:
+    table: Bilder
+    primary_key: id
+    fields:
+      - name: id
+        type: integer
+        auto_increment: true
+      - name: image_name
+        type: string
+        max_length: 255
+      - name: image_path
+        type: string
+      - name: update
+        type: integer
+        default: 0
+
+  documents:
+    table: Dokumente
+    primary_key: id
+    fields:
+      - name: id
+        type: integer
+        auto_increment: true
+      - name: doc_title
+        type: string
+      - name: doc_path
+        type: string
+      - name: update
+        type: integer
+        default: 0
+
+  attributes:
+    table: Attribute
+    primary_key: id
+    fields:
+      - name: id
+        type: integer
+        auto_increment: true
+      - name: attribute_name
+        type: string
+      - name: attribute_value
+        type: string
+      - name: update
+        type: integer
+        default: 0
+
+# Relationship tables
+relationships:
+  article_images:
+    table: Artikel_Bilder
+    fields:
+      - artikel_id
+      - bild_id
+      - update
+
+  article_documents:
+    table: Artikel_Dokumente
+    fields:
+      - artikel_id
+      - dokument_id
+      - update
+
+  article_attributes:
+    table: Attrib_Artikel
+    fields:
+      - artikel_id
+      - attribut_id
+      - update
+
+# Delta tracking configuration
+delta:
+  enabled: true
+  export_database: ${DELTA_DB_PATH}
+  track_field: update
+  export_on_complete: true
