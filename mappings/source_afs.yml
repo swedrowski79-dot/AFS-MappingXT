@@ -1,0 +1,17 @@
+# source_afs.yml – Mapping-Definition für AFS-ERP Quellsystem
+# 
+# Diese Datei definiert die Struktur und Mapping-Regeln für Daten
+# aus dem AFS-ERP System (MSSQL-Datenbank).
+# 
+# TODO: Mapping-Regeln definieren
+
+source:
+  name: "AFS-ERP"
+  type: "mssql"
+  
+# Placeholder für zukünftige Mapping-Definitionen
+# tables:
+#   - name: "Artikel"
+#   - name: "Warengruppen"
+#   - name: "Bilder"
+#   - name: "Dokumente"

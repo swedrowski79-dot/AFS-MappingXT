@@ -1,0 +1,18 @@
+# target_sqlite.yml – Mapping-Definition für SQLite Zielsystem
+# 
+# Diese Datei definiert die Struktur und Mapping-Regeln für das
+# Ziel-SQLite System (evo.db).
+# 
+# TODO: Mapping-Regeln definieren
+
+target:
+  name: "XT:Commerce EVO"
+  type: "sqlite"
+  database: "db/evo.db"
+  
+# Placeholder für zukünftige Mapping-Definitionen
+# tables:
+#   - name: "Artikel"
+#   - name: "category"
+#   - name: "Bilder"
+#   - name: "Dokumente"
