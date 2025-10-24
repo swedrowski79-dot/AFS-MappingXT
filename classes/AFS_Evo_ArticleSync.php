@@ -296,8 +296,11 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         foreach (array_keys($desired) as $bildId) {
             if (!isset($existingMap[$bildId])) {
                 $insertImage->execute([
+                    ':xt_artikel_id' => null,
+                    ':xt_bild_id' => null,
                     ':artikel_id' => $artikelId,
                     ':bild_id' => $bildId,
+                    ':update' => 1,
                 ]);
                 $added++;
             } else {
@@ -350,8 +353,11 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         foreach (array_keys($desired) as $docId) {
             if (!isset($existingMap[$docId])) {
                 $insertDoc->execute([
+                    ':xt_artikel_id' => null,
+                    ':xt_dokument_id' => null,
                     ':artikel_id' => $artikelId,
                     ':dokument_id' => $docId,
+                    ':update' => 1,
                 ]);
                 $added++;
             } else {
@@ -397,9 +403,12 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         foreach ($desired as $attributeId => $value) {
             if (!array_key_exists($attributeId, $existing) || $existing[$attributeId] !== $value) {
                 $insertAttr->execute([
+                    ':xt_attrib_id' => null,
+                    ':xt_artikel_id' => null,
                     ':attribute_id' => $attributeId,
                     ':artikel_id' => $artikelId,
-                    ':value' => $value,
+                    ':atrribvalue' => $value,
+                    ':update' => 1,
                 ]);
                 $added++;
             }
