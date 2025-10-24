@@ -3,19 +3,21 @@
  * AFS – Datenlese- und Nachbearbeitungs-Klasse für AFS-Manager (MSSQL)
  *
  * Liest die Tabellen "Artikel", "Warengruppe" und "Dokument" gemäß Vorgaben
- * und liefert die Ergebnisse als Arrays zurück. Zusätzlich: Pfadkürzung,
- * einfacher RTF→Text/HTML-Fallback, HTML-Entfernung – analog zu deiner alten Hilfsklasse.
+ * aus der YAML-Konfiguration (source_afs.yml) und liefert die Ergebnisse als Arrays zurück.
+ * Nutzt TransformRegistry für Transformationen (trim, basename, rtf_to_html, etc.).
  *
  * Voraussetzungen:
  *  - Eine vorhandene MSSQL.php mit einer Klasse "MSSQL" (oder kompatibel),
  *    die mindestens eine der Methoden "fetchAll($sql, $params = [])" oder
  *    "query($sql, $params = [])" bereitstellt und ein Array von Zeilen
  *    (assoziative Arrays) zurückliefert.
+ *  - YAML-Extension für PHP
+ *  - source_afs.yml Konfigurationsdatei in /mappings
  *
  * Beispielverwendung:
  *  require __DIR__ . '/MSSQL.php';
  *  $db = new MSSQL($host, $database, $user, $pass);
- *  $afs = new AFS($db);
+ *  $afs = new AFS_Get_Data($db);
  *  $artikel    = $afs->getArtikel();
  *  $gruppen    = $afs->getWarengruppen();
  *  $dokumente  = $afs->getDokumente();
@@ -28,103 +30,65 @@ class AFS_Get_Data
     /** @var object */
     private $db;
 
+    /** @var AFS_MappingConfig */
+    private $config;
+
+    /** @var \Mapping\TransformRegistry */
+    private $transformRegistry;
+
     /**
      * @param object $db Instanz der MSSQL-Datenbankklasse (kompatibel zu fetchAll/query)
+     * @param string|null $configPath Optional path to YAML config file
      */
-    public function __construct($db)
+    public function __construct($db, ?string $configPath = null)
     {
         if (!is_object($db)) {
             throw new InvalidArgumentException('AFS: $db muss ein Objekt sein.');
         }
         $this->db = $db;
+
+        // Load configuration
+        if ($configPath === null) {
+            $configPath = __DIR__ . '/../mappings/source_afs.yml';
+        }
+        $this->config = new AFS_MappingConfig($configPath);
+
+        // Initialize transform registry
+        $this->transformRegistry = new \Mapping\TransformRegistry();
     }
 
     /**
-     * Liefert Artikel gemäß WHERE: Mandant = 1 AND Art < 255 AND Artikelnummer IS NOT NULL
-     * und nur die geforderten Spalten.
+     * Liefert Artikel gemäß YAML-Konfiguration
      *
      * @return array<int, array<string, mixed>>
      */
     public function getArtikel(): array
     {
-        $sql = "SELECT
-            [Artikel],
-            [Art],
-            [Artikelnummer],
-            [Bezeichnung],
-            [EANNummer],
-            [Bestand],
-            [Bild1], [Bild2], [Bild3], [Bild4], [Bild5], [Bild6], [Bild7], [Bild8], [Bild9], [Bild10],
-            [VK3]            AS [Preis],
-            [Warengruppe],
-            [Umsatzsteuer],
-            [Zusatzfeld01]   AS [Mindestmenge],
-            [Zusatzfeld03]   AS [Attribname1],
-            [Zusatzfeld04]   AS [Attribname2],
-            [Zusatzfeld05]   AS [Attribname3],
-            [Zusatzfeld06]   AS [Attribname4],
-            [Zusatzfeld15]   AS [Attribvalue1],
-            [Zusatzfeld16]   AS [Attribvalue2],
-            [Zusatzfeld17]   AS [Attribvalue3],
-            [Zusatzfeld18]   AS [Attribvalue4],
-            [Zusatzfeld07]   AS [Master],
-            [Bruttogewicht],
-            [Internet]       AS [Online],
-            [Einheit],
-            [Langtext],
-            [Werbetext1],
-            [Bemerkung],
-            [Hinweis],
-            [Update]         AS [last_update]
-        FROM [Artikel]
-        WHERE [Mandant] = 1 AND [Art] < 255 AND [Artikelnummer] IS NOT NULL AND [Internet] = 1";
-
+        $sql = $this->config->buildSelectQuery('Artikel');
         $rows = $this->run($sql);
         return array_map([$this, 'normalizeArtikelRow'], $rows);
     }
 
     /**
-     * Liefert Warengruppen gemäß WHERE: Mandant = 1
-     * und nur die geforderten Spalten.
+     * Liefert Warengruppen gemäß YAML-Konfiguration
      *
      * @return array<int, array<string, mixed>>
      */
     public function getWarengruppen(): array
     {
-        $sql = "SELECT
-            [Warengruppe],
-            [Art],
-            [Anhang] AS [Parent],
-            [Ebene],
-            [Bezeichnung],
-            [Internet] AS [Online],
-            [Bild],
-            [Bild_gross],
-            [Beschreibung]
-        FROM [Warengruppe]
-        WHERE [Mandant] = 1 AND [Internet] = 1";
-
+        $sql = $this->config->buildSelectQuery('Warengruppe');
         $rows = $this->run($sql);
         return array_map([$this, 'normalizeWarengruppeRow'], $rows);
     }
 
     /**
-     * Liefert Dokumente gemäß WHERE: Artikel > 0
-     * und nur die geforderten Spalten.
+     * Liefert Dokumente gemäß YAML-Konfiguration
      *
      * @return array<int, array<string, mixed>>
      */
     public function getDokumente(): array
     {
-        $sql = "SELECT
-            [Zaehler],
-            [Artikel],
-            [Dateiname],
-            [Titel],
-            [Art]
-        FROM [Dokument]
-        WHERE [Artikel] > 0";
-
+        $sql = $this->config->buildSelectQuery('Dokumente');
         $rows = $this->run($sql);
         return array_map([$this, 'normalizeDokumentRow'], $rows);
     }
@@ -158,33 +122,33 @@ class AFS_Get_Data
     private function normalizeArtikelRow(array $row): array
     {
         $out = $row;
+        $fields = $this->config->getFields('Artikel');
 
-        // Typsicherungen / Normalisierungen
-        $this->toInt($out, 'Artikel');
-        $this->toInt($out, 'Art');
-        $this->toInt($out, 'Bestand');
-        $this->toInt($out, 'Warengruppe');
-        $this->toFloat($out, 'Preis');
-        $this->toFloat($out, 'Umsatzsteuer');
-        $this->toFloat($out, 'Bruttogewicht');
+        // Apply type conversions and transformations based on config
+        foreach ($fields as $fieldName => $fieldConfig) {
+            if (!array_key_exists($fieldName, $out)) {
+                continue;
+            }
 
-        $this->toBool($out, 'Online'); // Webshop ja/nein -> bool
+            $type = $fieldConfig['type'] ?? 'string';
+            $transform = $fieldConfig['transform'] ?? null;
 
-        // Datumsfeld last_update (ehem. Update) in ISO 8601 normalisieren, falls vorhanden
+            // Apply transformation first if specified
+            if ($transform !== null) {
+                $out[$fieldName] = $this->transformRegistry->apply($transform, $out[$fieldName]);
+            }
+
+            // Apply type conversion
+            $this->applyTypeConversion($out, $fieldName, $type);
+        }
+
+        // Special handling for datetime fields
         if (array_key_exists('last_update', $out) && !empty($out['last_update'])) {
             $ts = strtotime((string)$out['last_update']);
             if ($ts !== false) {
                 $out['last_update'] = date('c', $ts);
             }
         }
-
-        // Nachbearbeitung: Pfade kürzen, RTF/HTML behandeln
-        foreach (range(1, 10) as $i) {
-            $this->replacePath($out, 'Bild' . $i);
-        }
-        $this->convertRtfToHtml($out, 'Langtext');
-        $this->removeHtml($out, 'Bemerkung');
-        $this->removeHtml($out, 'Hinweis');
 
         return $out;
     }
@@ -193,19 +157,31 @@ class AFS_Get_Data
     private function normalizeWarengruppeRow(array $row): array
     {
         $out = $row;
-        $this->toInt($out, 'Warengruppe');
-        $this->toInt($out, 'Art');
-        $this->toInt($out, 'Ebene');
-        $this->toInt($out, 'Parent');
-        $this->toBool($out, 'Online');
+        $fields = $this->config->getFields('Warengruppe');
 
+        // Apply type conversions and transformations based on config
+        foreach ($fields as $fieldName => $fieldConfig) {
+            if (!array_key_exists($fieldName, $out)) {
+                continue;
+            }
+
+            $type = $fieldConfig['type'] ?? 'string';
+            $transform = $fieldConfig['transform'] ?? null;
+
+            // Apply transformation first if specified
+            if ($transform !== null) {
+                $out[$fieldName] = $this->transformRegistry->apply($transform, $out[$fieldName]);
+            }
+
+            // Apply type conversion
+            $this->applyTypeConversion($out, $fieldName, $type);
+        }
+
+        // Add AFS_ID for backward compatibility
         if (isset($out['Warengruppe'])) {
             $out['AFS_ID'] = (int)$out['Warengruppe'];
         }
 
-        // Pfade vereinheitlichen/kürzen
-        $this->replacePath($out, 'Bild');
-        $this->replacePath($out, 'Bild_gross');
         return $out;
     }
 
@@ -213,26 +189,61 @@ class AFS_Get_Data
     private function normalizeDokumentRow(array $row): array
     {
         $out = $row;
-        $this->toInt($out, 'Zaehler');
-        $this->toInt($out, 'Artikel');
-        $this->toInt($out, 'Art');
+        $fields = $this->config->getFields('Dokumente');
 
-        // Pfad vereinheitlichen/kürzen
-        $this->replacePath($out, 'Dateiname');
-        if (isset($out['Titel'])) {
-            $out['Titel'] = $this->normalizeTitle((string)$out['Titel']);
+        // Apply type conversions and transformations based on config
+        foreach ($fields as $fieldName => $fieldConfig) {
+            if (!array_key_exists($fieldName, $out)) {
+                continue;
+            }
+
+            $type = $fieldConfig['type'] ?? 'string';
+            $transform = $fieldConfig['transform'] ?? null;
+
+            // Apply transformation first if specified
+            if ($transform !== null) {
+                $out[$fieldName] = $this->transformRegistry->apply($transform, $out[$fieldName]);
+            }
+
+            // Apply type conversion
+            $this->applyTypeConversion($out, $fieldName, $type);
         }
+
         return $out;
     }
 
-    private function normalizeTitle(string $title): string
+    /**
+     * Apply type conversion to a field
+     * 
+     * @param array<string, mixed> $row
+     * @param string $key
+     * @param string $type
+     */
+    private function applyTypeConversion(array &$row, string $key, string $type): void
     {
-        $trimmed = trim($title);
-        if ($trimmed === '') {
-            return '';
+        if (!array_key_exists($key, $row)) {
+            return;
         }
-        $standardized = strtr($trimmed, ['\\' => '/', '//' => '/']);
-        return basename($standardized);
+
+        switch ($type) {
+            case 'integer':
+                $this->toInt($row, $key);
+                break;
+            case 'float':
+            case 'decimal':
+                $this->toFloat($row, $key);
+                break;
+            case 'boolean':
+                $this->toBool($row, $key);
+                break;
+            case 'datetime':
+                // Datetime is handled separately in normalize methods
+                break;
+            case 'string':
+            default:
+                // No conversion needed for strings
+                break;
+        }
     }
 
     /** @param array<string, mixed> $row */
@@ -273,66 +284,5 @@ class AFS_Get_Data
                 $row[$key] = false;
             }
         }
-    }
-
-    // -------------------- Hilfsfunktionen für Nachbearbeitung --------------------
-
-    /** Pfade normalisieren (\\ → /) und nur den Dateinamen behalten */
-    private function replacePath(array &$row, string $key): void
-    {
-        try {
-            if (!array_key_exists($key, $row) || $row[$key] === null || $row[$key] === '') {
-                return;
-            }
-            $val = (string)$row[$key];
-            // Backslashes aus Windows-Pfaden vereinheitlichen
-            $val = strtr($val, array('\\\\' => '/', '\\' => '/'));
-            // Nur Dateiname behalten
-            $row[$key] = basename($val);
-        } catch (\Throwable $e) { /* bewusst ignoriert */ }
-    }
-
-    /**
-     * Sehr einfacher RTF→HTML/Text Fallback (weil Convert::RtfToHtml nicht mehr vorhanden ist).
-     * Entfernt grob RTF-Steuerzeichen. Liefert Plaintext-ähnlichen Inhalt.
-     */
-    private function convertRtfToHtml(array &$row, string $key): void
-    {
-        try {
-            if (!array_key_exists($key, $row) || $row[$key] === null || $row[$key] === '') {
-                return;
-            }
-            $val = (string)$row[$key];
-
-            if (strpos($val, '{\\rtf') !== false) {
-                // RTF-Steuerwörter (z. B. \par, \tab, \b0, \fs22 ...) grob entfernen
-                $val = preg_replace('/\\\\[a-zA-Z]+-?\d* ?/', ' ', $val);
-                // Geschweifte Klammern und Backslashes entfernen
-                $val = str_replace(array('{', '}', '\\'), '', $val);
-                // Mehrfache Leerzeichen reduzieren
-                $val = trim(preg_replace('/\s+/', ' ', $val));
-            }
-
-            $row[$key] = $val; // Ergebnis ist eher Plaintext
-        } catch (\Throwable $e) { /* bewusst ignoriert */ }
-    }
-
-    /** RTF→Text; danach HTML-Tags entfernen (für Bemerkung/Hinweis) */
-    private function removeHtml(array &$row, string $key): void
-    {
-        try {
-            if (!array_key_exists($key, $row) || $row[$key] === null || $row[$key] === '') {
-                return;
-            }
-            $val = (string)$row[$key];
-
-            if (strpos($val, '{\\rtf') !== false) {
-                $val = preg_replace('/\\\\[a-zA-Z]+-?\d* ?/', ' ', $val);
-                $val = str_replace(array('{', '}', '\\'), '', $val);
-                $val = trim(preg_replace('/\s+/', ' ', $val));
-            }
-
-            $row[$key] = strip_tags($val);
-        } catch (\Throwable $e) { /* bewusst ignoriert */ }
     }
 }

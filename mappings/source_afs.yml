@@ -15,84 +15,190 @@ connection:
 
 # Entity mappings from AFS source
 entities:
-  articles:
-    table: dbo.Artikel
-    primary_key: ArtikelID
+  # Articles (Artikel)
+  Artikel:
+    table: Artikel
+    where: "[Mandant] = 1 AND [Art] < 255 AND [Artikelnummer] IS NOT NULL AND [Internet] = 1"
     fields:
-      - name: ArtikelID
+      Artikel:
+        source: Artikel
         type: integer
-        required: true
-      - name: Artikelnummer
+      Art:
+        source: Art
+        type: integer
+      Artikelnummer:
+        source: Artikelnummer
         type: string
-        required: true
-      - name: Bezeichnung
+      Bezeichnung:
+        source: Bezeichnung
         type: string
-      - name: Preis
-        type: decimal
+      EANNummer:
+        source: EANNummer
+        type: string
+      Bestand:
+        source: Bestand
+        type: integer
+      Bild1:
+        source: Bild1
+        type: string
+        transform: basename
+      Bild2:
+        source: Bild2
+        type: string
+        transform: basename
+      Bild3:
+        source: Bild3
+        type: string
+        transform: basename
+      Bild4:
+        source: Bild4
+        type: string
+        transform: basename
+      Bild5:
+        source: Bild5
+        type: string
+        transform: basename
+      Bild6:
+        source: Bild6
+        type: string
+        transform: basename
+      Bild7:
+        source: Bild7
+        type: string
+        transform: basename
+      Bild8:
+        source: Bild8
+        type: string
+        transform: basename
+      Bild9:
+        source: Bild9
+        type: string
+        transform: basename
+      Bild10:
+        source: Bild10
+        type: string
+        transform: basename
+      Preis:
+        source: VK3
+        type: float
+      Warengruppe:
+        source: Warengruppe
+        type: integer
+      Umsatzsteuer:
+        source: Umsatzsteuer
+        type: float
+      Mindestmenge:
+        source: Zusatzfeld01
+        type: string
+      Attribname1:
+        source: Zusatzfeld03
+        type: string
+      Attribname2:
+        source: Zusatzfeld04
+        type: string
+      Attribname3:
+        source: Zusatzfeld05
+        type: string
+      Attribname4:
+        source: Zusatzfeld06
+        type: string
+      Attribvalue1:
+        source: Zusatzfeld15
+        type: string
+      Attribvalue2:
+        source: Zusatzfeld16
+        type: string
+      Attribvalue3:
+        source: Zusatzfeld17
+        type: string
+      Attribvalue4:
+        source: Zusatzfeld18
+        type: string
+      Master:
+        source: Zusatzfeld07
+        type: string
+      Bruttogewicht:
+        source: Bruttogewicht
+        type: float
+      Online:
+        source: Internet
+        type: boolean
+      Einheit:
+        source: Einheit
+        type: string
+      Langtext:
+        source: Langtext
+        type: string
+        transform: rtf_to_html
+      Werbetext1:
+        source: Werbetext1
+        type: string
+      Bemerkung:
+        source: Bemerkung
+        type: string
+        transform: remove_html
+      Hinweis:
+        source: Hinweis
+        type: string
+        transform: remove_html
+      last_update:
+        source: Update
+        type: datetime
 
-  categories:
-    table: dbo.Warengruppe
-    primary_key: WarengruppenID
+  # Categories (Warengruppe)
+  Warengruppe:
+    table: Warengruppe
+    where: "[Mandant] = 1 AND [Internet] = 1"
     fields:
-      - name: WarengruppenID
+      Warengruppe:
+        source: Warengruppe
         type: integer
-        required: true
-      - name: Warengruppenname
+      Art:
+        source: Art
+        type: integer
+      Parent:
+        source: Anhang
+        type: integer
+      Ebene:
+        source: Ebene
+        type: integer
+      Bezeichnung:
+        source: Bezeichnung
         type: string
-        required: true
-      - name: Parent
-        type: integer
+      Online:
+        source: Internet
+        type: boolean
+      Bild:
+        source: Bild
+        type: string
+        transform: basename
+      Bild_gross:
+        source: Bild_gross
+        type: string
+        transform: basename
+      Beschreibung:
+        source: Beschreibung
+        type: string
 
-  images:
-    table: dbo.Bilder
-    primary_key: BildID
+  # Documents (Dokumente)
+  Dokumente:
+    table: Dokument
+    where: "[Artikel] > 0"
     fields:
-      - name: BildID
+      Zaehler:
+        source: Zaehler
         type: integer
-        required: true
-      - name: Dateiname
+      Artikel:
+        source: Artikel
+        type: integer
+      Dateiname:
+        source: Dateiname
         type: string
-        required: true
-      - name: ArtikelID
-        type: integer
-
-  documents:
-    table: dbo.Dokumente
-    primary_key: DokumentID
-    fields:
-      - name: DokumentID
-        type: integer
-        required: true
-      - name: Titel
+        transform: basename
+      Titel:
+        source: Titel
         type: string
-        required: true
-      - name: ArtikelID
+        transform: normalize_title
+      Art:
+        source: Art
         type: integer
-
-  attributes:
-    table: dbo.Attribute
-    primary_key: AttributID
-    fields:
-      - name: AttributID
-        type: integer
-        required: true
-      - name: AttributName
-        type: string
-        required: true
-      - name: Wert
-        type: string
-
-# Transformation rules
-transformations:
-  normalize_strings:
-    - trim
-    - remove_empty
-    - deduplicate
-  
-  price_format:
-    type: decimal
-    precision: 2
-    
-  date_format:
-    from: "Y-m-d H:i:s"
-    to: "Y-m-d\TH:i:s\Z"
