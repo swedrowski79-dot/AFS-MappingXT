@@ -30,13 +30,16 @@ CREATE TABLE IF NOT EXISTS Artikel (
     Bemerkung     TEXT,
     Hinweis       TEXT,
     "update"      INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
-    last_update   TEXT
+    last_update   TEXT,
+    last_imported_hash TEXT,
+    last_seen_hash TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_artikel_artikelnummer ON Artikel(Artikelnummer);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_artikel_ean ON Artikel(EANNummer) WHERE EANNummer IS NOT NULL;
 CREATE INDEX IF NOT EXISTS ix_artikel_afs_id ON Artikel(AFS_ID);
 CREATE INDEX IF NOT EXISTS ix_artikel_online ON Artikel(Online);
+CREATE INDEX IF NOT EXISTS ix_artikel_imported_hash ON Artikel(last_imported_hash);
 
 CREATE TABLE IF NOT EXISTS Bilder (
     ID        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,11 +47,14 @@ CREATE TABLE IF NOT EXISTS Bilder (
     Bildname  TEXT NOT NULL,
     md5       TEXT,
     "update"  INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
-    uploaded  INTEGER NOT NULL DEFAULT 0 CHECK (uploaded IN (0,1))
+    uploaded  INTEGER NOT NULL DEFAULT 0 CHECK (uploaded IN (0,1)),
+    last_imported_hash TEXT,
+    last_seen_hash TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_bilder_bildname ON Bilder(Bildname);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_bilder_md5 ON Bilder(md5) WHERE md5 IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_bilder_imported_hash ON Bilder(last_imported_hash);
 
 CREATE TABLE IF NOT EXISTS Artikel_Bilder (
     ID           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,10 +73,13 @@ CREATE TABLE IF NOT EXISTS Attribute (
     ID          INTEGER PRIMARY KEY AUTOINCREMENT,
     XT_Attrib_ID INTEGER,
     Attribname  TEXT NOT NULL,
-    "update"   INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1))
+    "update"   INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
+    last_imported_hash TEXT,
+    last_seen_hash TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_attribute_name ON Attribute(Attribname);
+CREATE INDEX IF NOT EXISTS ix_attribute_imported_hash ON Attribute(last_imported_hash);
 
 CREATE TABLE IF NOT EXISTS Attrib_Artikel (
     ID            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,10 +103,13 @@ CREATE TABLE IF NOT EXISTS Dokumente (
     Art       INTEGER,
     md5       TEXT,
     "update"  INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
-    uploaded  INTEGER NOT NULL DEFAULT 0 CHECK (uploaded IN (0,1))
+    uploaded  INTEGER NOT NULL DEFAULT 0 CHECK (uploaded IN (0,1)),
+    last_imported_hash TEXT,
+    last_seen_hash TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_dokumente_titel ON Dokumente(Titel);
+CREATE INDEX IF NOT EXISTS ix_dokumente_imported_hash ON Dokumente(last_imported_hash);
 
 CREATE TABLE IF NOT EXISTS Artikel_Dokumente (
     ID          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -125,9 +137,12 @@ CREATE TABLE IF NOT EXISTS category (
     description TEXT,
     meta_title TEXT,
     meta_description TEXT,
-    "update"    INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1))
+    "update"    INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
+    last_imported_hash TEXT,
+    last_seen_hash TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_category_afsid ON category(afsid);
 CREATE INDEX IF NOT EXISTS ix_category_parent ON category(Parent);
 CREATE INDEX IF NOT EXISTS ix_category_afsparent ON category(afsparent);
+CREATE INDEX IF NOT EXISTS ix_category_imported_hash ON category(last_imported_hash);

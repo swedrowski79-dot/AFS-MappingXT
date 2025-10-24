@@ -101,6 +101,12 @@ entities:
       last_update:
         type: string
         nullable: true
+      last_imported_hash:
+        type: string
+        nullable: true
+      last_seen_hash:
+        type: string
+        nullable: true
 
   categories:
     table: category
@@ -133,6 +139,12 @@ entities:
       update:
         type: integer
         default: 0
+      last_imported_hash:
+        type: string
+        nullable: true
+      last_seen_hash:
+        type: string
+        nullable: true
 
   images:
     table: Bilder
@@ -157,6 +169,12 @@ entities:
       uploaded:
         type: integer
         default: 0
+      last_imported_hash:
+        type: string
+        nullable: true
+      last_seen_hash:
+        type: string
+        nullable: true
 
   documents:
     table: Dokumente
@@ -187,6 +205,12 @@ entities:
       uploaded:
         type: integer
         default: 0
+      last_imported_hash:
+        type: string
+        nullable: true
+      last_seen_hash:
+        type: string
+        nullable: true
 
   attributes:
     table: Attribute
@@ -205,6 +229,12 @@ entities:
       update:
         type: integer
         default: 0
+      last_imported_hash:
+        type: string
+        nullable: true
+      last_seen_hash:
+        type: string
+        nullable: true
 
 # Relationship tables
 relationships:

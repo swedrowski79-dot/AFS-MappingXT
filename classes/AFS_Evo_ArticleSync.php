@@ -14,6 +14,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     private AFS_Evo_CategorySync $categorySync;
     private AFS_TargetMappingConfig $targetMapping;
     private AFS_SqlBuilder $sqlBuilder;
+    private AFS_HashManager $hashManager;
 
     public function __construct(
         PDO $db,
@@ -30,6 +31,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         $this->documentSync = $documentSync;
         $this->attributeSync = $attributeSync;
         $this->categorySync = $categorySync;
+        $this->hashManager = new AFS_HashManager();
         
         // Load target mapping configuration
         if ($targetMapping === null) {
@@ -133,13 +135,24 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                 $newTs      = $this->toTimestamp($payload['last_update'] ?? null);
 
                 $payload['eannummer'] = $this->sanitizeEan($payload['eannummer'], $artikelnummer, $eanMap);
+                
+                // Compute hash of current data for efficient change detection
+                $hashableFields = $this->hashManager->extractHashableFields($payload);
+                $currentHash = $this->hashManager->generateHash($hashableFields);
+                $existingHash = $existing['last_imported_hash'] ?? null;
 
                 $shouldUpdate = false;
                 if ($existing === null) {
+                    // New article
+                    $shouldUpdate = true;
+                } elseif ($this->hashManager->hasChanged($existingHash, $currentHash)) {
+                    // Hash has changed - data has been modified
                     $shouldUpdate = true;
                 } elseif ($newTs === null) {
+                    // Fallback to timestamp-based detection if available
                     $shouldUpdate = true;
                 } elseif ($existingTs === null || $newTs > $existingTs) {
+                    // Timestamp indicates change
                     $shouldUpdate = true;
                 }
 
@@ -155,10 +168,15 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                 }
 
                 if (!$shouldUpdate) {
+                    // Update last_seen_hash even if no changes
+                    $payload['last_seen_hash'] = $currentHash;
                     continue;
                 }
 
+                // Set update flag and store hashes
                 $payload['update'] = 1;
+                $payload['last_imported_hash'] = $currentHash;
+                $payload['last_seen_hash'] = $currentHash;
                 $upsert->execute($payload);
 
                 $artikelId = $existingId;
@@ -547,6 +565,8 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
             'hinweis'           => $this->nullIfEmpty($row['Hinweis'] ?? null),
             'update'            => 0,
             'last_update'       => $this->nullIfEmpty($row['last_update'] ?? null),
+            'last_imported_hash' => null,
+            'last_seen_hash'    => null,
         ];
     }
     
@@ -570,7 +590,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     {
         $map = [];
         $tableName = $this->targetMapping->getTableName('articles');
-        $sql = "SELECT ID, Artikelnummer, Online, EANNummer, last_update, Meta_Title, Meta_Description FROM {$this->quoteIdent($tableName)}";
+        $sql = "SELECT ID, Artikelnummer, Online, EANNummer, last_update, Meta_Title, Meta_Description, last_imported_hash FROM {$this->quoteIdent($tableName)}";
         foreach ($this->db->query($sql, PDO::FETCH_ASSOC) as $row) {
             $nummer = isset($row['Artikelnummer']) ? trim((string)$row['Artikelnummer']) : '';
             if ($nummer === '') {
@@ -585,6 +605,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                 'ean' => $row['EANNummer'] ?? null,
                 'meta_title' => $row['Meta_Title'] ?? null,
                 'meta_description' => $row['Meta_Description'] ?? null,
+                'last_imported_hash' => $row['last_imported_hash'] ?? null,
                 'seen' => false,
             ];
         }
