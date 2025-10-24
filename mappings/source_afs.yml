@@ -9,7 +9,7 @@ source:
   name: "AFS-ERP"
   type: "mssql"
   
-# Placeholder für zukünftige Mapping-Definitionen
+# Placeholder fuer zukuenftige Mapping-Definitionen
 # tables:
 #   - name: "Artikel"
 #   - name: "Warengruppen"
