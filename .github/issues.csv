@@ -1,5 +1,5 @@
-title,labels,body
-[REF] Bestehende Schnittstelle analysieren & Migrationsplan erstellen,"refactor,analysis","**Ziel:**  
+title,labels,assignees,body
+[REF] Bestehende Schnittstelle analysieren & Migrationsplan erstellen,"refactor,analysis",swedrowski79-dot,"**Ziel:**  
 Analyse des aktuellen PHP-Codes unter `/classes` und `/api`.  
 Erfasse alle Klassen, die Daten zwischen AFS, SQLite und XT-Commerce austauschen.
 
@@ -11,7 +11,7 @@ Erfasse alle Klassen, die Daten zwischen AFS, SQLite und XT-Commerce austauschen
 **Akzeptanzkriterien:**
 - Übersicht liegt im Repo (`docs/architecture_before_after.md`)
 - Verantwortlichkeiten pro Klasse beschrieben"
-[REF] Projektstruktur für Mapping & Delta vorbereiten,"setup,refactor","**Ziel:**  
+[REF] Projektstruktur für Mapping & Delta vorbereiten,"setup,refactor",swedrowski79-dot,"**Ziel:**  
 Erstelle Verzeichnisse und leere Dateien für das neue Mapping-System.
 
 **To-Dos:**
@@ -23,7 +23,7 @@ Erstelle Verzeichnisse und leere Dateien für das neue Mapping-System.
 **Akzeptanzkriterien:**
 - Projekt baut ohne Fehler  
 - Alte Logik bleibt unverändert"
-[REF] AFS_Get_Data auf Mapping umstellen (read-side),"mapping,refactor","**Ziel:**  
+[REF] AFS_Get_Data auf Mapping umstellen (read-side),"mapping,refactor",swedrowski79-dot,"**Ziel:**  
 `AFS_Get_Data` soll AFS-Daten über `source_afs.yml` einlesen statt fest kodierter Feldzuweisungen.
 
 **To-Dos:**
@@ -34,7 +34,7 @@ Erstelle Verzeichnisse und leere Dateien für das neue Mapping-System.
 **Akzeptanzkriterien:**
 - Funktional identisches Ergebnis  
 - Keine Codeänderungen in abhängigen Klassen nötig"
-[REF] AFS_Evo_ArticleSync auf Target-Mapping umstellen,"mapping,refactor","**Ziel:**  
+[REF] AFS_Evo_ArticleSync auf Target-Mapping umstellen,"mapping,refactor",swedrowski79-dot,"**Ziel:**  
 Die Schreiblogik in SQLite soll `target_sqlite.yml` nutzen.
 
 **To-Dos:**
@@ -45,7 +45,7 @@ Die Schreiblogik in SQLite soll `target_sqlite.yml` nutzen.
 **Akzeptanzkriterien:**
 - Gleiche Daten wie bisher  
 - Schreiboperationen vollständig über Mapping steuerbar"
-[DELTA] HashManager implementieren & Update-Flag setzen,"delta,performance,refactor","**Ziel:**  
+[DELTA] HashManager implementieren & Update-Flag setzen,"delta,performance,refactor",swedrowski79-dot,"**Ziel:**  
 Implementiere `HashManager`, um Änderungen effizient zu erkennen.
 
 **To-Dos:**
@@ -56,7 +56,7 @@ Implementiere `HashManager`, um Änderungen effizient zu erkennen.
 **Akzeptanzkriterien:**
 - Hash stabil und deterministisch  
 - Keine signifikante Performance-Einbuße"
-[DELTA] Delta-Exporter auf Hash/Update-Flag-Basis umstellen,"delta,refactor","**Ziel:**  
+[DELTA] Delta-Exporter auf Hash/Update-Flag-Basis umstellen,"delta,refactor",swedrowski79-dot,"**Ziel:**  
 `AFS_Evo_DeltaExporter` soll nur geänderte Datensätze exportieren.
 
 **To-Dos:**
@@ -67,7 +67,7 @@ Implementiere `HashManager`, um Änderungen effizient zu erkennen.
 **Akzeptanzkriterien:**
 - Delta-Datei enthält ausschließlich geänderte Artikel  
 - Keine Dubletten"
-[DELTA] Teil-Hashes & selektive Updates integrieren,"delta,optimization","**Ziel:**  
+[DELTA] Teil-Hashes & selektive Updates integrieren,"delta,optimization",swedrowski79-dot,"**Ziel:**  
 Erweiterung der Hash-Logik um Teilbereiche (`price`, `media`, `content`).
 
 **To-Dos:**
@@ -78,7 +78,7 @@ Erweiterung der Hash-Logik um Teilbereiche (`price`, `media`, `content`).
 **Akzeptanzkriterien:**
 - Preis-, Medien- und Inhaltsänderungen getrennt erkennbar  
 - Dokumentation im Code vorhanden"
-[LOG] Einheitliches Mapping- und Delta-Logging implementieren,"logging,quality","**Ziel:**  
+[LOG] Einheitliches Mapping- und Delta-Logging implementieren,"logging,quality",swedrowski79-dot,"**Ziel:**  
 Konsistentes Logging für alle Mapping- und Delta-Läufe.
 
 **To-Dos:**
@@ -89,7 +89,7 @@ Konsistentes Logging für alle Mapping- und Delta-Läufe.
 **Akzeptanzkriterien:**
 - Einheitliche Logstruktur  
 - Alte Logausgaben ersetzt"
-[TEST] Schnittstelle im gemischten Modus (alt+neu) validieren,"testing,refactor","**Ziel:**  
+[TEST] Schnittstelle im gemischten Modus (alt+neu) validieren,"testing,refactor",swedrowski79-dot,"**Ziel:**  
 Sicherstellen, dass neue Mapping-Logik identische Ergebnisse liefert.
 
 **To-Dos:**
@@ -100,7 +100,7 @@ Sicherstellen, dass neue Mapping-Logik identische Ergebnisse liefert.
 **Akzeptanzkriterien:**
 - Ergebnis 100 % identisch  
 - Log dokumentiert Unterschiede"
-[CLEANUP] Alte Hardcodings & Direktzugriffe entfernen,"cleanup,refactor","**Ziel:**  
+[CLEANUP] Alte Hardcodings & Direktzugriffe entfernen,"cleanup,refactor",swedrowski79-dot,"**Ziel:**  
 Entferne nach Migration alle statischen Feldzuweisungen und Legacy-SQLs.
 
 **To-Dos:**
