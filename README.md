@@ -520,6 +520,7 @@ Das Projekt folgt dem **PSR-12: Extended Coding Style** Standard für konsistent
 
 - **PHP_CodeSniffer**: Automatische Überprüfung und Korrektur von Code-Style-Verstößen
 - **PHPStan**: Statische Code-Analyse zur Fehlererkennung
+- **Dead Code Detection**: Automatische Erkennung nicht genutzter Klassen und Methoden
 - **EditorConfig**: Einheitliche Editor-Einstellungen für alle Entwickler
 
 ### Verwendung
@@ -539,13 +540,20 @@ composer stan
 
 # Alle Qualitätsprüfungen ausführen
 composer test:style
+
+# Nicht genutzte Klassen/Methoden erkennen
+make detect-unused
+# oder: php scripts/detect_unused_code.php
 ```
 
 ### CI/CD Integration
 
-GitHub Actions führt automatisch Code-Style-Checks bei Pull Requests und Pushes auf `main` und `develop` Branches durch. Die Pipeline schlägt fehl, wenn PSR-12-Verstöße oder Type-Fehler erkannt werden.
+GitHub Actions führt automatisch Code-Style-Checks bei Pull Requests und Pushes auf `main` und `develop` Branches durch. Die Pipeline schlägt fehl, wenn:
+- PSR-12-Verstöße erkannt werden
+- Type-Fehler gefunden werden
+- Nicht genutzte Klassen oder Methoden erkannt werden
 
-Ausführliche Dokumentation siehe [docs/CODE_STYLE.md](docs/CODE_STYLE.md)
+Ausführliche Dokumentation siehe [docs/CODE_STYLE.md](docs/CODE_STYLE.md) und [docs/DEAD_CODE_DETECTION.md](docs/DEAD_CODE_DETECTION.md)
 
 ---
 
