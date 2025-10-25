@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libsqlite3-dev \
     unixodbc-dev \
-    libyaml-dev \
     gnupg \
     curl \
     && rm -rf /var/lib/apt/lists/*

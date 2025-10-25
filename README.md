@@ -321,8 +321,9 @@ Scripts `scripts/create_evo.sql` & `scripts/create_status.sql` enthalten die vol
 | `AFS_Evo_ArticleSync` | Hauptlogik: Artikel schreiben, Medien & Attribute verknüpfen |
 | `AFS_HashManager` | **NEU:** Effiziente Änderungserkennung via SHA-256 Hashes (siehe [HashManager.md](docs/HashManager.md)) |
 | `AFS_ConfigCache` | **NEU:** In-Memory-Cache für YAML-Konfigurationsdateien – beschleunigt wiederholte Config-Loads um 3-5x |
-| `AFS_MappingConfig` | YAML-Konfiguration für Source-Datenbank-Mapping (nutzt `AFS_ConfigCache`) |
-| `AFS_TargetMappingConfig` | YAML-Konfiguration für Target-Datenbank-Mapping (nutzt `AFS_ConfigCache`) |
+| `AFS_YamlParser` | **NEU:** Native PHP YAML-Parser – eliminiert Abhängigkeit von php-yaml Extension |
+| `AFS_MappingConfig` | YAML-Konfiguration für Source-Datenbank-Mapping (nutzt `AFS_ConfigCache` und `AFS_YamlParser`) |
+| `AFS_TargetMappingConfig` | YAML-Konfiguration für Target-Datenbank-Mapping (nutzt `AFS_ConfigCache` und `AFS_YamlParser`) |
 | `AFS_Evo_StatusTracker` | Managt `sync_status`/`sync_log` in SQLite, Fortschrittsbalken & Logs für UI |
 | `AFS_MappingLogger` | **NEU:** Strukturiertes JSON-Logging in tägliche Dateien mit Mapping-Version, Änderungen und Dauer |
 | `AFS_Evo_Reset` | Utility zum Leeren aller EVO-Tabellen |
