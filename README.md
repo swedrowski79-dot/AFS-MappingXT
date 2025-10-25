@@ -111,6 +111,7 @@ docker-compose up -d
 - Bei Updates von älteren Installationen:
   - `php scripts/migrate_update_columns.php` (fügt die neuen `update`-Spalten in den Verknüpfungstabellen hinzu)
   - `php scripts/migrate_add_hash_columns.php` (fügt Hash-Spalten für effiziente Ängerungserkennung hinzu)
+  - `php scripts/migrate_add_indexes.php` (fügt Performance-Indizes hinzu - **empfohlen für bestehende Installationen**)
   - ~~`php scripts/migrate_add_partial_hash_columns.php`~~ (DEPRECATED: Teil-Hash-Spalten wurden entfernt)
 
 ### Konfiguration
@@ -282,6 +283,11 @@ Nach dem Kopieren werden fehlende oder fehlgeschlagene Dateien analysiert:
   - `Artikel_Bilder` (Artikel-ID ↔ Bild-ID, `update` markiert neue/gelöschte Verknüpfungen)
   - `Artikel_Dokumente` (Artikel-ID ↔ Dokument-ID, `update` markiert neue/gelöschte Verknüpfungen)
   - `Attrib_Artikel` (Artikel ↔ Attribute inkl. Wertänderungen über `update`)
+- **Performance-Indizes**: Umfassende Indexierung für optimale Query-Performance
+  - Update-Flag-Indizes für schnellen Delta-Export (10-100x schneller)
+  - Foreign-Key-Indizes für effiziente Junction-Table-Lookups (40x schneller)
+  - XT_ID-Indizes für bi-direktionale Synchronisation
+  - Details siehe [docs/INDEX_STRATEGY.md](docs/INDEX_STRATEGY.md)
 
 ### `db/evo_delta.db`
 - Wird nach jedem Lauf erzeugt (gleiche Tabellenschemata wie `evo.db`)
@@ -342,6 +348,7 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 | `validate_no_hardcodings.php` | **[NEU]** Bestätigt keine Hardcodings oder Legacy-Code mehr vorhanden |
 | `test_hashmanager.php` | Tests für effiziente Änderungserkennung via Hashes |
 | `test_mapping_logger.php` | Tests für strukturiertes JSON-Logging |
+| `test_index_performance.php` | **[NEU]** Validiert Datenbank-Index-Performance und Nutzung |
 | `analyze_performance.php` | **[NEU]** Projektweite Performance-Analyse und Benchmarking |
 
 ### Performance-Analyse
@@ -407,6 +414,7 @@ php scripts/test_target_mapping.php
 php scripts/test_articlesync_mapping.php
 php scripts/test_mixed_mode_validation.php
 php scripts/validate_no_hardcodings.php
+php scripts/test_index_performance.php
 php scripts/analyze_performance.php
 ```
 
