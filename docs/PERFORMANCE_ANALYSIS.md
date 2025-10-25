@@ -52,7 +52,7 @@ php scripts/analyze_performance.php --export=json
 - **Source Mapping Load**: ~150-190 μs pro Instanz (4.3 KB Datei)
 - **Target Mapping Load**: ~245-270 μs pro Instanz (7.6 KB Datei)
 
-**Implementation**: `AFS_ConfigCache` bietet In-Memory-Caching für YAML-Konfigurationsdateien mit automatischer Invalidierung bei Dateiänderungen (basierend auf mtime).
+**Implementation**: `AFS_ConfigCache` bietet In-Memory-Cache für YAML-Konfigurationsdateien mit automatischer Invalidierung bei Dateiänderungen (basierend auf mtime).
 
 #### SQL-Generierung
 Durchschnittliche Zeit pro SQL-SELECT-Statement:
