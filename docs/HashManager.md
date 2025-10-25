@@ -198,7 +198,7 @@ php scripts/migrate_add_hash_columns.php
 The migration will:
 1. Add `last_imported_hash` and `last_seen_hash` columns to all entity tables
 2. Create indices for efficient hash-based queries
-3. Remove obsolete partial hash indices if they exist
+3. Clean up obsolete indices from previous schema versions if they exist
 
 The migration is **idempotent** - it can be run safely multiple times without causing errors.
 
