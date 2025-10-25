@@ -4,7 +4,16 @@
 
 declare(strict_types=1);
 
-header('Content-Type: application/json');
+// Security headers
+header('Content-Type: application/json; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
+// Remove server signature
+header_remove('X-Powered-By');
+header_remove('Server');
 
 $health = [
     'status' => 'ok',

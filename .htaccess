@@ -41,9 +41,26 @@
     # Referrer policy
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     
+    # Content Security Policy (CSP)
+    # Allows inline styles and scripts from self (needed for the embedded UI)
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    
+    # Permissions Policy (formerly Feature-Policy)
+    # Disable unnecessary browser features
+    Header always set Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+    
     # Remove server signature
     Header unset Server
     Header always unset X-Powered-By
+    
+    # CORS headers for API endpoints
+    <FilesMatch "\.(php)$">
+        # Allow same-origin requests
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Header always set Access-Control-Allow-Headers "Content-Type, Accept"
+        Header always set Access-Control-Max-Age "3600"
+    </FilesMatch>
 </IfModule>
 
 # Compression

@@ -13,6 +13,11 @@ $autoloadFile = $root . '/autoload.php';
 if (!is_file($configFile) || !is_file($autoloadFile)) {
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-XSS-Protection: 1; mode=block');
+    header_remove('X-Powered-By');
+    header_remove('Server');
     echo json_encode(['ok' => false, 'error' => 'System nicht korrekt eingerichtet.']);
     exit;
 }
@@ -23,7 +28,18 @@ require_once $autoloadFile;
 function api_json(array $payload, int $status = 200): void
 {
     http_response_code($status);
+    
+    // Security headers for API responses
     header('Content-Type: application/json; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-XSS-Protection: 1; mode=block');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    
+    // Remove server signature
+    header_remove('X-Powered-By');
+    header_remove('Server');
+    
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

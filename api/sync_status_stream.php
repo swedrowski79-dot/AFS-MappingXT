@@ -10,8 +10,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 global $config;
 $tracker = createStatusTracker($config, 'categories');
 
-header('Content-Type: text/event-stream');
+// Security headers for SSE
+header('Content-Type: text/event-stream; charset=utf-8');
 header('Cache-Control: no-cache');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('X-XSS-Protection: 1; mode=block');
+
+// Remove server signature
+header_remove('X-Powered-By');
+header_remove('Server');
 
 echo 'data: ' . json_encode(['ok' => true, 'status' => $tracker->getStatus()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n\n";
 flush();
