@@ -1,6 +1,15 @@
 #!/usr/bin/env php
 <?php
 /**
+ * DEPRECATED: This test script is no longer maintained
+ * 
+ * Partial hash scopes (price_hash, media_hash, content_hash) have been removed
+ * in favor of unified hash management using only last_imported_hash and last_seen_hash.
+ * 
+ * See test_hashmanager.php for current hash functionality tests.
+ * 
+ * ---
+ * 
  * Test script for partial hash scopes in AFS_HashManager
  * 
  * Validates that partial hash generation works correctly for:
@@ -10,6 +19,12 @@
  */
 
 declare(strict_types=1);
+
+echo "=== DEPRECATED TEST ===\n\n";
+echo "This test script is deprecated and no longer maintained.\n";
+echo "Partial hash functionality has been removed.\n\n";
+echo "Please use: php scripts/test_hashmanager.php\n\n";
+exit(0);
 
 require_once __DIR__ . '/../autoload.php';
 

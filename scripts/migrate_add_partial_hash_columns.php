@@ -1,6 +1,15 @@
 #!/usr/bin/env php
 <?php
 /**
+ * DEPRECATED: This migration script is no longer needed
+ * 
+ * Partial hash columns (price_hash, media_hash, content_hash) have been removed
+ * in favor of unified hash management using only last_imported_hash and last_seen_hash.
+ * 
+ * Use scripts/migrate_add_hash_columns.php instead.
+ * 
+ * ---
+ * 
  * Migration: Add partial hash columns to Artikel table
  * 
  * Adds price_hash, media_hash, and content_hash columns to the Artikel table
@@ -13,6 +22,12 @@
  */
 
 declare(strict_types=1);
+
+echo "=== DEPRECATED MIGRATION ===\n\n";
+echo "This migration script is deprecated and should not be used.\n";
+echo "Partial hash columns have been removed from the schema.\n\n";
+echo "Please use: php scripts/migrate_add_hash_columns.php\n\n";
+exit(0);
 
 require_once __DIR__ . '/../autoload.php';
 
