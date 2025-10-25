@@ -136,10 +136,22 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
 
                 $payload['eannummer'] = $this->sanitizeEan($payload['eannummer'], $artikelnummer, $eanMap);
                 
-                // Compute hash of current data for efficient change detection
+                // Compute full hash of current data for efficient change detection
                 $hashableFields = $this->hashManager->extractHashableFields($payload);
                 $currentHash = $this->hashManager->generateHash($hashableFields);
                 $existingHash = $existing['last_imported_hash'] ?? null;
+                
+                // Compute partial hashes for selective updates (price, media, content)
+                $scopeDefinitions = $this->targetMapping->getChangeDetectionScopes('articles');
+                $currentPartialHashes = $this->hashManager->generatePartialHashes($payload, $scopeDefinitions);
+                $existingPartialHashes = [
+                    'price' => $existing['price_hash'] ?? null,
+                    'media' => $existing['media_hash'] ?? null,
+                    'content' => $existing['content_hash'] ?? null,
+                ];
+                
+                // Detect which scopes have changed
+                $scopeChanges = $this->hashManager->detectScopeChanges($existingPartialHashes, $currentPartialHashes);
 
                 $shouldUpdate = false;
                 if ($existing === null) {
@@ -166,10 +178,13 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                     continue;
                 }
 
-                // Set update flag and store hashes
+                // Set update flag and store hashes (full and partial)
                 $payload['update'] = 1;
                 $payload['last_imported_hash'] = $currentHash;
                 $payload['last_seen_hash'] = $currentHash;
+                $payload['price_hash'] = $currentPartialHashes['price'];
+                $payload['media_hash'] = $currentPartialHashes['media'];
+                $payload['content_hash'] = $currentPartialHashes['content'];
                 $upsert->execute($payload);
 
                 $artikelId = $existingId;
@@ -218,39 +233,49 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
 
                 $relationsChanged = false;
 
-                $imageResult = $this->syncArticleImages(
-                    $insertImage,
-                    $deleteImage,
-                    $artikelId,
-                    $bildMap,
-                    $row,
-                    $existingImages[$artikelId] ?? []
-                );
-                $stats['images'] += $imageResult['added'] + $imageResult['removed'];
-                $relationsChanged = $relationsChanged || $imageResult['changed'];
+                // Selective sync: Only update image relationships if media scope has changed
+                // or if this is a new article (existing is null)
+                if ($existing === null || ($scopeChanges['media'] ?? false)) {
+                    $imageResult = $this->syncArticleImages(
+                        $insertImage,
+                        $deleteImage,
+                        $artikelId,
+                        $bildMap,
+                        $row,
+                        $existingImages[$artikelId] ?? []
+                    );
+                    $stats['images'] += $imageResult['added'] + $imageResult['removed'];
+                    $relationsChanged = $relationsChanged || $imageResult['changed'];
+                }
 
-                $docResult = $this->syncArticleDocuments(
-                    $insertDoc,
-                    $deleteDoc,
-                    $artikelId,
-                    $dokumentMap,
-                    $docsByArticle,
-                    $payload,
-                    $existingDocs[$artikelId] ?? []
-                );
-                $stats['documents'] += $docResult['added'] + $docResult['removed'];
-                $relationsChanged = $relationsChanged || $docResult['changed'];
+                // Document relationships are synced if media scope changed (related to file attachments)
+                if ($existing === null || ($scopeChanges['media'] ?? false)) {
+                    $docResult = $this->syncArticleDocuments(
+                        $insertDoc,
+                        $deleteDoc,
+                        $artikelId,
+                        $dokumentMap,
+                        $docsByArticle,
+                        $payload,
+                        $existingDocs[$artikelId] ?? []
+                    );
+                    $stats['documents'] += $docResult['added'] + $docResult['removed'];
+                    $relationsChanged = $relationsChanged || $docResult['changed'];
+                }
 
-                $attrResult = $this->syncArticleAttributes(
-                    $insertAttr,
-                    $deleteAttr,
-                    $artikelId,
-                    $attributeMap,
-                    $row,
-                    $existingAttrs[$artikelId] ?? []
-                );
-                $stats['attributes'] += $attrResult['added'] + $attrResult['removed'];
-                $relationsChanged = $relationsChanged || $attrResult['changed'];
+                // Attribute relationships - sync on content changes or new articles
+                if ($existing === null || ($scopeChanges['content'] ?? false)) {
+                    $attrResult = $this->syncArticleAttributes(
+                        $insertAttr,
+                        $deleteAttr,
+                        $artikelId,
+                        $attributeMap,
+                        $row,
+                        $existingAttrs[$artikelId] ?? []
+                    );
+                    $stats['attributes'] += $attrResult['added'] + $attrResult['removed'];
+                    $relationsChanged = $relationsChanged || $attrResult['changed'];
+                }
 
                 if ($relationsChanged) {
                     $markArticleUpdate->execute([':id' => $artikelId]);
@@ -556,10 +581,25 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
             'meta_description'  => $this->nullIfEmpty($row['Meta_Description'] ?? null),
             'bemerkung'         => $this->nullIfEmpty($row['Bemerkung'] ?? null),
             'hinweis'           => $this->nullIfEmpty($row['Hinweis'] ?? null),
+            // Image fields for media hash calculation (note: these are not stored in Artikel table,
+            // only used for computing media_hash to detect changes in image relationships)
+            'bild1'             => $this->nullIfEmpty($row['Bild1'] ?? null),
+            'bild2'             => $this->nullIfEmpty($row['Bild2'] ?? null),
+            'bild3'             => $this->nullIfEmpty($row['Bild3'] ?? null),
+            'bild4'             => $this->nullIfEmpty($row['Bild4'] ?? null),
+            'bild5'             => $this->nullIfEmpty($row['Bild5'] ?? null),
+            'bild6'             => $this->nullIfEmpty($row['Bild6'] ?? null),
+            'bild7'             => $this->nullIfEmpty($row['Bild7'] ?? null),
+            'bild8'             => $this->nullIfEmpty($row['Bild8'] ?? null),
+            'bild9'             => $this->nullIfEmpty($row['Bild9'] ?? null),
+            'bild10'            => $this->nullIfEmpty($row['Bild10'] ?? null),
             'update'            => 0,
             'last_update'       => $this->nullIfEmpty($row['last_update'] ?? null),
             'last_imported_hash' => null,
             'last_seen_hash'    => null,
+            'price_hash'        => null,
+            'media_hash'        => null,
+            'content_hash'      => null,
         ];
     }
     
@@ -583,7 +623,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     {
         $map = [];
         $tableName = $this->targetMapping->getTableName('articles');
-        $sql = "SELECT ID, Artikelnummer, Online, EANNummer, last_update, Meta_Title, Meta_Description, last_imported_hash FROM {$this->quoteIdent($tableName)}";
+        $sql = "SELECT ID, Artikelnummer, Online, EANNummer, last_update, Meta_Title, Meta_Description, last_imported_hash, price_hash, media_hash, content_hash FROM {$this->quoteIdent($tableName)}";
         foreach ($this->db->query($sql, PDO::FETCH_ASSOC) as $row) {
             $nummer = isset($row['Artikelnummer']) ? trim((string)$row['Artikelnummer']) : '';
             if ($nummer === '') {
@@ -599,6 +639,9 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                 'meta_title' => $row['Meta_Title'] ?? null,
                 'meta_description' => $row['Meta_Description'] ?? null,
                 'last_imported_hash' => $row['last_imported_hash'] ?? null,
+                'price_hash' => $row['price_hash'] ?? null,
+                'media_hash' => $row['media_hash'] ?? null,
+                'content_hash' => $row['content_hash'] ?? null,
                 'seen' => false,
             ];
         }

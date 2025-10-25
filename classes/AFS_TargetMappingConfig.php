@@ -270,4 +270,19 @@ class AFS_TargetMappingConfig
     {
         return $this->config['connection'] ?? [];
     }
+    
+    /**
+     * Get change detection scope definitions for an entity
+     * 
+     * Returns field lists grouped by scope (price, media, content, etc.)
+     * for partial hash generation and selective updates.
+     * 
+     * @param string $entityName Name of the entity (e.g., 'articles')
+     * @return array<string,array<string>> Map of scope_name => [field_names]
+     */
+    public function getChangeDetectionScopes(string $entityName): array
+    {
+        $changeDetection = $this->config['change_detection'] ?? [];
+        return $changeDetection[$entityName] ?? [];
+    }
 }

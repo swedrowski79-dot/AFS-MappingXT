@@ -107,6 +107,15 @@ entities:
       last_seen_hash:
         type: string
         nullable: true
+      price_hash:
+        type: string
+        nullable: true
+      media_hash:
+        type: string
+        nullable: true
+      content_hash:
+        type: string
+        nullable: true
 
   categories:
     table: category
@@ -331,3 +340,37 @@ delta:
   export_database: ${DELTA_DB_PATH}
   track_field: update
   export_on_complete: true
+
+# Change detection configuration for partial hash scopes
+# Defines which fields belong to each hash scope for efficient change tracking
+change_detection:
+  articles:
+    # Price scope: Fields related to pricing and inventory
+    price:
+      - Preis
+      - Bestand
+      - Mindestmenge
+    # Media scope: Fields related to images and media relationships
+    # Note: Image relationships (Bild1-10) are tracked via media_hash
+    # The actual image sync happens in article_images relationship table
+    media:
+      - Bild1
+      - Bild2
+      - Bild3
+      - Bild4
+      - Bild5
+      - Bild6
+      - Bild7
+      - Bild8
+      - Bild9
+      - Bild10
+    # Content scope: Fields related to descriptions and metadata
+    content:
+      - Bezeichnung
+      - Langtext
+      - Werbetext
+      - Meta_Title
+      - Meta_Description
+      - Bemerkung
+      - Hinweis
+      - Einheit
