@@ -266,6 +266,61 @@ Hilfsklassen wie `AFS_Evo_Base` stellen gemeinsame Utilities (Artikelreferenz, L
 
 ---
 
+## Testing
+
+Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
+
+### Verfügbare Tests
+
+| Script | Beschreibung |
+|--------|--------------|
+| `test_yaml_mapping.php` | Validiert YAML-Konfiguration und SQL-Generierung aus source_afs.yml |
+| `test_target_mapping.php` | Validiert target_sqlite.yml Konfiguration und UPSERT-Statements |
+| `test_articlesync_mapping.php` | Integration-Test für AFS_Evo_ArticleSync mit Target-Mapping |
+| `test_mixed_mode_validation.php` | **NEU:** Umfassende Validierung der neuen Mapping-Logik (siehe unten) |
+| `test_hashmanager.php` | Tests für effiziente Änderungserkennung via Hashes |
+| `test_partial_hashes.php` | Tests für selektive Updates via Teil-Hashes |
+| `test_mapping_logger.php` | Tests für strukturiertes JSON-Logging |
+
+### Mixed Mode Validation Test
+
+Das `test_mixed_mode_validation.php` Script führt eine umfassende 5-Phasen-Validierung durch:
+
+1. **Konfigurationsvalidierung**: Lädt und validiert beide YAML-Mappings
+2. **SQL-Generierungsvalidierung**: Testet dynamische SQL-Generierung
+3. **Datenkonsistenzvalidierung**: Prüft Feldvollständigkeit und Constraints
+4. **Performance-Vergleich**: Misst und validiert Laufzeiten
+5. **Datenverlust-Erkennung**: Prüft auf fehlende Konfigurationen
+
+```bash
+# Ausführung
+php scripts/test_mixed_mode_validation.php
+
+# Ergebnis
+✓ VALIDATION PASSED - Results are 100% identical
+✓ No data loss detected
+✓ Performance within acceptable thresholds
+```
+
+**Akzeptanzkriterien (erfüllt):**
+- ✅ Ergebnis 100% identisch
+- ✅ Log dokumentiert Unterschiede
+- ✅ Keine Datenverluste
+- ✅ Performance akzeptabel
+
+Detaillierte Dokumentation: [docs/MIXED_MODE_VALIDATION.md](docs/MIXED_MODE_VALIDATION.md)
+
+### Alle Tests ausführen
+
+```bash
+php scripts/test_yaml_mapping.php
+php scripts/test_target_mapping.php
+php scripts/test_articlesync_mapping.php
+php scripts/test_mixed_mode_validation.php
+```
+
+---
+
 ## Troubleshooting
 
 | Problem | Ursache/Prüfung | Lösung |

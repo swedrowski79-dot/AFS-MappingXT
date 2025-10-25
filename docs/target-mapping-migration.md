@@ -146,7 +146,15 @@ Target-Mapping geladen | version: 1.0.0 | stage: artikel
    - Prüft Parameter-Mapping
    - Testet alle Relationship-Operationen
 
-3. **`show_generated_sql.php`**
+3. **`test_mixed_mode_validation.php`** ⭐ **NEU**
+   - Umfassende 5-Phasen-Validierung der neuen Mapping-Logik
+   - Vergleich alte vs. neue Implementierung
+   - Datenverlust-Erkennung
+   - Performance-Vergleich
+   - Strukturiertes Logging aller Unterschiede
+   - Siehe [MIXED_MODE_VALIDATION.md](MIXED_MODE_VALIDATION.md)
+
+4. **`show_generated_sql.php`**
    - Zeigt alle generierten SQL-Statements an
    - Nützlich zur Dokumentation und Debugging
 
@@ -157,9 +165,19 @@ Target-Mapping geladen | version: 1.0.0 | stage: artikel
 php scripts/test_yaml_mapping.php
 php scripts/test_target_mapping.php
 php scripts/test_articlesync_mapping.php
+php scripts/test_mixed_mode_validation.php
 
 # SQL-Statements anzeigen
 php scripts/show_generated_sql.php
+```
+
+### Validation Ergebnis
+
+```
+✓ VALIDATION PASSED - Results are 100% identical
+✓ No data loss detected
+✓ Performance within acceptable thresholds
+Total execution time: 0.05 seconds
 ```
 
 ## Vorteile der Migration
