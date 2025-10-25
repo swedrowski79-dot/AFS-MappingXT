@@ -194,24 +194,24 @@ All 16 tests pass (8 full hash + 8 partial hash tests).
 
 ### Typical Article Sync Scenarios
 
-_Note: These calculations are based on typical system data where articles average 10 images (Bild1-10 fields) and 4 attributes (Attribname1-4, Attribvalue1-4). Actual savings may vary based on your data._
+_Note: These calculations are based on typical system data where articles average 10 images (Bild1-10 source fields synced to Artikel_Bilder relationship table) and 4 attributes (Attribname1-4, Attribvalue1-4 source fields synced to Attrib_Artikel relationship table). Actual savings may vary based on your data._
 
 **Scenario 1: Daily Price Updates (Most Common)**
 - 1000 articles with price changes
-- Before: 1000 articles + ~10,000 image checks + ~4,000 attribute checks
-- After: 1000 articles only
+- Before: 1000 articles + ~10,000 image relationship checks + ~4,000 attribute relationship checks
+- After: 1000 articles only (relationships skipped)
 - **Savings: ~14,000 operations skipped (70% reduction)**
 
 **Scenario 2: Weekly Content Updates**
 - 500 articles with description changes
-- Before: 500 articles + ~5,000 image checks + ~2,000 attribute checks
-- After: 500 articles + ~2,000 attribute syncs
+- Before: 500 articles + ~5,000 image relationship checks + ~2,000 attribute relationship checks
+- After: 500 articles + ~2,000 attribute relationship syncs (images skipped)
 - **Savings: ~5,000 operations skipped (50% reduction)**
 
 **Scenario 3: Monthly Media Updates**
 - 200 articles with new images
-- Before: 200 articles + ~2,000 image checks + ~800 attribute checks
-- After: 200 articles + ~2,000 image syncs
+- Before: 200 articles + ~2,000 image relationship checks + ~800 attribute relationship checks
+- After: 200 articles + ~2,000 image relationship syncs (attributes skipped)
 - **Savings: ~800 operations skipped (20% reduction)**
 
 ## Backward Compatibility
