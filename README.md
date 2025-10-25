@@ -20,6 +20,7 @@
   - [Fehler-Analyse für Medien](#fehler-analyse-für-medien)
 - [Datenbanken & Tabellen](#datenbanken--tabellen)
 - [Klassenüberblick](#klassenüberblick)
+- [Code Style & Qualität](#code-style--qualität)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -423,6 +424,43 @@ php scripts/analyze_performance.php
 php scripts/validate_no_hardcodings.php
 ```
 Dieser Test bestätigt, dass das System vollständig mapping-basiert ist und keine Hardcodings oder Legacy-Code mehr enthält. Details siehe [CLEANUP_VALIDATION.md](docs/CLEANUP_VALIDATION.md).
+
+---
+
+## Code Style & Qualität
+
+Das Projekt folgt dem **PSR-12: Extended Coding Style** Standard für konsistenten, lesbaren und wartbaren PHP-Code.
+
+### Werkzeuge
+
+- **PHP_CodeSniffer**: Automatische Überprüfung und Korrektur von Code-Style-Verstößen
+- **PHPStan**: Statische Code-Analyse zur Fehlererkennung
+- **EditorConfig**: Einheitliche Editor-Einstellungen für alle Entwickler
+
+### Verwendung
+
+```bash
+# Dependencies installieren
+composer install
+
+# Code-Style prüfen
+composer cs:check
+
+# Code-Style automatisch korrigieren
+composer cs:fix
+
+# Statische Analyse durchführen
+composer stan
+
+# Alle Qualitätsprüfungen ausführen
+composer test:style
+```
+
+### CI/CD Integration
+
+GitHub Actions führt automatisch Code-Style-Checks bei Pull Requests und Pushes auf `main` und `develop` Branches durch. Die Pipeline schlägt fehl, wenn PSR-12-Verstöße oder Type-Fehler erkannt werden.
+
+Ausführliche Dokumentation siehe [docs/CODE_STYLE.md](docs/CODE_STYLE.md)
 
 ---
 

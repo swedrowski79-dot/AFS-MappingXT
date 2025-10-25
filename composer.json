@@ -1,0 +1,29 @@
+{
+    "name": "swedrowski79-dot/afs-mappingxt",
+    "description": "AFS-ERP to xt:Commerce EVO synchronization interface",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.1"
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.8",
+        "phpstan/phpstan": "^1.10"
+    },
+    "scripts": {
+        "cs:check": "phpcs",
+        "cs:fix": "phpcbf",
+        "stan": "phpstan analyse",
+        "test:style": [
+            "@cs:check",
+            "@stan"
+        ]
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        },
+        "github-protocols": ["https"]
+    }
+}
