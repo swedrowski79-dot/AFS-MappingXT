@@ -277,7 +277,7 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 | `test_yaml_mapping.php` | Validiert YAML-Konfiguration und SQL-Generierung aus source_afs.yml |
 | `test_target_mapping.php` | Validiert target_sqlite.yml Konfiguration und UPSERT-Statements |
 | `test_articlesync_mapping.php` | Integration-Test für AFS_Evo_ArticleSync mit Target-Mapping |
-| `test_mixed_mode_validation.php` | **NEU:** Umfassende Validierung der neuen Mapping-Logik (siehe unten) |
+| `test_mixed_mode_validation.php` | **[NEU]** Umfassende Validierung der neuen Mapping-Logik (siehe unten) |
 | `test_hashmanager.php` | Tests für effiziente Änderungserkennung via Hashes |
 | `test_partial_hashes.php` | Tests für selektive Updates via Teil-Hashes |
 | `test_mapping_logger.php` | Tests für strukturiertes JSON-Logging |
