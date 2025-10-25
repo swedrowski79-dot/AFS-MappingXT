@@ -169,7 +169,7 @@ pecl uninstall yaml
 apt-get remove libyaml-dev
 ```
 
-Das System funktioniert mit oder ohne die Extension - der native Parser wird bevorzugt verwendet.
+Das System verwendet jetzt ausschließlich den nativen Parser.
 
 ## Validierung
 
