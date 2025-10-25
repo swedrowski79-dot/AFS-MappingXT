@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libsqlite3-dev \
     unixodbc-dev \
-    libyaml-dev \
     gnupg \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -40,8 +39,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         pcntl
 
 # Install PECL extensions
-RUN pecl install sqlsrv pdo_sqlsrv yaml \
-    && docker-php-ext-enable sqlsrv pdo_sqlsrv yaml
+RUN pecl install sqlsrv pdo_sqlsrv \
+    && docker-php-ext-enable sqlsrv pdo_sqlsrv
 
 # Custom PHP-FPM and PHP configuration templates
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-custom.conf.template
