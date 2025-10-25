@@ -81,28 +81,28 @@ $debugTables = [
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root {
-      color-scheme: dark light;
-      --bg: #0a1120;
-      --surface: rgba(13, 23, 42, 0.92);
-      --panel: rgba(255, 255, 255, 0.05);
-      --border: rgba(148, 163, 184, 0.18);
-      --text: #f8fafc;
-      --muted: #cbd5f5;
-      --accent: #3b82f6;
-      --accent-soft: rgba(59, 130, 246, 0.12);
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #f97316;
+      color-scheme: dark;
+      --bg: #111;
+      --surface: #181818;
+      --panel: #1f1f1f;
+      --panel-soft: rgba(255, 255, 255, 0.04);
+      --panel-strong: rgba(255, 255, 255, 0.08);
+      --border: #2a2a2a;
+      --border-subtle: rgba(255, 255, 255, 0.12);
+      --text: #f5f5f5;
+      --muted: #b7b7b7;
+      --accent: #3ba676;
+      --accent-soft: rgba(59, 166, 118, 0.2);
+      --error: #c86666;
+      --warning: #d0aa63;
+      --shadow: 0 32px 80px rgba(0, 0, 0, 0.55);
       font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
     }
 
     body {
       margin: 0;
       min-height: 100vh;
-      background: radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.25), transparent 55%),
-                  radial-gradient(circle at 80% 10%, rgba(45, 212, 191, 0.18), transparent 45%),
-                  radial-gradient(circle at 50% 80%, rgba(249, 115, 22, 0.15), transparent 40%),
-                  var(--bg);
+      background: linear-gradient(180deg, #151515 0%, #0f0f0f 100%);
       color: var(--text);
       display: flex;
       justify-content: center;
@@ -111,12 +111,11 @@ $debugTables = [
 
     .shell {
       width: min(1100px, 100%);
-      backdrop-filter: blur(18px);
       background: var(--surface);
       border-radius: 28px;
       padding: 40px 44px 48px;
       border: 1px solid var(--border);
-      box-shadow: 0 32px 90px rgba(7, 12, 24, 0.55);
+      box-shadow: var(--shadow);
     }
 
     header {
@@ -135,20 +134,20 @@ $debugTables = [
 
     header p {
       margin: 6px 0 0;
-      color: rgba(248, 250, 252, 0.7);
+      color: var(--muted);
       font-size: 0.95rem;
     }
 
     .tag {
       padding: 6px 12px;
       border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.35);
+      border: 1px solid var(--border-subtle);
       font-size: 0.85rem;
       color: var(--muted);
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--panel-soft);
     }
 
     .grid {
@@ -158,11 +157,11 @@ $debugTables = [
     }
 
     .card {
-      background: rgba(12, 20, 37, 0.7);
+      background: var(--panel);
       border-radius: 20px;
       padding: 24px;
       border: 1px solid var(--border);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
     }
 
     .card.logs {
@@ -179,7 +178,7 @@ $debugTables = [
       height: 10px;
       width: 100%;
       border-radius: 999px;
-      background: rgba(148, 163, 184, 0.18);
+      background: var(--panel-soft);
       overflow: hidden;
       margin: 16px 0 12px;
     }
@@ -188,7 +187,7 @@ $debugTables = [
       display: block;
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, #38bdf8, #6366f1);
+      background: var(--accent);
       transition: width 0.35s ease;
     }
 
@@ -206,37 +205,32 @@ $debugTables = [
       padding: 6px 12px;
       border-radius: 999px;
       font-size: 0.85rem;
-      border: 1px solid rgba(148, 163, 184, 0.3);
+      border: 1px solid var(--border-subtle);
       text-transform: uppercase;
+      background: var(--panel-soft);
+      color: var(--text);
     }
 
     .status-pill[data-state="running"] {
-      background: rgba(56, 189, 248, 0.16);
-      border-color: rgba(56, 189, 248, 0.35);
-      color: #bae6fd;
+      background: var(--panel-strong);
+      border-color: var(--border-subtle);
     }
 
     .status-pill[data-state="idle"] {
-      background: rgba(148, 163, 184, 0.12);
       color: var(--muted);
     }
 
+    .status-pill[data-state="ready"],
     .status-pill[data-state="done"] {
-      background: rgba(16, 185, 129, 0.18);
-      border-color: rgba(16, 185, 129, 0.35);
-      color: #bbf7d0;
-    }
-
-    .status-pill[data-state="ready"] {
-      background: rgba(16, 185, 129, 0.18);
-      border-color: rgba(16, 185, 129, 0.35);
-      color: #bbf7d0;
+      background: var(--accent-soft);
+      border-color: rgba(59, 166, 118, 0.45);
+      color: #def2e8;
     }
 
     .status-pill[data-state="error"] {
-      background: rgba(249, 115, 22, 0.18);
-      border-color: rgba(249, 115, 22, 0.35);
-      color: #fed7aa;
+      background: rgba(200, 102, 102, 0.2);
+      border-color: rgba(200, 102, 102, 0.45);
+      color: #f4d7d7;
     }
 
     .stage-tag {
@@ -246,9 +240,9 @@ $debugTables = [
       padding: 6px 10px;
       border-radius: 999px;
       font-size: 0.8rem;
-      background: rgba(99, 102, 241, 0.18);
-      border: 1px solid rgba(99, 102, 241, 0.35);
-      color: #ede9fe;
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      color: var(--muted);
       margin-top: 6px;
     }
 
@@ -264,8 +258,8 @@ $debugTables = [
       align-items: flex-start;
       padding: 14px;
       border-radius: 14px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
     }
 
     .health-item strong {
@@ -280,22 +274,24 @@ $debugTables = [
     .health-item small {
       display: block;
       font-size: 0.78rem;
-      color: rgba(241, 245, 249, 0.65);
+      color: var(--muted);
     }
 
     .health-item[data-status="ok"] {
-      border-color: rgba(16, 185, 129, 0.4);
-      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(59, 166, 118, 0.45);
+      background: rgba(59, 166, 118, 0.12);
+      color: #dbeee4;
     }
 
     .health-item[data-status="error"] {
-      border-color: rgba(249, 115, 22, 0.45);
-      background: rgba(249, 115, 22, 0.12);
+      border-color: rgba(200, 102, 102, 0.45);
+      background: rgba(200, 102, 102, 0.12);
+      color: #f1d8d8;
     }
 
     .health-item[data-status="warning"] {
-      border-color: rgba(245, 158, 11, 0.45);
-      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(208, 170, 99, 0.45);
+      background: rgba(208, 170, 99, 0.12);
     }
 
     .controls {
@@ -307,21 +303,57 @@ $debugTables = [
     button {
       padding: 12px 16px;
       border-radius: 12px;
-      border: none;
       font: inherit;
       cursor: pointer;
       color: var(--text);
-      background: var(--accent-soft);
-      border: 1px solid rgba(59, 130, 246, 0.32);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      background: var(--panel-strong);
+      border: 1px solid var(--border);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border 0.2s ease;
+    }
+
+    #btn-start {
+      background: var(--accent);
+      color: #0c1912;
+      border-color: rgba(59, 166, 118, 0.65);
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 30px rgba(0, 0, 0, 0.4);
+      border-color: rgba(255, 255, 255, 0.12);
+      background: var(--panel-strong);
+    }
+
+    #btn-start:hover:not(:disabled) {
+      background: #47b57f;
+      border-color: rgba(59, 166, 118, 0.8);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .btn-secondary {
+      background: var(--panel-soft);
+    }
+
+    .btn-danger {
+      background: rgba(200, 102, 102, 0.18);
+      border-color: rgba(200, 102, 102, 0.4);
+      color: #f5dada;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(200, 102, 102, 0.25);
     }
 
     select,
     input[type="number"] {
       padding: 10px 12px;
       border-radius: 10px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      background: var(--panel);
       color: inherit;
       font: inherit;
     }
@@ -329,10 +361,10 @@ $debugTables = [
     .debug-controls {
       display: grid;
       gap: 12px;
-      background: rgba(15, 23, 42, 0.55);
+      background: var(--panel-soft);
       padding: 16px;
       border-radius: 14px;
-      border: 1px solid rgba(148, 163, 184, 0.2);
+      border: 1px solid var(--border);
     }
 
     .debug-title {
@@ -366,33 +398,6 @@ $debugTables = [
       gap: 10px;
     }
 
-    button:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 16px 35px rgba(59, 130, 246, 0.25);
-      background: rgba(59, 130, 246, 0.2);
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-
-    .btn-secondary {
-      background: rgba(148, 163, 184, 0.15);
-      border-color: rgba(148, 163, 184, 0.3);
-    }
-
-    .btn-danger {
-      background: rgba(239, 68, 68, 0.18);
-      border-color: rgba(248, 113, 113, 0.45);
-      color: #fecaca;
-    }
-
-    .btn-danger:hover:not(:disabled) {
-      background: rgba(239, 68, 68, 0.24);
-      box-shadow: 0 16px 38px rgba(239, 68, 68, 0.25);
-    }
-
     .log-list {
       display: grid;
       gap: 12px;
@@ -405,28 +410,30 @@ $debugTables = [
     .log-entry {
       border-radius: 16px;
       padding: 14px 16px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
       display: grid;
       gap: 6px;
     }
+
     .log-entry.collapsed .log-details {
       display: none;
     }
 
     .log-entry[data-level="info"] {
-      background: rgba(59, 130, 246, 0.12);
-      border-color: rgba(59, 130, 246, 0.3);
+      background: var(--accent-soft);
+      border-color: rgba(59, 166, 118, 0.45);
+      color: #e4f5ec;
     }
 
     .log-entry[data-level="warning"] {
-      background: rgba(245, 158, 11, 0.12);
-      border-color: rgba(245, 158, 11, 0.3);
+      background: rgba(208, 170, 99, 0.18);
+      border-color: rgba(208, 170, 99, 0.4);
     }
 
     .log-entry[data-level="error"] {
-      background: rgba(249, 115, 22, 0.13);
-      border-color: rgba(249, 115, 22, 0.35);
+      background: rgba(200, 102, 102, 0.2);
+      border-color: rgba(200, 102, 102, 0.45);
     }
 
     .log-entry header {
@@ -441,7 +448,6 @@ $debugTables = [
       margin: 0;
       font-size: 0.95rem;
       font-weight: 600;
-      display: block;
     }
 
     .log-meta {
@@ -453,7 +459,7 @@ $debugTables = [
 
     .log-meta time {
       font-size: 0.78rem;
-      color: rgba(241, 245, 249, 0.65);
+      color: var(--muted);
     }
 
     .level-pill {
@@ -465,55 +471,63 @@ $debugTables = [
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      background: var(--panel-strong);
+      border: 1px solid var(--border);
     }
 
     .level-pill.info {
-      background: rgba(59, 130, 246, 0.15);
-      color: #bfdbfe;
+      background: rgba(59, 166, 118, 0.22);
+      border-color: rgba(59, 166, 118, 0.45);
+      color: #e4f5ec;
     }
 
     .level-pill.warning {
-      background: rgba(245, 158, 11, 0.15);
-      color: #fde68a;
+      background: rgba(208, 170, 99, 0.22);
+      border-color: rgba(208, 170, 99, 0.45);
+      color: #f5e7cc;
     }
 
     .level-pill.error {
-      background: rgba(249, 115, 22, 0.18);
-      color: #fcd9b6;
+      background: rgba(200, 102, 102, 0.22);
+      border-color: rgba(200, 102, 102, 0.45);
+      color: #f3d7d7;
     }
 
     .log-toggle {
       padding: 6px 10px;
       border-radius: 999px;
-      background: rgba(148, 163, 184, 0.16);
-      border: 1px solid rgba(148, 163, 184, 0.32);
-      color: rgba(226, 232, 240, 0.85);
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      color: var(--muted);
       font-size: 0.75rem;
     }
 
     .log-toggle:hover:not(:disabled) {
       transform: none;
       box-shadow: none;
-      background: rgba(148, 163, 184, 0.24);
+      background: var(--panel-strong);
+      color: var(--text);
     }
 
     .log-entry pre {
       margin: 0;
       font-size: 0.78rem;
       line-height: 1.5;
-      background: rgba(15, 23, 42, 0.5);
+      background: #131313;
       padding: 10px 12px;
       border-radius: 10px;
       overflow-x: auto;
+      border: 1px solid var(--border);
     }
 
     .log-empty {
       text-align: center;
       padding: 24px;
       border-radius: 16px;
-      border: 1px dashed rgba(148, 163, 184, 0.35);
+      border: 1px dashed var(--border-subtle);
       color: var(--muted);
       font-size: 0.95rem;
+      background: var(--panel-soft);
     }
 
     @media (max-width: 768px) {
