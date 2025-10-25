@@ -1,6 +1,6 @@
 # Makefile for AFS-MappingXT Development
 
-.PHONY: help install cs-check cs-fix stan test-style build build-watch clean-assets
+.PHONY: help install cs-check cs-fix stan test-style detect-unused build build-watch clean-assets
 
 # Default target
 help:
@@ -15,6 +15,7 @@ help:
 	@echo "  make cs-fix       Fix code style issues automatically"
 	@echo "  make stan         Run static analysis (PHPStan)"
 	@echo "  make test-style   Run all code quality checks"
+	@echo "  make detect-unused Detect unused classes and methods"
 	@echo ""
 	@echo "Asset Build:"
 	@echo "  make build        Build and minify CSS/JS assets"
@@ -41,6 +42,10 @@ stan:
 # Run all code quality tests
 test-style:
 	composer test:style
+
+# Detect unused code
+detect-unused:
+	php scripts/detect_unused_code.php
 
 # Build minified assets
 build:
