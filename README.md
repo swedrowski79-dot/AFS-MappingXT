@@ -29,7 +29,7 @@ Dieses Projekt synchronisiert AFS-ERP Daten nach xt:Commerce (EVO). Die Synchron
 
 Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen auf dieselben Klassen und Status-Tabellen zu.
 
-**Neu:** Effiziente Änderungserkennung via SHA-256 Hashes – nur tatsächlich geänderte Artikel werden aktualisiert. Details siehe [HashManager.md](docs/HashManager.md).
+**Neu:** Effiziente Änderungserkennung via SHA-256 Hashes – nur tatsächlich geänderte Artikel werden aktualisiert. **Teil-Hashes** (Preis, Medien, Inhalt) ermöglichen selektive Updates: nur betroffene Tabellen werden aktualisiert. Details siehe [HashManager.md](docs/HashManager.md).
 
 ---
 
@@ -64,6 +64,7 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 - Bei Updates von älteren Installationen:
   - `php scripts/migrate_update_columns.php` (fügt die neuen `update`-Spalten in den Verknüpfungstabellen hinzu)
   - `php scripts/migrate_add_hash_columns.php` (fügt Hash-Spalten für effiziente Änderungserkennung hinzu)
+  - `php scripts/migrate_add_partial_hash_columns.php` (fügt Teil-Hash-Spalten für selektive Updates hinzu)
 
 ### Konfiguration
 - Kopiere `config.php` bzw. passe folgende Einträge an:
