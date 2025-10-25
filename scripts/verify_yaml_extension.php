@@ -111,15 +111,29 @@ echo PHP_EOL;
 
 // Test 4: Test YAML file parsing (if mappings directory exists)
 echo "Test 4: Testing YAML file parsing..." . PHP_EOL;
-$mappingFile = dirname(__DIR__) . '/mappings/source_afs.yml';
 
-if (file_exists($mappingFile)) {
+// Try multiple possible locations for the mapping file
+$possiblePaths = [
+    dirname(__DIR__) . '/mappings/source_afs.yml',
+    '/var/www/html/mappings/source_afs.yml',
+    getcwd() . '/mappings/source_afs.yml',
+];
+
+$mappingFile = null;
+foreach ($possiblePaths as $path) {
+    if (file_exists($path)) {
+        $mappingFile = $path;
+        break;
+    }
+}
+
+if ($mappingFile && file_exists($mappingFile)) {
     try {
         $parsed = yaml_parse_file($mappingFile);
         
         if (is_array($parsed) && isset($parsed['entities'])) {
             printSuccess("YAML file parsing works correctly");
-            printInfo("Loaded mapping file: source_afs.yml");
+            printInfo("Loaded mapping file: " . basename($mappingFile));
             printInfo("Entities found: " . count($parsed['entities']));
         } else {
             printError("YAML file parsing returned unexpected result");

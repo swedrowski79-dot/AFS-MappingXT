@@ -46,8 +46,12 @@ RUN pecl install yaml-2.2.3 \
     && php -m | grep -q yaml || (echo "ERROR: yaml extension not loaded" && exit 1)
 
 # Install MSSQL extensions (may fail in environments without MSSQL drivers)
-RUN pecl install sqlsrv pdo_sqlsrv || true \
-    && (docker-php-ext-enable sqlsrv pdo_sqlsrv 2>/dev/null || true)
+# These are optional and graceful failure is expected in some deployment scenarios
+# If installation fails, the build continues but logs a warning message
+RUN (pecl install sqlsrv pdo_sqlsrv && \
+    docker-php-ext-enable sqlsrv pdo_sqlsrv && \
+    echo "✓ MSSQL extensions installed successfully") || \
+    echo "⚠ MSSQL extensions installation failed (this is optional)"
 
 # Custom PHP-FPM and PHP configuration templates
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-custom.conf.template
