@@ -1,0 +1,79 @@
+# .htaccess for AFS-MappingXT
+# Security and performance optimizations for Apache
+
+# Deny access to sensitive files
+<FilesMatch "^(config\.php|composer\.(json|lock)|\.env)$">
+    Require all denied
+</FilesMatch>
+
+# Deny access to database files
+<FilesMatch "\.(db|db-shm|db-wal)$">
+    Require all denied
+</FilesMatch>
+
+# Deny access to version control files
+<FilesMatch "^\.git">
+    Require all denied
+</FilesMatch>
+
+# Enable rewrite engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Block access to hidden files (except .well-known)
+    RewriteCond %{REQUEST_URI} "!(^|/)\.well-known/([^./]+./?)+$" [NC]
+    RewriteCond %{SCRIPT_FILENAME} -d [OR]
+    RewriteCond %{SCRIPT_FILENAME} -f
+    RewriteRule "(^|/)\." - [F]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    # Prevent MIME type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # XSS Protection
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Clickjacking protection
+    Header always set X-Frame-Options "SAMEORIGIN"
+    
+    # Referrer policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Remove server signature
+    Header unset Server
+    Header always unset X-Powered-By
+</IfModule>
+
+# Compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript application/json
+</IfModule>
+
+# Browser caching
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # Images
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    
+    # CSS and JavaScript
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    
+    # HTML and data
+    ExpiresByType text/html "access plus 0 seconds"
+    ExpiresByType application/json "access plus 0 seconds"
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
+
+# Error pages (optional)
+# ErrorDocument 404 /404.php
+# ErrorDocument 500 /500.php

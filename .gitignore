@@ -28,3 +28,7 @@ temp/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Environment and Docker
+.env
+docker-compose.override.yml
