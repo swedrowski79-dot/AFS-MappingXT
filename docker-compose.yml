@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   # PHP-FPM service
@@ -17,14 +17,14 @@ services:
       # Mount databases
       - ./db:/var/www/html/db
       # Mount media files
-      - ./Files:/var/www/html/Files
+      - c:\welafix_old\AFS\Webshop:/var/www/html/Files
       # PHP-FPM socket for Apache
       - php-fpm-socket:/run/php
     environment:
       # MSSQL Connection (override in .env)
       - AFS_MSSQL_HOST=${AFS_MSSQL_HOST:-10.0.1.82}
       - AFS_MSSQL_PORT=${AFS_MSSQL_PORT:-1435}
-      - AFS_MSSQL_DB=${AFS_MSSQL_DB:-AFS_WAWI_DB}
+      - AFS_MSSQL_DB=${AFS_MSSQL_DB:-AFS_2018}
       - AFS_MSSQL_USER=${AFS_MSSQL_USER:-sa}
       - AFS_MSSQL_PASS=${AFS_MSSQL_PASS:-W3laf!x}
       # PHP Configuration
