@@ -201,11 +201,6 @@ class AFS_Evo_StatusTracker
         $stmt->execute([':job' => $this->job]);
     }
 
-    public function clearErrors(): void
-    {
-        $this->clearLog();
-    }
-
     private function enforceErrorLimit(): void
     {
         $stmt = $this->db->prepare(

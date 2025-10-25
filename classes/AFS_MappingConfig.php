@@ -92,26 +92,6 @@ class AFS_MappingConfig
     }
 
     /**
-     * Get connection configuration
-     * 
-     * @return array Connection configuration
-     */
-    public function getConnection(): array
-    {
-        return $this->config['connection'] ?? [];
-    }
-
-    /**
-     * Get source configuration
-     * 
-     * @return array Source configuration
-     */
-    public function getSource(): array
-    {
-        return $this->config['source'] ?? [];
-    }
-
-    /**
      * Build SQL SELECT query from entity configuration
      * 
      * @param string $entityName Name of the entity

@@ -36,16 +36,6 @@ class AFS_Evo
         return $this->images->import();
     }
 
-    public function copyBilder(string $sourceDir, ?string $destDir = null): array
-    {
-        return $this->images->copy($sourceDir, $destDir);
-    }
-
-    public function syncBilder(string $sourceDir, ?string $destDir = null): array
-    {
-        return $this->images->sync($sourceDir, $destDir);
-    }
-
     public function importDokumente(): array
     {
         return $this->documents->import();
@@ -282,11 +272,6 @@ class AFS_Evo
         }
 
         return $summary;
-    }
-
-    public function getStatusTracker(): ?AFS_Evo_StatusTracker
-    {
-        return $this->status;
     }
 
     private function executeStage(string $stage, string $startMessage, callable $callback): array
