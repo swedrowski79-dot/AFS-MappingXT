@@ -283,6 +283,34 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 | `validate_no_hardcodings.php` | **[NEU]** Bestätigt keine Hardcodings oder Legacy-Code mehr vorhanden |
 | `test_hashmanager.php` | Tests für effiziente Änderungserkennung via Hashes |
 | `test_mapping_logger.php` | Tests für strukturiertes JSON-Logging |
+| `analyze_performance.php` | **[NEU]** Projektweite Performance-Analyse und Benchmarking |
+
+### Performance-Analyse
+
+Das Projekt enthält ein umfassendes Performance-Analyse-Tool zur Identifikation von Bottlenecks und Optimierungsmöglichkeiten:
+
+```bash
+# Standard-Analyse
+php scripts/analyze_performance.php
+
+# Detaillierte Analyse mit mehr Iterationen
+php scripts/analyze_performance.php --detailed
+
+# Mit JSON-Export
+php scripts/analyze_performance.php --export=json
+```
+
+Das Tool analysiert:
+- Konfigurationsverarbeitung
+- YAML-Mapping-Performance
+- SQL-Generierung
+- Datenbank-Operationen
+- Hash-Berechnungen
+- Speichernutzung
+- Datei I/O
+- Klassen-Instanziierung
+
+Detaillierte Performance-Dokumentation: [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md)
 
 ### Mixed Mode Validation Test
 
@@ -320,6 +348,7 @@ php scripts/test_target_mapping.php
 php scripts/test_articlesync_mapping.php
 php scripts/test_mixed_mode_validation.php
 php scripts/validate_no_hardcodings.php
+php scripts/analyze_performance.php
 ```
 
 **Cleanup-Validierung:**

@@ -5,6 +5,7 @@ db/*.db-wal
 
 # Log files - keep directory but ignore log files
 logs/*.log
+logs/performance_analysis_*.json
 
 # Media files
 Files/Bilder/*
