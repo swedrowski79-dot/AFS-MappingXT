@@ -59,42 +59,6 @@ class MSSQL
         return implode('.', $parts);
     }
 
-    /** SELECT-Helfer; Felder/Table als Strings ODER Arrays (empfohlen) */
-    public function select(array|string $fields, string $table, string $where = '', array $params = [], string $orderBy = ''): array
-    {
-        [$sql, $params] = $this->buildSelect($fields, $table, $where, $params, $orderBy);
-        return $this->fetchAllAssoc($sql, $params);
-    }
-
-    /** Paginierte Auswahl: ORDER BY ist Pflicht, sonst THROW (Offset braucht Sortierung) */
-    public function selectPaged(
-        array|string $fields,
-        string $table,
-        string $where = '',
-        array $params = [],
-        string $orderBy = '',
-        int $offset = 0,
-        int $limit = 100
-    ): array {
-        if ($orderBy === '') {
-            throw new AFS_ValidationException('ORDER BY ist für OFFSET/FETCH erforderlich.');
-        }
-        [$sql, $params] = $this->buildSelect($fields, $table, $where, $params, $orderBy);
-        $sql .= ' OFFSET ? ROWS FETCH NEXT ? ROWS ONLY';
-        $params[] = $offset;
-        $params[] = $limit;
-        return $this->fetchAllAssoc($sql, $params);
-    }
-
-    /** Zähle Zeilen für dieselben Bedingungen */
-    public function count(string $table, string $where = '', array $params = []): int
-    {
-        $tableQ = $this->qIdent($table);
-        $sql = "SELECT COUNT(*) AS c FROM {$tableQ}" . ($where !== '' ? " WHERE {$where}" : '');
-        $row = $this->fetchOneAssoc($sql, $params);
-        return (int)($row['c'] ?? 0);
-    }
-
     /** Allzweck-Query (parametrisiert), liefert Statement-Resource zurück */
     public function query(string $sql, array $params = [])
     {
@@ -124,27 +88,6 @@ class MSSQL
         }
         sqlsrv_free_stmt($stmt);
         return $rows;
-    }
-
-    public function fetchOneAssoc(string $sql, array $params = []): array
-    {
-        $stmt = $this->query($sql, $params);
-        $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: [];
-        sqlsrv_free_stmt($stmt);
-        return $this->normalizeRow($row);
-    }
-
-    /** Streaming/Generator – nützlich bei großen Resultsets */
-    public function fetchGenerator(string $sql, array $params = []): Generator
-    {
-        $stmt = $this->query($sql, $params);
-        try {
-            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-                yield $this->normalizeRow($row);
-            }
-        } finally {
-            sqlsrv_free_stmt($stmt);
-        }
     }
 
     /** Nur einen Skalar (erste Spalte der ersten Zeile) */

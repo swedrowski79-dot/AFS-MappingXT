@@ -259,23 +259,4 @@ class AFS_TargetMappingConfig
         ];
     }
 
-    /**
-     * Get target configuration
-     * 
-     * @return array Target configuration
-     */
-    public function getTarget(): array
-    {
-        return $this->config['target'] ?? [];
-    }
-
-    /**
-     * Get connection configuration
-     * 
-     * @return array Connection configuration
-     */
-    public function getConnection(): array
-    {
-        return $this->config['connection'] ?? [];
-    }
 }
