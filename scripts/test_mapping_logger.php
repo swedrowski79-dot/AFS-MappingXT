@@ -23,7 +23,7 @@ $testLogDir = sys_get_temp_dir() . '/test_logs_' . uniqid();
 try {
     // Test 1: Basic logging functionality
     echo "1. Testing basic logging functionality...\n";
-    $logger = new AFS_MappingLogger($testLogDir, '1.0.0');
+    $logger = new AFS_MappingLogger($testLogDir, '1.0.0', 'info'); // Use 'info' level for full test coverage
     
     $logger->info('test_operation', 'Test info message', ['key' => 'value']);
     $logger->warning('test_operation', 'Test warning message', ['warning_level' => 'medium']);

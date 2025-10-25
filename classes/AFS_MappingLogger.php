@@ -13,15 +13,24 @@ class AFS_MappingLogger
     private string $logDir;
     private string $mappingVersion;
     private ?string $currentLogFile = null;
+    private string $minLevel;
+    
+    private const LEVEL_PRIORITY = [
+        'info' => 1,
+        'warning' => 2,
+        'error' => 3,
+    ];
 
     /**
      * @param string $logDir Directory for log files (defaults to /logs)
      * @param string $mappingVersion Version identifier for the mapping configuration
+     * @param string $minLevel Minimum log level to record ('info', 'warning', 'error')
      */
-    public function __construct(string $logDir, string $mappingVersion = '1.0.0')
+    public function __construct(string $logDir, string $mappingVersion = '1.0.0', string $minLevel = 'warning')
     {
         $this->logDir = rtrim($logDir, '/');
         $this->mappingVersion = $mappingVersion;
+        $this->minLevel = strtolower($minLevel);
         $this->ensureLogDirectory();
     }
 
@@ -35,10 +44,17 @@ class AFS_MappingLogger
      */
     public function log(string $operation, string $level, string $message, array $context = []): void
     {
+        $levelLower = strtolower($level);
+        
+        // Filter based on minimum log level
+        if (!$this->shouldLog($levelLower)) {
+            return;
+        }
+        
         $logEntry = [
             'timestamp' => date('c'),
             'operation' => $operation,
-            'level' => strtolower($level),
+            'level' => $levelLower,
             'message' => $message,
             'mapping_version' => $this->mappingVersion,
             'context' => $context,
@@ -275,6 +291,20 @@ class AFS_MappingLogger
         $hours = floor($minutes / 60);
         $mins = $minutes - ($hours * 60);
         return sprintf('%dh %dm', $hours, $mins);
+    }
+    
+    /**
+     * Check if a message with the given level should be logged
+     * 
+     * @param string $level Log level to check
+     * @return bool True if the message should be logged
+     */
+    private function shouldLog(string $level): bool
+    {
+        $minPriority = self::LEVEL_PRIORITY[$this->minLevel] ?? 1;
+        $msgPriority = self::LEVEL_PRIORITY[$level] ?? 1;
+        
+        return $msgPriority >= $minPriority;
     }
 
     /**
