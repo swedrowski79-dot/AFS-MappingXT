@@ -5,14 +5,8 @@
 FROM php:8.3-fpm-bookworm AS php-base
 
 # Install system dependencies and PHP extensions
+# Minimal set of dependencies for the application
 RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    libzip-dev \
-    libicu-dev \
-    libonig-dev \
-    libxml2-dev \
     libsqlite3-dev \
     unixodbc-dev \
     gnupg \
@@ -27,16 +21,12 @@ RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor 
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) \
-        gd \
+# Only installing extensions that are actually used by the application
+RUN docker-php-ext-install -j$(nproc) \
         pdo \
         pdo_sqlite \
-        zip \
-        intl \
         mbstring \
-        opcache \
-        pcntl
+        opcache
 
 # Install PECL extensions (separated for better error handling and debugging)
 # Install MSSQL extensions (may fail in environments without MSSQL drivers)
