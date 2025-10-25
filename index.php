@@ -2,6 +2,16 @@
 // index.php
 declare(strict_types=1);
 
+// Security headers
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
+// Remove server signature
+header_remove('X-Powered-By');
+header_remove('Server');
+
 $configPath = __DIR__ . '/config.php';
 $autoloadPath = __DIR__ . '/autoload.php';
 
@@ -79,6 +89,7 @@ $debugTables = [
   <meta charset="utf-8">
   <title><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'">
   <style>
     :root {
       color-scheme: dark;

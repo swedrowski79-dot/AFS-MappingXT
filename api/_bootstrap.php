@@ -13,6 +13,11 @@ $autoloadFile = $root . '/autoload.php';
 if (!is_file($configFile) || !is_file($autoloadFile)) {
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-XSS-Protection: 1; mode=block');
+    header_remove('X-Powered-By');
+    header_remove('Server');
     echo json_encode(['ok' => false, 'error' => 'System nicht korrekt eingerichtet.']);
     exit;
 }
@@ -23,7 +28,18 @@ require_once $autoloadFile;
 function api_json(array $payload, int $status = 200): void
 {
     http_response_code($status);
+    
+    // Security headers for API responses
     header('Content-Type: application/json; charset=utf-8');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-XSS-Protection: 1; mode=block');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    
+    // Remove server signature
+    header_remove('X-Powered-By');
+    header_remove('Server');
+    
     echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -42,7 +58,7 @@ function createStatusTracker(array $config, string $job = 'categories'): AFS_Evo
 {
     $statusDb = $config['paths']['status_db'] ?? (dirname(__DIR__) . '/db/status.db');
     if (!is_file($statusDb)) {
-        throw new RuntimeException("status.db nicht gefunden: {$statusDb}");
+        throw new AFS_DatabaseException("status.db nicht gefunden: {$statusDb}");
     }
     $maxErrors = $config['status']['max_errors'] ?? 200;
     return new AFS_Evo_StatusTracker($statusDb, $job, (int)$maxErrors);
@@ -52,7 +68,7 @@ function createEvoPdo(array $config): PDO
 {
     $dataDb = $config['paths']['data_db'] ?? (dirname(__DIR__) . '/db/evo.db');
     if (!is_file($dataDb)) {
-        throw new RuntimeException("evo.db nicht gefunden: {$dataDb}");
+        throw new AFS_DatabaseException("evo.db nicht gefunden: {$dataDb}");
     }
     $pdo = new PDO('sqlite:' . $dataDb);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -64,7 +80,7 @@ function createEvoDeltaPdo(array $config): PDO
 {
     $deltaDb = $config['paths']['delta_db'] ?? (dirname(__DIR__) . '/db/evo_delta.db');
     if (!is_file($deltaDb)) {
-        throw new RuntimeException("Delta-Datenbank nicht gefunden: {$deltaDb}");
+        throw new AFS_DatabaseException("Delta-Datenbank nicht gefunden: {$deltaDb}");
     }
     $pdo = new PDO('sqlite:' . $deltaDb);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -76,7 +92,7 @@ function createStatusPdo(array $config): PDO
 {
     $statusDb = $config['paths']['status_db'] ?? (dirname(__DIR__) . '/db/status.db');
     if (!is_file($statusDb)) {
-        throw new RuntimeException("status.db nicht gefunden: {$statusDb}");
+        throw new AFS_DatabaseException("status.db nicht gefunden: {$statusDb}");
     }
     $pdo = new PDO('sqlite:' . $statusDb);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -130,9 +146,9 @@ function createSyncEnvironment(array $config, string $job = 'categories'): array
     $mssql = createMssql($config);
     try {
         $mssql->scalar('SELECT 1');
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         $mssql->close();
-        throw new RuntimeException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
+        throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
     }
     $dataSource = new AFS_Get_Data($mssql);
     $afs = new AFS($dataSource, $config);

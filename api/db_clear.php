@@ -17,7 +17,7 @@ try {
     $tracker->logInfo('EVO-Datenbank geleert', ['tables' => $result], 'maintenance');
 
     api_ok(['tables' => $result]);
-} catch (Throwable $e) {
+} catch (\Throwable $e) {
     if (isset($tracker) && $tracker instanceof AFS_Evo_StatusTracker) {
         $tracker->logError('Fehler beim Leeren der EVO-Datenbank', [
             'error' => $e->getMessage(),

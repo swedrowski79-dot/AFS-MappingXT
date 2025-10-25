@@ -42,7 +42,7 @@ function checkSqlite(string $path): array
         }
         
         return ['ok' => true, 'message' => 'OK', 'path' => $path];
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         return ['ok' => false, 'message' => $e->getMessage(), 'path' => $path];
     }
 }
@@ -72,7 +72,7 @@ function checkHashColumns(PDO $pdo): array
                 $result['ok'] = false;
                 $result['message'] = 'Hash-Spalten fehlen in einigen Tabellen';
             }
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             $result['tables'][$table] = ['ok' => false, 'error' => $e->getMessage()];
             $result['ok'] = false;
             $result['message'] = 'Fehler beim Prüfen der Hash-Spalten';
@@ -102,7 +102,7 @@ function checkMssqlHealth(array $cfg): array
         $mssql->scalar('SELECT 1');
         $mssql->close();
         return ['ok' => true, 'message' => 'OK', 'server' => $server];
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         return ['ok' => false, 'message' => $e->getMessage()];
     }
 }

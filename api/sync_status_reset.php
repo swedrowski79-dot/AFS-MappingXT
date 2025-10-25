@@ -24,6 +24,6 @@ try {
     api_ok([
         'status' => $tracker->getStatus(),
     ]);
-} catch (Throwable $e) {
+} catch (\Throwable $e) {
     api_error($e->getMessage());
 }

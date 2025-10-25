@@ -54,41 +54,26 @@ class AFS
 
     private function loadArtikel(object $source): void
     {
-        try {
-            if (!method_exists($source, 'getArtikel')) {
-                throw new RuntimeException('Quelle bietet keine getArtikel()-Methode.');
-            }
-            $this->Artikel = $source->getArtikel();
-        } catch (\Throwable $e) {
-            error_log('AFS_Aggregate: Fehler beim Laden der Artikel: ' . $e->getMessage());
-            $this->Artikel = [];
+        if (!method_exists($source, 'getArtikel')) {
+            throw new AFS_ValidationException('Quelle bietet keine getArtikel()-Methode.');
         }
+        $this->Artikel = $source->getArtikel();
     }
 
     private function loadWarengruppe(object $source): void
     {
-        try {
-            if (!method_exists($source, 'getWarengruppen')) {
-                throw new RuntimeException('Quelle bietet keine getWarengruppen()-Methode.');
-            }
-            $this->Warengruppe = $source->getWarengruppen();
-        } catch (\Throwable $e) {
-            error_log('AFS_Aggregate: Fehler beim Laden der Warengruppen: ' . $e->getMessage());
-            $this->Warengruppe = [];
+        if (!method_exists($source, 'getWarengruppen')) {
+            throw new AFS_ValidationException('Quelle bietet keine getWarengruppen()-Methode.');
         }
+        $this->Warengruppe = $source->getWarengruppen();
     }
 
     private function loadDokumente(object $source): void
     {
-        try {
-            if (!method_exists($source, 'getDokumente')) {
-                throw new RuntimeException('Quelle bietet keine getDokumente()-Methode.');
-            }
-            $this->Dokumente = $source->getDokumente();
-        } catch (\Throwable $e) {
-            error_log('AFS_Aggregate: Fehler beim Laden der Dokumente: ' . $e->getMessage());
-            $this->Dokumente = [];
+        if (!method_exists($source, 'getDokumente')) {
+            throw new AFS_ValidationException('Quelle bietet keine getDokumente()-Methode.');
         }
+        $this->Dokumente = $source->getDokumente();
     }
 
     /**
@@ -168,7 +153,7 @@ class AFS
 
         try {
             $loader = new AFS_MetadataLoader($paths);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return;
         }
 

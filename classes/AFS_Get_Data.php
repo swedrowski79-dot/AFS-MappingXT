@@ -43,7 +43,7 @@ class AFS_Get_Data
     public function __construct($db, ?string $configPath = null)
     {
         if (!is_object($db)) {
-            throw new InvalidArgumentException('AFS: $db muss ein Objekt sein.');
+            throw new AFS_ValidationException('AFS: $db muss ein Objekt sein.');
         }
         $this->db = $db;
 
@@ -108,11 +108,11 @@ class AFS_Get_Data
         } elseif (method_exists($this->db, 'query')) {
             $rows = $this->db->query($sql, $params);
         } else {
-            throw new RuntimeException('AFS: Die angegebene DB-Klasse unterstützt weder fetchAll() noch query().');
+            throw new AFS_ValidationException('AFS: Die angegebene DB-Klasse unterstützt weder fetchAll() noch query().');
         }
 
         if (!is_array($rows)) {
-            throw new RuntimeException('AFS: DB-Rückgabe ist ungültig (erwarte Array von Zeilen).');
+            throw new AFS_DatabaseException('AFS: DB-Rückgabe ist ungültig (erwarte Array von Zeilen).');
         }
 
         return $rows;

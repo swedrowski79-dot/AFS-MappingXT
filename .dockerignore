@@ -1,0 +1,45 @@
+# Git
+.git
+.github
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+logs/*.log
+
+# Database files (will be mounted as volumes)
+db/*.db
+db/*.db-shm
+db/*.db-wal
+
+# Media files (will be mounted as volumes)
+Files/Bilder/*
+Files/Dokumente/*
+
+# Environment
+.env
+.env.example
+
+# Docker
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
