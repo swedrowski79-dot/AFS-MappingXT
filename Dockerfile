@@ -39,11 +39,6 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         pcntl
 
 # Install PECL extensions (separated for better error handling and debugging)
-# Install yaml extension first as it's critical for configuration management
-RUN pecl install yaml-2.2.3 \
-    && docker-php-ext-enable yaml \
-    && php -m | grep -q yaml || (echo "ERROR: yaml extension not loaded" && exit 1)
-
 # Install MSSQL extensions (may fail in environments without MSSQL drivers)
 # These are optional and graceful failure is expected in some deployment scenarios
 # If installation fails, the build continues but logs a warning message

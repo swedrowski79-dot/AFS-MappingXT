@@ -83,8 +83,7 @@ Ausführliche Dokumentation siehe [docs/SECURITY.md](docs/SECURITY.md)
 - Siehe [Quick Start Guide](docs/QUICK_START_DOCKER.md)
 
 **Option 2: Manuelle Installation**
-- PHP ≥ 8.1 CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`, `yaml`)
-- **YAML Extension (erforderlich)**: Siehe [YAML Extension Setup](docs/YAML_EXTENSION_SETUP.md)
+- PHP ≥ 8.1 CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`)
 - Apache 2.4 mit mpm_event + PHP-FPM (siehe [Apache PHP-FPM Setup](docs/APACHE_PHP_FPM_SETUP.md))
 - Schreibrechte im Projektordner (für `Files/` und `db/`)
 - Netzwerkzugriff auf den MSSQL-Server
@@ -321,7 +320,7 @@ Scripts `scripts/create_evo.sql` & `scripts/create_status.sql` enthalten die vol
 | `AFS_Evo_ArticleSync` | Hauptlogik: Artikel schreiben, Medien & Attribute verknüpfen |
 | `AFS_HashManager` | **NEU:** Effiziente Änderungserkennung via SHA-256 Hashes (siehe [HashManager.md](docs/HashManager.md)) |
 | `AFS_ConfigCache` | **NEU:** In-Memory-Cache für YAML-Konfigurationsdateien – beschleunigt wiederholte Config-Loads um 3-5x |
-| `AFS_YamlParser` | **NEU:** Native PHP YAML-Parser – eliminiert Abhängigkeit von php-yaml Extension |
+| `AFS_YamlParser` | **NEU:** Native PHP YAML-Parser – keine externe Extension erforderlich |
 | `AFS_MappingConfig` | YAML-Konfiguration für Source-Datenbank-Mapping (nutzt `AFS_ConfigCache` und `AFS_YamlParser`) |
 | `AFS_TargetMappingConfig` | YAML-Konfiguration für Target-Datenbank-Mapping (nutzt `AFS_ConfigCache` und `AFS_YamlParser`) |
 | `AFS_Evo_StatusTracker` | Managt `sync_status`/`sync_log` in SQLite, Fortschrittsbalken & Logs für UI |
@@ -343,7 +342,7 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 
 | Script | Beschreibung |
 |--------|--------------|
-| `verify_yaml_extension.php` | **[NEU]** Verifiziert YAML-Extension-Installation und -Funktionalität |
+| `verify_yaml_extension.php` | **[VERALTET]** Verifizierte früher YAML-Extension (nicht mehr benötigt) |
 | `test_yaml_mapping.php` | Validiert YAML-Konfiguration und SQL-Generierung aus source_afs.yml |
 | `test_target_mapping.php` | Validiert target_sqlite.yml Konfiguration und UPSERT-Statements |
 | `test_config_cache.php` | **[NEU]** Testet Caching-Layer für YAML-Konfigurationen |
@@ -449,12 +448,6 @@ php scripts/validate_no_hardcodings.php
 php scripts/test_index_performance.php
 php scripts/analyze_performance.php
 ```
-
-**YAML Extension Verifizierung:**
-```bash
-php scripts/verify_yaml_extension.php
-```
-Dieser Test verifiziert, dass die YAML-Extension korrekt installiert ist und alle erforderlichen Funktionen zur Verfügung stehen. Besonders wichtig nach Docker-Builds oder PHP-Updates.
 
 **Cleanup-Validierung:**
 ```bash

@@ -1,6 +1,49 @@
-# YAML Extension Installation und Verifizierung
+# YAML Extension - Nicht mehr erforderlich
 
-## Übersicht
+## ⚠️ VERALTET
+
+**Dieses Dokument ist veraltet.** Die YAML-Extension wird nicht mehr benötigt!
+
+## Aktueller Stand (ab Version 1.x)
+
+AFS-MappingXT verwendet jetzt einen **nativen PHP YAML-Parser** (`AFS_YamlParser`), der die externe php-yaml Extension vollständig ersetzt.
+
+### Vorteile der nativen Implementierung
+
+- ✅ **Keine externe Abhängigkeit**: Keine PECL-Extension erforderlich
+- ✅ **Einfachere Installation**: Kein libyaml-dev oder pecl install nötig
+- ✅ **Portabler**: Funktioniert auf allen PHP-Installationen
+- ✅ **Wartbarer**: Code ist im Projekt enthalten und kann angepasst werden
+- ✅ **Kleiner Docker-Container**: Weniger Dependencies, schnellerer Build
+
+### Migration
+
+Wenn Sie von einer älteren Version upgraden:
+
+1. Entfernen Sie die YAML-Extension aus Ihrer PHP-Installation (optional)
+2. Aktualisieren Sie Ihr Dockerfile (die yaml-Installation entfernen)
+3. Das System funktioniert automatisch mit dem nativen Parser
+
+### Technische Details
+
+Der native Parser unterstützt alle YAML-Features, die im Projekt verwendet werden:
+- Maps (key: value)
+- Nested structures
+- Strings, Numbers, Booleans, Null
+- Lists
+- Comments
+- Environment variable substitution
+
+Siehe `classes/AFS_YamlParser.php` für die Implementierung.
+
+---
+
+## Historische Informationen (nur zur Referenz)
+
+<details>
+<summary>Ursprüngliche Dokumentation (veraltet)</summary>
+
+## Übersicht (VERALTET)
 
 Die YAML-Extension ist eine **kritische Abhängigkeit** für AFS-MappingXT. Das System verwendet YAML-Dateien für die gesamte Mapping-Konfiguration zwischen AFS-ERP und xt:Commerce.
 
@@ -288,11 +331,12 @@ if (!extension_loaded('yaml')) {
 
 ## Weiterführende Links
 
-- [YAML Extension PECL](https://pecl.php.net/package/yaml)
-- [LibYAML Library](https://github.com/yaml/libyaml)
 - [YAML Mapping Guide](./YAML_MAPPING_GUIDE.md)
 - [Configuration Management](./CONFIGURATION_MANAGEMENT.md)
+- [AFS_YamlParser Implementierung](../classes/AFS_YamlParser.php)
+
+</details>
 
 ---
 
-**Hinweis**: Die YAML-Extension ist eine zwingende Voraussetzung für AFS-MappingXT. Das System wird ohne funktionierende YAML-Extension nicht starten.
+**Hinweis**: Die YAML-Extension wird nicht mehr benötigt. Das System verwendet jetzt den nativen `AFS_YamlParser`.
