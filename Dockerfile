@@ -10,6 +10,27 @@
 # - Optimized layer ordering: dependencies first, application code last (better caching)
 # - Created directories before copying application files (cleaner layer structure)
 
+# Asset build stage - Build and minify CSS/JS assets
+FROM node:18-bookworm-slim AS asset-builder
+
+WORKDIR /build
+
+# Copy only package files first for better caching
+COPY package.json package-lock.json* ./
+
+# Install npm dependencies
+RUN npm install
+
+# Copy source assets
+COPY assets/ ./assets/
+
+# Build minified assets by directly calling binaries from node_modules
+RUN node_modules/.bin/cleancss -o assets/css/main.min.css assets/css/main.css
+RUN node_modules/.bin/terser assets/js/main.js -o assets/js/main.min.js --compress --mangle --comments false
+
+# Verify minified files were created
+RUN ls -lah assets/css/*.min.css assets/js/*.min.js
+
 FROM php:8.3-fpm-bookworm AS php-base
 
 # Install system dependencies and PHP extensions
@@ -64,6 +85,10 @@ RUN mkdir -p /var/www/html/db /var/www/html/logs /var/www/html/Files/Bilder /var
 
 # Copy application files
 COPY --chown=www-data:www-data . /var/www/html/
+
+# Copy minified assets from builder stage
+COPY --from=asset-builder --chown=www-data:www-data /build/assets/css/*.min.css /var/www/html/assets/css/
+COPY --from=asset-builder --chown=www-data:www-data /build/assets/js/*.min.js /var/www/html/assets/js/
 
 # Healthcheck - check if PHP-FPM is listening
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
