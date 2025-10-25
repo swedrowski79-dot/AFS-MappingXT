@@ -110,7 +110,7 @@ class AFS_SqlBuilder
     {
         $tableName = $this->mapping->getRelationshipTableName($relationshipName);
         if ($tableName === null) {
-            throw new RuntimeException("Relationship not found: {$relationshipName}");
+            throw new AFS_ConfigurationException("Relationship not found: {$relationshipName}");
         }
 
         $table = $this->quote($tableName);

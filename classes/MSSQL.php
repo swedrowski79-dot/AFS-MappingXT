@@ -68,7 +68,7 @@ class MSSQL
         }
         $stmt = sqlsrv_query($this->conn, $sql, $params, $options);
         if ($stmt === false) {
-            throw new RuntimeException($this->formatErrors(sqlsrv_errors()));
+            throw new AFS_DatabaseException($this->formatErrors(sqlsrv_errors()));
         }
         return $stmt;
     }
