@@ -21,7 +21,7 @@ AFS-MappingXT verwendet jetzt einen **nativen PHP YAML-Parser** (`AFS_YamlParser
 Wenn Sie von einer älteren Version upgraden:
 
 1. Entfernen Sie die YAML-Extension aus Ihrer PHP-Installation (optional)
-2. Aktualisieren Sie Ihr Dockerfile (die yaml-Installation entfernen)
+2. Wenn Sie ein eigenes Dockerfile verwenden, entfernen Sie die yaml-Installation daraus
 3. Das System funktioniert automatisch mit dem nativen Parser
 
 ### Technische Details
