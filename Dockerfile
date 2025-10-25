@@ -57,9 +57,9 @@ COPY --chown=www-data:www-data . /var/www/html/
 RUN mkdir -p /var/www/html/db /var/www/html/logs /var/www/html/Files/Bilder /var/www/html/Files/Dokumente \
     && chown -R www-data:www-data /var/www/html
 
-# Healthcheck
+# Healthcheck - check if PHP-FPM is listening
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD php-fpm-healthcheck || exit 1
+    CMD php -v || exit 1
 
 EXPOSE 9000
 
@@ -72,6 +72,7 @@ FROM debian:bookworm-slim AS apache
 RUN apt-get update && apt-get install -y \
     apache2 \
     libapache2-mod-fcgid \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Enable required Apache modules

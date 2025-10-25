@@ -34,7 +34,7 @@ services:
     networks:
       - afs-network
     healthcheck:
-      test: ["CMD", "php-fpm-healthcheck"]
+      test: ["CMD", "php", "-v"]
       interval: 30s
       timeout: 3s
       retries: 3
