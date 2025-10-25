@@ -33,8 +33,8 @@ services:
       - TZ=${TZ:-Europe/Berlin}
       # Application Configuration (override in .env)
       - AFS_MEDIA_SOURCE=${AFS_MEDIA_SOURCE:-/var/www/data}
-      - AFS_METADATA_ARTICLES=${AFS_METADATA_ARTICLES:-}
-      - AFS_METADATA_CATEGORIES=${AFS_METADATA_CATEGORIES:-}
+      - AFS_METADATA_ARTICLES=${AFS_METADATA_ARTICLES:-}  # Optional: leave empty if not used
+      - AFS_METADATA_CATEGORIES=${AFS_METADATA_CATEGORIES:-}  # Optional: leave empty if not used
       - AFS_MAX_ERRORS=${AFS_MAX_ERRORS:-200}
       - AFS_LOG_ROTATION_DAYS=${AFS_LOG_ROTATION_DAYS:-30}
       - AFS_MAPPING_VERSION=${AFS_MAPPING_VERSION:-1.0.0}
