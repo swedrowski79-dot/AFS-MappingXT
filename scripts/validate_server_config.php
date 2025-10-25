@@ -6,7 +6,7 @@
  * This script validates:
  * - Configuration files exist and are readable
  * - PHP syntax is correct
- * - YAML files are valid (if yaml extension is available)
+ * - YAML files are valid (using native parser)
  * - Docker files are present
  * 
  * Usage: php scripts/validate_server_config.php
@@ -85,7 +85,7 @@ echo "\nChecking PHP extensions...\n";
 echo str_repeat('─', 70) . "\n";
 
 $extensions = ['pdo', 'pdo_sqlite', 'json', 'mbstring'];
-$optionalExtensions = ['yaml', 'sqlsrv', 'pdo_sqlsrv', 'opcache'];
+$optionalExtensions = ['sqlsrv', 'pdo_sqlsrv', 'opcache'];
 
 foreach ($extensions as $ext) {
     if (extension_loaded($ext)) {
@@ -103,29 +103,30 @@ foreach ($optionalExtensions as $ext) {
     }
 }
 
-// Check YAML files if extension is available
-if (extension_loaded('yaml')) {
-    echo "\nValidating YAML files...\n";
-    echo str_repeat('─', 70) . "\n";
-    
-    $yamlFiles = [
-        'mappings/source_afs.yml',
-        'mappings/target_sqlite.yml',
-    ];
-    
-    foreach ($yamlFiles as $file) {
-        $path = __DIR__ . '/../' . $file;
-        if (file_exists($path)) {
-            try {
-                $data = yaml_parse_file($path);
-                if ($data !== false) {
-                    $success[] = "✓ {$file} is valid YAML";
-                } else {
-                    $errors[] = "✗ {$file} is invalid YAML";
-                }
-            } catch (Exception $e) {
-                $errors[] = "✗ {$file} YAML parse error: " . $e->getMessage();
+// Check YAML files using native parser
+echo "\nValidating YAML files...\n";
+echo str_repeat('─', 70) . "\n";
+
+// Include autoloader to use native YAML parser
+require_once __DIR__ . '/../autoload.php';
+
+$yamlFiles = [
+    'mappings/source_afs.yml',
+    'mappings/target_sqlite.yml',
+];
+
+foreach ($yamlFiles as $file) {
+    $path = __DIR__ . '/../' . $file;
+    if (file_exists($path)) {
+        try {
+            $data = AFS_YamlParser::parseFile($path);
+            if (!empty($data)) {
+                $success[] = "✓ {$file} is valid YAML";
+            } else {
+                $warnings[] = "⚠ {$file} parsed but is empty";
             }
+        } catch (Exception $e) {
+            $errors[] = "✗ {$file} YAML parse error: " . $e->getMessage();
         }
     }
 }
