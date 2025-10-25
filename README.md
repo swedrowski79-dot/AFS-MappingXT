@@ -84,6 +84,7 @@ Ausführliche Dokumentation siehe [docs/SECURITY.md](docs/SECURITY.md)
 
 **Option 2: Manuelle Installation**
 - PHP ≥ 8.1 CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`, `yaml`)
+- **YAML Extension (erforderlich)**: Siehe [YAML Extension Setup](docs/YAML_EXTENSION_SETUP.md)
 - Apache 2.4 mit mpm_event + PHP-FPM (siehe [Apache PHP-FPM Setup](docs/APACHE_PHP_FPM_SETUP.md))
 - Schreibrechte im Projektordner (für `Files/` und `db/`)
 - Netzwerkzugriff auf den MSSQL-Server
@@ -341,6 +342,7 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 
 | Script | Beschreibung |
 |--------|--------------|
+| `verify_yaml_extension.php` | **[NEU]** Verifiziert YAML-Extension-Installation und -Funktionalität |
 | `test_yaml_mapping.php` | Validiert YAML-Konfiguration und SQL-Generierung aus source_afs.yml |
 | `test_target_mapping.php` | Validiert target_sqlite.yml Konfiguration und UPSERT-Statements |
 | `test_config_cache.php` | **[NEU]** Testet Caching-Layer für YAML-Konfigurationen |
@@ -410,6 +412,10 @@ Detaillierte Dokumentation: [docs/MIXED_MODE_VALIDATION.md](docs/MIXED_MODE_VALI
 ### Alle Tests ausführen
 
 ```bash
+# YAML Extension verifizieren
+php scripts/verify_yaml_extension.php
+
+# Mapping und Konfiguration testen
 php scripts/test_yaml_mapping.php
 php scripts/test_target_mapping.php
 php scripts/test_articlesync_mapping.php
@@ -418,6 +424,12 @@ php scripts/validate_no_hardcodings.php
 php scripts/test_index_performance.php
 php scripts/analyze_performance.php
 ```
+
+**YAML Extension Verifizierung:**
+```bash
+php scripts/verify_yaml_extension.php
+```
+Dieser Test verifiziert, dass die YAML-Extension korrekt installiert ist und alle erforderlichen Funktionen zur Verfügung stehen. Besonders wichtig nach Docker-Builds oder PHP-Updates.
 
 **Cleanup-Validierung:**
 ```bash

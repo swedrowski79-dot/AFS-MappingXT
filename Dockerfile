@@ -39,9 +39,15 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         opcache \
         pcntl
 
-# Install PECL extensions
-RUN pecl install sqlsrv pdo_sqlsrv yaml \
-    && docker-php-ext-enable sqlsrv pdo_sqlsrv yaml
+# Install PECL extensions (separated for better error handling and debugging)
+# Install yaml extension first as it's critical for configuration management
+RUN pecl install yaml-2.2.3 \
+    && docker-php-ext-enable yaml \
+    && php -m | grep -q yaml || (echo "ERROR: yaml extension not loaded" && exit 1)
+
+# Install MSSQL extensions (may fail in environments without MSSQL drivers)
+RUN pecl install sqlsrv pdo_sqlsrv || true \
+    && (docker-php-ext-enable sqlsrv pdo_sqlsrv 2>/dev/null || true)
 
 # Custom PHP-FPM and PHP configuration templates
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-custom.conf.template
