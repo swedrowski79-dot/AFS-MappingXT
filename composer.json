@@ -23,7 +23,6 @@
         "sort-packages": true,
         "allow-plugins": {
             "dealerdirect/phpcodesniffer-composer-installer": true
-        },
-        "github-protocols": ["https"]
+        }
     }
 }

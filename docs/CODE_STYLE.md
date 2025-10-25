@@ -13,6 +13,8 @@ PHP_CodeSniffer is used to detect and automatically fix coding standard violatio
 **Check for violations:**
 ```bash
 composer cs:check
+# or with make:
+make cs-check
 # or directly:
 ./vendor/bin/phpcs
 ```
@@ -20,6 +22,8 @@ composer cs:check
 **Automatically fix violations:**
 ```bash
 composer cs:fix
+# or with make:
+make cs-fix
 # or directly:
 ./vendor/bin/phpcbf
 ```
@@ -31,6 +35,8 @@ PHPStan is used for static analysis to catch potential bugs and type errors.
 **Run static analysis:**
 ```bash
 composer stan
+# or with make:
+make stan
 # or directly:
 ./vendor/bin/phpstan analyse
 ```
@@ -38,6 +44,8 @@ composer stan
 **Run all code quality checks:**
 ```bash
 composer test:style
+# or with make:
+make test-style
 ```
 
 ## Configuration Files
@@ -46,6 +54,7 @@ composer test:style
 - **phpstan.neon**: PHPStan configuration for static analysis
 - **.editorconfig**: Editor configuration for consistent formatting across different editors
 - **composer.json**: Defines development dependencies and scripts
+- **Makefile**: Convenient shortcuts for common commands
 
 ## PSR-12 Quick Reference
 
@@ -110,15 +119,23 @@ The workflow will fail if:
 ```bash
 # Install dependencies
 composer install
+# or with make:
+make install
 
 # Run code style check
 composer cs:check
+# or:
+make cs-check
 
 # Fix code style issues automatically
 composer cs:fix
+# or:
+make cs-fix
 
 # Run static analysis
 composer stan
+# or:
+make stan
 ```
 
 ### Editor Integration
