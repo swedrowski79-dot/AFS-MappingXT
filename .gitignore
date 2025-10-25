@@ -1,0 +1,29 @@
+# Database files
+db/*.db
+db/*.db-shm
+db/*.db-wal
+
+# Log files - keep directory but ignore log files
+logs/*.log
+
+# Media files
+Files/Bilder/*
+Files/Dokumente/*
+!Files/Bilder/.gitkeep
+!Files/Dokumente/.gitkeep
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db

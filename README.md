@@ -10,6 +10,10 @@
 - [Bedienung](#bedienung)
   - [Web-Oberfläche](#web-oberfläche)
   - [CLI-Werkzeuge](#cli-werkzeuge)
+- [Logging](#logging)
+  - [JSON-Log-Format](#json-log-format)
+  - [Log-Rotation](#log-rotation)
+  - [Logs auslesen](#logs-auslesen)
 - [Synchronisationsablauf](#synchronisationsablauf)
   - [Phasen & Fortschrittsbalken](#phasen--fortschrittsbalken)
   - [Fehler-Analyse für Medien](#fehler-analyse-für-medien)
@@ -26,10 +30,13 @@ Dieses Projekt synchronisiert AFS-ERP Daten nach xt:Commerce (EVO). Die Synchron
 2. In eine lokale SQLite (`db/evo.db`) überführen
 3. Mediendateien (Bilder & Dokumente) vom Filesystem in Projektverzeichnisse kopieren
 4. Status- und Fehlermeldungen in `db/status.db` protokollieren
+5. **Neu:** Alle Mapping- und Delta-Läufe werden in strukturierte JSON-Logs (`logs/YYYY-MM-DD.log`) geschrieben
 
 Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen auf dieselben Klassen und Status-Tabellen zu.
 
 **Neu:** Effiziente Änderungserkennung via SHA-256 Hashes – nur tatsächlich geänderte Artikel werden aktualisiert. **Teil-Hashes** (Preis, Medien, Inhalt) ermöglichen selektive Updates: nur betroffene Tabellen werden aktualisiert. Details siehe [HashManager.md](docs/HashManager.md).
+
+**Neu:** Einheitliches JSON-Logging für alle Mapping- und Delta-Operationen – jeder Lauf wird mit Mapping-Version, Datensatzanzahl, Änderungen und Dauer protokolliert. Details siehe [Logging](#logging).
 
 ---
 
@@ -39,7 +46,8 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 |----------------------|--------------|
 | Sprache              | PHP ≥ 8.1 (CLI/CGI) |
 | Datenbanken          | MSSQL (Quelle), SQLite (`db/evo.db`, `db/status.db`) |
-| Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe) |
+| Logging              | JSON-Logs in `logs/YYYY-MM-DD.log` (strukturiert, rotierbar) |
+| Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs) |
 | Autoload             | Simple PSR-0-ähnlicher Loader (`autoload.php`) |
 | Web-Oberfläche       | Einzelne `index.php` mit fetch-basierten API-Calls |
 
@@ -107,6 +115,84 @@ Weitere Skripte:
 
 ---
 
+## Logging
+
+Das System verwendet ein zweistufiges Logging-Konzept:
+
+1. **StatusTracker** (`db/status.db`): Speichert den aktuellen Sync-Status für die Web-Oberfläche (temporär, begrenzte Einträge)
+2. **MappingLogger** (`logs/YYYY-MM-DD.log`): Permanente, strukturierte JSON-Logs für alle Mapping- und Delta-Operationen
+
+### JSON-Log-Format
+
+Jeder Log-Eintrag ist eine JSON-Zeile mit folgender Struktur:
+
+```json
+{
+  "timestamp": "2025-10-25T10:30:45+02:00",
+  "operation": "sync_complete",
+  "level": "info",
+  "message": "Synchronisation abgeschlossen",
+  "mapping_version": "1.0.0",
+  "context": {
+    "duration_seconds": 123.45,
+    "duration_formatted": "2m 3s",
+    "total_records": 1000,
+    "changed": 50
+  }
+}
+```
+
+**Operationstypen:**
+- `sync_start`: Start einer Synchronisation
+- `sync_complete`: Erfolgreicher Abschluss
+- `sync_error`: Fehler während der Synchronisation
+- `stage_complete`: Abschluss einer einzelnen Phase (z.B. `artikel`, `bilder`)
+- `record_changes`: Datensatzänderungen (eingefügt, aktualisiert, gelöscht)
+- `delta_export`: Delta-Export in separate Datenbank
+
+**Log-Level:**
+- `info`: Normale Informationen
+- `warning`: Warnungen (z.B. fehlende Dateien)
+- `error`: Fehler mit Exception-Details
+
+### Log-Rotation
+
+Logs älter als 30 Tage werden automatisch gelöscht (konfigurierbar in `config.php`):
+
+```php
+'logging' => [
+    'mapping_version' => '1.0.0',
+    'log_rotation_days' => 30,
+    'enable_file_logging' => true,
+],
+```
+
+### Logs auslesen
+
+**Manuell:**
+```bash
+# Heutige Logs anzeigen
+cat logs/2025-10-25.log | jq .
+
+# Nur Fehler filtern
+cat logs/2025-10-25.log | jq 'select(.level == "error")'
+
+# Sync-Zusammenfassungen anzeigen
+cat logs/2025-10-25.log | jq 'select(.operation == "sync_complete")'
+```
+
+**Programmatisch:**
+```php
+$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0');
+$entries = $logger->readLogs('2025-10-25', 100); // Letzte 100 Einträge
+
+foreach ($entries as $entry) {
+    echo "{$entry['timestamp']} [{$entry['level']}] {$entry['message']}\n";
+}
+```
+
+---
+
 ## Synchronisationsablauf
 
 ### Phasen & Fortschrittsbalken
@@ -162,14 +248,15 @@ Scripts `scripts/create_evo.sql` & `scripts/create_status.sql` enthalten die vol
 | `AFS` | Aggregiert Rohdaten (Artikel, Warengruppen, Dokumente, Bilder, Attribute) aus einer Quelle |
 | `AFS_Get_Data` | Liest MSSQL-Tabellen, normalisiert & säubert Werte |
 | `MSSQL` | SQLSRV-Wrapper mit Komfortmethoden (`select`, `count`, `scalar`, Quoting) |
-| `AFS_Evo` | Orchestriert alle Sync-Schritte, koordiniert Status-Tracker |
+| `AFS_Evo` | Orchestriert alle Sync-Schritte, koordiniert Status-Tracker und Logger |
 | `AFS_Evo_ImageSync` | Importiert Bilder in SQLite, kopiert Dateien, meldet fehlende Bilder |
 | `AFS_Evo_DocumentSync` | Importiert Dokumente, kopiert PDFs anhand des Titels, Analysephase |
 | `AFS_Evo_AttributeSync` | Überträgt Attribute für Artikel |
 | `AFS_Evo_CategorySync` | Synchronisiert Warengruppen (inkl. Parent-Verknüpfungen) |
 | `AFS_Evo_ArticleSync` | Hauptlogik: Artikel schreiben, Medien & Attribute verknüpfen |
 | `AFS_HashManager` | **NEU:** Effiziente Änderungserkennung via SHA-256 Hashes (siehe [HashManager.md](docs/HashManager.md)) |
-| `AFS_Evo_StatusTracker` | Managt `sync_status`/`sync_log`, Fortschrittsbalken & Logs |
+| `AFS_Evo_StatusTracker` | Managt `sync_status`/`sync_log` in SQLite, Fortschrittsbalken & Logs für UI |
+| `AFS_MappingLogger` | **NEU:** Strukturiertes JSON-Logging in tägliche Dateien mit Mapping-Version, Änderungen und Dauer |
 | `AFS_Evo_Reset` | Utility zum Leeren aller EVO-Tabellen |
 | `AFS_Evo_DeltaExporter` | Exportiert Datensätze mit `update = 1` in `evo_delta.db` und setzt Flags zurück |
 | `AFS_MetadataLoader` | Liest Metadaten (Titel/Beschreibung) aus der Dateistruktur und reichert Artikel/Kategorien an |
