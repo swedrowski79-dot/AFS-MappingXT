@@ -119,12 +119,7 @@ Das System ist optimal implementiert für typische Workloads:
    - Potenzielle Beschleunigung: 2-4x
    - Aufwand: Mittel
 
-2. **YAML-Konfiguration cachen**
-   - Opcache für kompilierte Configs
-   - Potenzielle Einsparung: 150-270 μs pro Request
-   - Aufwand: Minimal
-
-3. **Batch-Optimierungen**
+2. **Batch-Optimierungen**
    - Größere Transaction-Batches
    - Prepared Statement Pooling
    - Aufwand: Gering
@@ -136,6 +131,7 @@ Das System ist optimal implementiert für typische Workloads:
 ✅ Hash-basierte Change Detection  
 ✅ Effizientes Logging  
 ✅ Minimaler Memory-Overhead  
+✅ **In-Memory-Caching für YAML-Konfigurationen**  
 
 ## Monitoring-Empfehlungen
 
