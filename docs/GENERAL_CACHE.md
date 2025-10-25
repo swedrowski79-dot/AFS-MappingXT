@@ -144,7 +144,7 @@ class AFS_HashManager
 {
     public function buildHash(array $fields): string
     {
-        $cacheKey = 'hash:' . md5(serialize($fields));
+        $cacheKey = 'hash:' . md5(json_encode($fields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         
         return AFS_Cache::remember($cacheKey, function() use ($fields) {
             ksort($fields);
