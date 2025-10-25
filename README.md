@@ -53,9 +53,10 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 | Datenbanken          | MSSQL (Quelle), SQLite (`db/evo.db`, `db/status.db`) |
 | Logging              | JSON-Logs in `logs/YYYY-MM-DD.log` (strukturiert, rotierbar) |
 | Deployment           | Docker Compose (empfohlen) oder manuelle Installation |
-| Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs) |
+| Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs), `assets/` (CSS/JS) |
 | Autoload             | Simple PSR-0-ähnlicher Loader (`autoload.php`) |
 | Web-Oberfläche       | Einzelne `index.php` mit fetch-basierten API-Calls |
+| Asset Build          | npm-basiertes Build-System für CSS/JS-Minifizierung – siehe [ASSET_BUILD.md](docs/ASSET_BUILD.md) |
 | Sicherheit           | Umfassende Security-Headers, CSP, Permissions-Policy – siehe [SECURITY.md](docs/SECURITY.md) |
 
 ---
@@ -86,6 +87,7 @@ Ausführliche Dokumentation siehe [docs/SECURITY.md](docs/SECURITY.md)
 - PHP ≥ 8.1 CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`, `yaml`)
 - **YAML Extension (erforderlich)**: Siehe [YAML Extension Setup](docs/YAML_EXTENSION_SETUP.md)
 - Apache 2.4 mit mpm_event + PHP-FPM (siehe [Apache PHP-FPM Setup](docs/APACHE_PHP_FPM_SETUP.md))
+- **Node.js ≥ 14.x und npm** (für Asset-Build)
 - Schreibrechte im Projektordner (für `Files/` und `db/`)
 - Netzwerkzugriff auf den MSSQL-Server
 - Optional: `sqlite3` CLI (zum manuellen Inspektieren der Datenbanken)
@@ -105,7 +107,14 @@ docker-compose up -d
 1. Projekt auf Zielsystem kopieren
 2. Abhängige PHP-Extensions installieren
 3. Apache mpm_event + PHP-FPM einrichten (siehe [docs/APACHE_PHP_FPM_SETUP.md](docs/APACHE_PHP_FPM_SETUP.md))
-4. Die SQLite-Datenbanken initialisieren:
+4. **Assets bauen:**
+   ```bash
+   npm install
+   npm run build
+   # oder: make build
+   ```
+   Siehe [ASSET_BUILD.md](docs/ASSET_BUILD.md) für Details.
+5. Die SQLite-Datenbanken initialisieren:
    ```bash
    php scripts/setup.php
   ```

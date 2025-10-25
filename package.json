@@ -1,0 +1,19 @@
+{
+  "name": "afs-mappingxt",
+  "version": "1.0.0",
+  "description": "AFS-ERP to xt:Commerce EVO synchronization interface",
+  "scripts": {
+    "build": "npm run build:css && npm run build:js",
+    "build:css": "cleancss -o assets/css/main.min.css assets/css/main.css",
+    "build:js": "terser assets/js/main.js -o assets/js/main.min.js --compress --mangle --comments false",
+    "watch": "npm run build -- --watch",
+    "clean": "rm -f assets/css/*.min.css assets/js/*.min.js"
+  },
+  "keywords": ["afs", "xtcommerce", "sync", "erp"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "clean-css-cli": "^5.6.3",
+    "terser": "^5.37.0"
+  }
+}
