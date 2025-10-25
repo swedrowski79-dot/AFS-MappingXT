@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS sync_log (
 
 CREATE INDEX IF NOT EXISTS ix_sync_log_job_created ON sync_log(job, created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_sync_log_job_level ON sync_log(job, level);
+CREATE INDEX IF NOT EXISTS ix_sync_log_level ON sync_log(level);
+CREATE INDEX IF NOT EXISTS ix_sync_log_stage ON sync_log(stage);
+CREATE INDEX IF NOT EXISTS ix_sync_log_created ON sync_log(created_at DESC);
 
 INSERT OR IGNORE INTO sync_status (job, total, processed, state, stage, message, started_at, updated_at, finished_at)
 VALUES ('categories', 0, 0, 'ready', NULL, NULL, NULL, NULL, NULL);
