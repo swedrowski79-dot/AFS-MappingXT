@@ -47,8 +47,10 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 | Komponente           | Beschreibung |
 |----------------------|--------------|
 | Sprache              | PHP ≥ 8.1 (CLI/CGI) |
+| Web Server           | Apache 2.4 mit mpm_event + PHP-FPM (empfohlen) oder mod_php |
 | Datenbanken          | MSSQL (Quelle), SQLite (`db/evo.db`, `db/status.db`) |
 | Logging              | JSON-Logs in `logs/YYYY-MM-DD.log` (strukturiert, rotierbar) |
+| Deployment           | Docker Compose (empfohlen) oder manuelle Installation |
 | Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs) |
 | Autoload             | Simple PSR-0-ähnlicher Loader (`autoload.php`) |
 | Web-Oberfläche       | Einzelne `index.php` mit fetch-basierten API-Calls |
@@ -58,22 +60,41 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 ## Inbetriebnahme
 
 ### Voraussetzungen
-- PHP CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`)
+
+**Option 1: Docker (empfohlen)**
+- Docker & Docker Compose
+- Siehe [Quick Start Guide](docs/QUICK_START_DOCKER.md)
+
+**Option 2: Manuelle Installation**
+- PHP ≥ 8.1 CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`, `yaml`)
+- Apache 2.4 mit mpm_event + PHP-FPM (siehe [Apache PHP-FPM Setup](docs/APACHE_PHP_FPM_SETUP.md))
 - Schreibrechte im Projektordner (für `Files/` und `db/`)
 - Netzwerkzugriff auf den MSSQL-Server
 - Optional: `sqlite3` CLI (zum manuellen Inspektieren der Datenbanken)
 
 ### Installation
+
+**Mit Docker:**
+```bash
+# Schnellstart
+cp .env.example .env
+docker-compose up -d
+
+# Siehe docs/QUICK_START_DOCKER.md für Details
+```
+
+**Manuell:**
 1. Projekt auf Zielsystem kopieren
 2. Abhängige PHP-Extensions installieren
-3. Die SQLite-Datenbanken initialisieren:
+3. Apache mpm_event + PHP-FPM einrichten (siehe [docs/APACHE_PHP_FPM_SETUP.md](docs/APACHE_PHP_FPM_SETUP.md))
+4. Die SQLite-Datenbanken initialisieren:
    ```bash
    php scripts/setup.php
   ```
   Dadurch werden `db/evo.db` und `db/status.db` gemäß `scripts/create_*.sql` erstellt.
 - Bei Updates von älteren Installationen:
   - `php scripts/migrate_update_columns.php` (fügt die neuen `update`-Spalten in den Verknüpfungstabellen hinzu)
-  - `php scripts/migrate_add_hash_columns.php` (fügt Hash-Spalten für effiziente Änderungserkennung hinzu)
+  - `php scripts/migrate_add_hash_columns.php` (fügt Hash-Spalten für effiziente Ängerungserkennung hinzu)
   - ~~`php scripts/migrate_add_partial_hash_columns.php`~~ (DEPRECATED: Teil-Hash-Spalten wurden entfernt)
 
 ### Konfiguration
