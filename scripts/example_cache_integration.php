@@ -69,6 +69,8 @@ function calculateHashWithoutCache(array $data): string
 function calculateHashWithCache(array $data): string
 {
     // Use json_encode for deterministic cache key generation
+    // Note: For nested arrays, consider implementing recursive ksort
+    // for truly deterministic keys in production code
     ksort($data);
     $cacheKey = 'hash:' . md5(json_encode($data, JSON_UNESCAPED_UNICODE));
     
