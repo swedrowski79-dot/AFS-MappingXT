@@ -127,6 +127,43 @@ CREATE INDEX ix_sync_log_job_level ON sync_log(job, level);
 - Schnelle Fehler-Log-Filterung (`WHERE level = 'error'`)
 - Effiziente Stage-basierte Queries
 - Optimierte zeitbasierte Log-Abfragen
+- Composite Indexes für job-spezifische Queries
+
+#### 6. Hash & Change Detection Indexes
+
+Optimiert Change Detection und Hash-basierte Lookups:
+
+```sql
+CREATE INDEX ix_artikel_imported_hash ON Artikel(last_imported_hash);
+CREATE INDEX ix_bilder_imported_hash ON Bilder(last_imported_hash);
+CREATE INDEX ix_dokumente_imported_hash ON Dokumente(last_imported_hash);
+CREATE INDEX ix_attribute_imported_hash ON Attribute(last_imported_hash);
+CREATE INDEX ix_category_imported_hash ON category(last_imported_hash);
+```
+
+**Nutzen:**
+- Schnelle Lookups nach Hash-Werten für Change Detection
+- Effiziente Deduplizierung beim Import
+- Optimierte Hash-basierte Synchronisation
+- Unterstützung für das HashManager-System
+
+**Verwendet in:**
+- HashManager-System für Änderungserkennung
+- Import-Prozesse zur Deduplizierung
+
+#### 7. AFS & Online Status Indexes
+
+Zusätzliche Indexes für spezifische Lookup-Patterns:
+
+```sql
+CREATE INDEX ix_artikel_afs_id ON Artikel(AFS_ID);
+CREATE INDEX ix_artikel_online ON Artikel(Online);
+```
+
+**Nutzen:**
+- Schnelle AFS-ID basierte Lookups
+- Effiziente Online/Offline-Artikel-Filterung
+- Optimierte Queries für Shop-Integration
 
 ## Performance-Impact
 
@@ -322,11 +359,15 @@ REINDEX Artikel;  -- Alle Indexes einer Tabelle
 
 | Metrik | Wert |
 |--------|------|
-| **Total Indexes** | 40 |
+| **Total Indexes** | 47 |
 | **Update Flag Indexes** | 8 |
 | **Foreign Key Indexes** | 6 |
 | **XT_ID Indexes** | 5 |
+| **Category/Hierarchy Indexes** | 4 |
 | **Status DB Indexes** | 5 |
+| **Hash Detection Indexes** | 5 |
+| **Additional Indexes** | 2 |
+| **Unique Constraints** | 12 |
 | **Disk Overhead** | 5-10% |
 | **Performance Gain** | 10-100x |
 

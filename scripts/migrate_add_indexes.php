@@ -70,6 +70,8 @@ function migrateEvoDatabase(string $dbPath): void
             // Category table indexes
             'CREATE INDEX IF NOT EXISTS ix_category_update ON category("update") WHERE "update" = 1',
             'CREATE INDEX IF NOT EXISTS ix_category_xtid ON category(xtid)',
+            'CREATE INDEX IF NOT EXISTS ix_category_parent ON category(Parent)',
+            'CREATE INDEX IF NOT EXISTS ix_category_afsparent ON category(afsparent)',
             'CREATE INDEX IF NOT EXISTS ix_category_online ON category(online)',
         ];
         
@@ -141,6 +143,8 @@ function migrateStatusDatabase(string $dbPath): void
             'CREATE INDEX IF NOT EXISTS ix_sync_log_level ON sync_log(level)',
             'CREATE INDEX IF NOT EXISTS ix_sync_log_stage ON sync_log(stage)',
             'CREATE INDEX IF NOT EXISTS ix_sync_log_created ON sync_log(created_at DESC)',
+            'CREATE INDEX IF NOT EXISTS ix_sync_log_job_created ON sync_log(job, created_at DESC)',
+            'CREATE INDEX IF NOT EXISTS ix_sync_log_job_level ON sync_log(job, level)',
         ];
         
         $created = 0;
