@@ -87,7 +87,9 @@ When reporting issues, please include:
 AFS-MappingXT/
 ├── api/              # API endpoints
 ├── classes/          # Business logic classes
-├── src/              # Namespaced source code
+│   ├── afs/          # AFS-related classes
+│   ├── mssql/        # Database connection classes
+│   └── mapping/      # Mapping classes
 ├── scripts/          # CLI scripts
 ├── docs/             # Documentation
 ├── mappings/         # YAML mapping configurations
