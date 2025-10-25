@@ -1,12 +1,12 @@
 # Configuration Caching
 
-## Übersicht
+## Überblick
 
 Das AFS-MappingXT System verwendet einen intelligenten In-Memory-Cache für YAML-Konfigurationsdateien, um wiederholtes Parsen derselben Konfigurationen zu vermeiden.
 
 ## Implementierung
 
-Die Caching-Funktionalität wird durch die Klasse `AFS_ConfigCache` bereitgestellt.
+Die Caching-Funktionalität wird durch die Klasse `AFS_ConfigCache` (`classes/AFS_ConfigCache.php`) bereitgestellt.
 
 ### Funktionsweise
 
@@ -36,7 +36,7 @@ Der Cache bietet signifikante Performance-Vorteile:
 |--------|-----------|----------|---------|
 | Source Mapping Load | ~150-190 μs | ~50-60 μs | **3x** |
 | Target Mapping Load | ~245-270 μs | ~50-60 μs | **5x** |
-| Memory Overhead | - | 0 Bytes | - |
+| Memory Overhead | Baseline | Minimal | - |
 | Hit Rate (typisch) | - | >90% | - |
 
 ## Verwendung
@@ -96,7 +96,7 @@ Der Test validiert:
 - Verringert CPU-Last durch weniger YAML-Parsing
 
 ### Ressourcen
-- **Zero Memory Overhead**: PHP optimiert automatisch
+- **Minimaler Memory Overhead**: Gecachte Konfigurationen werden im Speicher gehalten, aber der Overhead ist minimal verglichen mit dem I/O- und Parsing-Aufwand
 - Keine zusätzlichen Dependencies
 - Keine Konfiguration erforderlich
 
@@ -164,4 +164,4 @@ Eine Hit-Rate von >90% ist typisch in produktiven Systemen.
 
 - [Performance Analysis](PERFORMANCE_ANALYSIS.md) - Detaillierte Performance-Metriken
 - [Performance Summary](PERFORMANCE_SUMMARY.md) - Executive Summary
-- [Configuration Management](CONFIGURATION_MANAGEMENT.md) - Allgemeine Konfiguration
+- [YAML Mapping Guide](YAML_MAPPING_GUIDE.md) - YAML-Konfigurationsformat
