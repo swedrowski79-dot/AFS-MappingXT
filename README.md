@@ -3,6 +3,7 @@
 ## Inhalt
 - [Einführung](#einführung)
 - [Technische Fakten](#technische-fakten)
+- [Sicherheit](#sicherheit)
 - [Inbetriebnahme](#inbetriebnahme)
   - [Voraussetzungen](#voraussetzungen)
   - [Installation](#installation)
@@ -54,6 +55,21 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 | Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs) |
 | Autoload             | Simple PSR-0-ähnlicher Loader (`autoload.php`) |
 | Web-Oberfläche       | Einzelne `index.php` mit fetch-basierten API-Calls |
+| Sicherheit           | Umfassende Security-Headers, CSP, Permissions-Policy – siehe [SECURITY.md](docs/SECURITY.md) |
+
+---
+
+## Sicherheit
+
+Die Anwendung implementiert moderne Sicherheits-Best-Practices:
+
+- **Security Headers**: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, etc.
+- **Permissions-Policy**: Deaktivierung nicht benötigter Browser-Features
+- **Dateischutz**: Konfigurationsdateien, Datenbanken und sensible Verzeichnisse sind geschützt
+- **PHP-Sicherheit**: Sichere Session-Einstellungen, deaktivierte PHP-Version-Ausgabe
+- **CORS-Kontrolle**: Konfigurierbare Cross-Origin-Zugriffe für API-Endpunkte
+
+Ausführliche Dokumentation siehe [docs/SECURITY.md](docs/SECURITY.md)
 
 ---
 
