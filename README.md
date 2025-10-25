@@ -342,7 +342,7 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 
 | Script | Beschreibung |
 |--------|--------------|
-| `verify_yaml_extension.php` | **[VERALTET]** Verifizierte früher YAML-Extension (nicht mehr benötigt) |
+| `verify_yaml_extension.php` | **[VERALTET]** Verifiziert früher YAML-Extension (nicht mehr benötigt) |
 | `test_yaml_mapping.php` | Validiert YAML-Konfiguration und SQL-Generierung aus source_afs.yml |
 | `test_target_mapping.php` | Validiert target_sqlite.yml Konfiguration und UPSERT-Statements |
 | `test_config_cache.php` | **[NEU]** Testet Caching-Layer für YAML-Konfigurationen |
