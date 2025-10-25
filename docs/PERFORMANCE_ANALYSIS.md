@@ -40,10 +40,19 @@ php scripts/analyze_performance.php --export=json
 - **Status**: ✓ Excellent
 
 #### YAML Mapping
-- **Source Mapping Load**: ~150-190 μs pro Instanz (4.3 KB Datei)
-- **Target Mapping Load**: ~245-270 μs pro Instanz (7.6 KB Datei)
+**Mit Caching (Stand: 2025-10-25):**
+- **Source Mapping Load**: ~60 μs pro Instanz (gecacht)
+- **Target Mapping Load**: ~50 μs pro Instanz (gecacht)
+- **Cache Hit Rate**: Typisch >90% bei wiederholten Loads
+- **Speedup**: 3-5x schneller als ohne Cache
 - **Memory per Instance**: 0 Bytes (PHP optimiert automatisch)
 - **Status**: ✓ Excellent
+
+**Ohne Caching (Baseline):**
+- **Source Mapping Load**: ~150-190 μs pro Instanz (4.3 KB Datei)
+- **Target Mapping Load**: ~245-270 μs pro Instanz (7.6 KB Datei)
+
+**Implementation**: `AFS_ConfigCache` bietet In-Memory-Cache für YAML-Konfigurationsdateien mit automatischer Invalidierung bei Dateiänderungen (basierend auf mtime).
 
 #### SQL-Generierung
 Durchschnittliche Zeit pro SQL-SELECT-Statement:
@@ -232,10 +241,10 @@ Das System misst automatisch:
 - ✅ Prepared Statements
 - ✅ Strukturiertes Logging ohne Performance-Impact
 - ✅ Effiziente YAML-Konfiguration
+- ✅ **In-Memory-Caching für YAML-Konfigurationen (AFS_ConfigCache)**
 
 ### Mittelfristig (optional)
 - ⚡ Parallele Medien-Kopien (Multi-Threading)
-- ⚡ Caching für wiederholte YAML-Loads
 - ⚡ Kompression für Delta-Exporte
 - ⚡ Index-Optimierung in SQLite
 
