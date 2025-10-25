@@ -4,21 +4,6 @@
 
 Das AFS-MappingXT System verwendet einen intelligenten In-Memory-Cache für YAML-Konfigurationsdateien, um wiederholtes Parsen derselben Konfigurationen zu vermeiden.
 
-**Hinweis**: Für allgemeines Caching von Datenbankabfragen, Berechnungen und anderen teuren Operationen siehe [GENERAL_CACHE.md](GENERAL_CACHE.md).
-
-## Zwei Caching-Ebenen
-
-Das System bietet zwei spezialisierte Caching-Schichten:
-
-1. **`AFS_ConfigCache`** (dieses Dokument) - Spezialisiert auf YAML-Konfigurationsdateien
-   - Automatische mtime-basierte Invalidierung
-   - Optimiert für Konfigurationsdateien
-
-2. **`AFS_Cache`** ([GENERAL_CACHE.md](GENERAL_CACHE.md)) - Allgemeiner Cache für teure Operationen
-   - TTL-basierte Ablaufsteuerung
-   - Pattern-basierte Invalidierung
-   - Flexible API für beliebige Datentypen
-
 ## Implementierung
 
 Die Caching-Funktionalität wird durch die Klasse `AFS_ConfigCache` (`classes/AFS_ConfigCache.php`) bereitgestellt.
@@ -85,24 +70,33 @@ AFS_ConfigCache::remove('/path/to/config.yml');
 
 ## Testing
 
-Die Caching-Funktionalität wird durch umfassende Tests abgedeckt:
+Um die Caching-Funktionalität zu testen, können Sie z.B. wie folgt vorgehen:
 
-```bash
-php scripts/test_config_cache.php
-```
+```php
+// Vor dem Test: Cache leeren
+AFS_ConfigCache::clear();
 
-Der Test validiert:
-- ✓ Cache kann Daten speichern und abrufen
-- ✓ Statistiken werden korrekt erfasst
-- ✓ Cache wird bei Dateiänderungen invalidiert
-- ✓ Clear entfernt alle Einträge
-- ✓ Remove löscht spezifische Einträge
-- ✓ Has-Methode prüft Cache-Präsenz korrekt
-- ✓ Integration mit AFS_MappingConfig
-- ✓ Integration mit AFS_TargetMappingConfig
-- ✓ Performance-Verbesserungen sind messbar
-- ✓ Nicht existierende Dateien werden korrekt behandelt
+// 1. Erste Anfrage (Cache Miss)
+$config1 = new AFS_MappingConfig('/path/to/source_afs.yml');
+$stats1 = AFS_ConfigCache::getStats();
+echo "Nach erstem Laden: Hits={$stats1['hits']}, Misses={$stats1['misses']}\n";
 
+// 2. Zweite Anfrage (Cache Hit)
+$config2 = new AFS_MappingConfig('/path/to/source_afs.yml');
+$stats2 = AFS_ConfigCache::getStats();
+echo "Nach zweitem Laden: Hits={$stats2['hits']}, Misses={$stats2['misses']}\n";
+
+// 3. Datei ändern (z.B. per touch)
+touch('/path/to/source_afs.yml');
+$config3 = new AFS_MappingConfig('/path/to/source_afs.yml');
+$stats3 = AFS_ConfigCache::getStats();
+echo "Nach Dateiänderung: Hits={$stats3['hits']}, Misses={$stats3['misses']}\n";
+
+// 4. Cache manuell leeren
+AFS_ConfigCache::clear();
+$config4 = new AFS_MappingConfig('/path/to/source_afs.yml');
+$stats4 = AFS_ConfigCache::getStats();
+echo "Nach Cache-Leerung: Hits={$stats4['hits']}, Misses={$stats4['misses']}\n";
 ## Vorteile
 
 ### Performance
@@ -177,7 +171,3 @@ Eine Hit-Rate von >90% ist typisch in produktiven Systemen.
 
 ## Siehe auch
 
-- [General Cache](GENERAL_CACHE.md) - Allgemeiner Caching-Layer für Datenbankabfragen und teure Berechnungen
-- [Performance Analysis](PERFORMANCE_ANALYSIS.md) - Detaillierte Performance-Metriken
-- [Performance Summary](PERFORMANCE_SUMMARY.md) - Executive Summary
-- [YAML Mapping Guide](YAML_MAPPING_GUIDE.md) - YAML-Konfigurationsformat
