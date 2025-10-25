@@ -171,5 +171,3 @@ Eine Hit-Rate von >90% ist typisch in produktiven Systemen.
 
 ## Siehe auch
 
-- [YAML Mapping Guide](YAML_MAPPING_GUIDE.md) - YAML-Konfigurationsformat
-- [Configuration Management](CONFIGURATION_MANAGEMENT.md) - Konfigurationsverwaltung
