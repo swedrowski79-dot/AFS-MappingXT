@@ -51,6 +51,22 @@ foreach (array_keys($targets) as $table) {
     }
 }
 
+$relationshipColumns = [
+    'Artikel_Dokumente' => [
+        'XT_ARTIKEL_ID' => 'ALTER TABLE "Artikel_Dokumente" ADD COLUMN "XT_ARTIKEL_ID" INTEGER',
+        'XT_Dokument_ID' => 'ALTER TABLE "Artikel_Dokumente" ADD COLUMN "XT_Dokument_ID" INTEGER',
+    ],
+];
+
+foreach ($relationshipColumns as $table => $definitions) {
+    foreach ($definitions as $column => $statement) {
+        if (!columnExists($pdo, $table, $column)) {
+            $pdo->exec($statement);
+            fwrite(STDOUT, sprintf('Spalte "%s" zu %s hinzugefügt.' . PHP_EOL, $column, $table));
+        }
+    }
+}
+
 $metaColumns = [
     'Artikel' => [
         'Meta_Title' => 'ALTER TABLE "Artikel" ADD COLUMN Meta_Title TEXT',

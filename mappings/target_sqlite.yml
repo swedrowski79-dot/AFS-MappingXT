@@ -111,31 +111,50 @@ entities:
   categories:
     table: category
     primary_key: ID
+    unique_key: afsid
     fields:
       ID:
         type: integer
         auto_increment: true
-      AFS_ID:
+      Parent:
         type: integer
-      Bezeichnung:
+        nullable: true
+      afsid:
+        type: integer
+        required: true
+      afsparent:
+        type: integer
+        nullable: true
+      xtid:
+        type: integer
+        nullable: true
+      name:
         type: string
-      Parent_ID:
+        required: true
+      online:
         type: integer
         default: 0
-      Ebene:
+      picture:
+        type: string
+        nullable: true
+      picture_id:
         type: integer
-      Bild:
+        nullable: true
+      picture_big:
         type: string
         nullable: true
-      Bild_gross:
-        type: string
-        nullable: true
-      Beschreibung:
-        type: string
-        nullable: true
-      Online:
+      picture_big_id:
         type: integer
-        default: 0
+        nullable: true
+      description:
+        type: string
+        nullable: true
+      meta_title:
+        type: string
+        nullable: true
+      meta_description:
+        type: string
+        nullable: true
       update:
         type: integer
         default: 0

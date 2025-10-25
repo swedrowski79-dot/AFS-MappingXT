@@ -102,6 +102,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         
         $deactivateSql = "UPDATE {$this->quoteIdent($tableName)} SET Online = 0, " . $this->quoteIdent('update') . " = 1 WHERE ID = :id";
         $markArticleUpdateSql = "UPDATE {$this->quoteIdent($tableName)} SET " . $this->quoteIdent('update') . " = 1 WHERE ID = :id";
+        $updateSeenSql = "UPDATE {$this->quoteIdent($tableName)} SET " . $this->quoteIdent('last_seen_hash') . " = :hash WHERE ID = :id";
 
         $this->db->beginTransaction();
         try {
@@ -115,11 +116,12 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
             $insertDoc    = $this->db->prepare($insertDocSql);
             $deactivate   = $this->db->prepare($deactivateSql);
             $markArticleUpdate = $this->db->prepare($markArticleUpdateSql);
+            $updateLastSeen = $this->db->prepare($updateSeenSql);
 
-        foreach ($rows as $row) {
-            if (!is_array($row)) {
-                continue;
-            }
+            foreach ($rows as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
 
                 $payload = $this->buildArtikelPayload($row, $categoryMap);
                 if ($payload === null) {
@@ -130,12 +132,11 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                 $artikelnummer = $payload['artikelnummer'];
                 $existing = $artikelMap[$artikelnummer] ?? null;
                 $existingId = $existing['id'] ?? null;
-                $existingTs = $existing['last_update_ts'] ?? null;
                 $oldEan     = $existing['ean'] ?? null;
                 $newTs      = $this->toTimestamp($payload['last_update'] ?? null);
 
                 $payload['eannummer'] = $this->sanitizeEan($payload['eannummer'], $artikelnummer, $eanMap);
-                
+
                 // Compute full hash of current data for efficient change detection
                 $hashableFields = $this->hashManager->extractHashableFields($payload);
                 $currentHash = $this->hashManager->generateHash($hashableFields);
@@ -143,30 +144,26 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
 
                 // Determine if update is needed based on hash comparison
                 $shouldUpdate = $this->hashManager->hasChanged($existingHash, $currentHash);
-                
-                // Mark as seen regardless of update status
+
+                // Always persist last_seen_hash (if unchanged, we update via dedicated statement)
+                $payload['last_seen_hash'] = $currentHash;
+
                 if ($existing !== null) {
                     $artikelMap[$artikelnummer]['seen'] = true;
                 }
 
-                // Always persist last_seen_hash
-                $payload['last_seen_hash'] = $currentHash;
-                
-                if (!$shouldUpdate) {
-                    // Data unchanged - no database update needed
-                    // The existing last_imported_hash already matches current data
-                    continue;
-                }
-
-                // Set update flag and persist last_imported_hash (matching last_seen_hash on update)
-                $payload['update'] = 1;
-                $payload['last_imported_hash'] = $currentHash;
-                $upsert->execute($payload);
-
                 $artikelId = $existingId;
-                if ($existingId === null) {
-                    $artikelId = (int)$this->db->lastInsertId();
-                    if ($artikelId <= 0) {
+
+                if ($shouldUpdate) {
+                    // Set update flag and persist last_imported_hash (matching last_seen_hash on update)
+                    $payload['update'] = 1;
+                    $payload['last_imported_hash'] = $currentHash;
+                    $upsert->execute($payload);
+
+                    if ($artikelId === null) {
+                        $artikelId = (int)$this->db->lastInsertId();
+                    }
+                    if ($artikelId === null || $artikelId <= 0) {
                         $selectId->execute([':artikelnummer' => $artikelnummer]);
                         $artikelId = (int)$selectId->fetchColumn();
                     }
@@ -179,37 +176,54 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                             'ean' => $payload['eannummer'],
                             'meta_title' => $payload['meta_title'] ?? null,
                             'meta_description' => $payload['meta_description'] ?? null,
+                            'last_imported_hash' => $currentHash,
+                            'last_seen_hash' => $currentHash,
                             'seen' => true,
                         ];
                         if ($payload['eannummer'] !== null) {
                             $eanMap[$payload['eannummer']] = $artikelnummer;
                         }
                     }
-                    $stats['inserted']++;
+
+                    if ($existingId === null) {
+                        $stats['inserted']++;
+                    } else {
+                        $stats['updated']++;
+                        if ($oldEan !== null && $oldEan !== $payload['eannummer'] && isset($eanMap[$oldEan]) && $eanMap[$oldEan] === $artikelnummer) {
+                            unset($eanMap[$oldEan]);
+                        }
+                        if ($payload['eannummer'] !== null) {
+                            $eanMap[$payload['eannummer']] = $artikelnummer;
+                        }
+                        $artikelMap[$artikelnummer]['last_update'] = $payload['last_update'] ?? null;
+                        $artikelMap[$artikelnummer]['last_update_ts'] = $newTs;
+                        $artikelMap[$artikelnummer]['online'] = $payload['online'];
+                        $artikelMap[$artikelnummer]['ean'] = $payload['eannummer'];
+                        $artikelMap[$artikelnummer]['meta_title'] = $payload['meta_title'] ?? null;
+                        $artikelMap[$artikelnummer]['meta_description'] = $payload['meta_description'] ?? null;
+                        $artikelMap[$artikelnummer]['last_imported_hash'] = $currentHash;
+                        $artikelMap[$artikelnummer]['last_seen_hash'] = $currentHash;
+                    }
                 } else {
-                    $stats['updated']++;
-                    $artikelMap[$artikelnummer]['last_update'] = $payload['last_update'] ?? null;
-                    $artikelMap[$artikelnummer]['last_update_ts'] = $newTs;
-                    $artikelMap[$artikelnummer]['online'] = $payload['online'];
-                    if ($oldEan !== null && $oldEan !== $payload['eannummer'] && isset($eanMap[$oldEan]) && $eanMap[$oldEan] === $artikelnummer) {
-                        unset($eanMap[$oldEan]);
+                    if ($artikelId !== null && $artikelId > 0) {
+                        $storedSeenHash = $existing['last_seen_hash'] ?? null;
+                        if ($storedSeenHash !== $currentHash) {
+                            $updateLastSeen->execute([
+                                ':hash' => $currentHash,
+                                ':id' => $artikelId,
+                            ]);
+                        }
+                        $artikelMap[$artikelnummer]['last_seen_hash'] = $currentHash;
                     }
-                    if ($payload['eannummer'] !== null) {
-                        $eanMap[$payload['eannummer']] = $artikelnummer;
-                    }
-                    $artikelMap[$artikelnummer]['ean'] = $payload['eannummer'];
-                    $artikelMap[$artikelnummer]['meta_title'] = $payload['meta_title'] ?? null;
-                    $artikelMap[$artikelnummer]['meta_description'] = $payload['meta_description'] ?? null;
-                    $artikelMap[$artikelnummer]['seen'] = true;
                 }
 
-                if ($artikelId <= 0) {
+                if ($artikelId === null || $artikelId <= 0) {
                     continue;
                 }
 
                 $relationsChanged = false;
 
-                // Sync image relationships when article is updated or new
+                // Sync image relationships regardless of article hash changes
                 $imageResult = $this->syncArticleImages(
                     $insertImage,
                     $deleteImage,
@@ -221,7 +235,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                 $stats['images'] += $imageResult['added'] + $imageResult['removed'];
                 $relationsChanged = $relationsChanged || $imageResult['changed'];
 
-                // Sync document relationships when article is updated or new
+                // Sync document relationships regardless of article hash changes
                 $docResult = $this->syncArticleDocuments(
                     $insertDoc,
                     $deleteDoc,
@@ -234,7 +248,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                 $stats['documents'] += $docResult['added'] + $docResult['removed'];
                 $relationsChanged = $relationsChanged || $docResult['changed'];
 
-                // Sync attribute relationships when article is updated or new
+                // Sync attribute relationships regardless of article hash changes
                 $attrResult = $this->syncArticleAttributes(
                     $insertAttr,
                     $deleteAttr,
@@ -589,7 +603,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     {
         $map = [];
         $tableName = $this->targetMapping->getTableName('articles');
-        $sql = "SELECT ID, Artikelnummer, Online, EANNummer, last_update, Meta_Title, Meta_Description, last_imported_hash FROM {$this->quoteIdent($tableName)}";
+        $sql = "SELECT ID, Artikelnummer, Online, EANNummer, last_update, Meta_Title, Meta_Description, last_imported_hash, last_seen_hash FROM {$this->quoteIdent($tableName)}";
         foreach ($this->db->query($sql, PDO::FETCH_ASSOC) as $row) {
             $nummer = isset($row['Artikelnummer']) ? trim((string)$row['Artikelnummer']) : '';
             if ($nummer === '') {
@@ -605,6 +619,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                 'meta_title' => $row['Meta_Title'] ?? null,
                 'meta_description' => $row['Meta_Description'] ?? null,
                 'last_imported_hash' => $row['last_imported_hash'] ?? null,
+                'last_seen_hash' => $row['last_seen_hash'] ?? null,
                 'seen' => false,
             ];
         }
