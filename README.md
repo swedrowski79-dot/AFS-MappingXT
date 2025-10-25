@@ -347,10 +347,34 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 | `test_articlesync_mapping.php` | Integration-Test für AFS_Evo_ArticleSync mit Target-Mapping |
 | `test_mixed_mode_validation.php` | Umfassende Validierung der Mapping-Logik |
 | `validate_no_hardcodings.php` | **[NEU]** Bestätigt keine Hardcodings oder Legacy-Code mehr vorhanden |
+| `detect_unused_code.php` | **[NEU]** Automatische Erkennung nicht genutzter Klassen und Methoden |
 | `test_hashmanager.php` | Tests für effiziente Änderungserkennung via Hashes |
 | `test_mapping_logger.php` | Tests für strukturiertes JSON-Logging |
 | `test_index_performance.php` | **[NEU]** Validiert Datenbank-Index-Performance und Nutzung |
 | `analyze_performance.php` | **[NEU]** Projektweite Performance-Analyse und Benchmarking |
+
+### Dead Code Detection
+
+Das Projekt enthält ein automatisches Werkzeug zur Erkennung nicht genutzter Klassen und Funktionen:
+
+```bash
+# Standard-Analyse
+php scripts/detect_unused_code.php
+
+# Mit ausführlicher Ausgabe
+php scripts/detect_unused_code.php --verbose
+
+# JSON-Ausgabe für automatische Verarbeitung
+php scripts/detect_unused_code.php --json
+```
+
+Das Tool analysiert:
+- Alle PHP-Klassen im `/classes` Verzeichnis
+- Verwendungsmuster im gesamten Projekt
+- Identifiziert nicht verwendete öffentliche Methoden
+- Ignoriert automatisch Magic Methods und Exception-Klassen
+
+Detaillierte Dokumentation: [docs/DEAD_CODE_DETECTION.md](docs/DEAD_CODE_DETECTION.md)
 
 ### Performance-Analyse
 
