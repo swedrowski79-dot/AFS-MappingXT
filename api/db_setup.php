@@ -15,12 +15,12 @@ try {
     try {
         $tracker = createStatusTracker($config, 'categories');
         $tracker->logInfo('Setup-Skript ausgeführt', $result, 'maintenance');
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         // Tracker-Fehler sollen das Ergebnis nicht verhindern
     }
 
     api_ok(['databases' => $result]);
-} catch (Throwable $e) {
+} catch (\Throwable $e) {
     api_error($e->getMessage());
 }
 
@@ -36,7 +36,7 @@ function runSetup(array $config): array
     $dbDir = $config['paths']['db_dir'] ?? ($root . '/db');
 
     if (!is_dir($dbDir) && !@mkdir($dbDir, 0777, true) && !is_dir($dbDir)) {
-        throw new RuntimeException("Konnte Datenbankverzeichnis nicht anlegen: {$dbDir}");
+        throw new AFS_DatabaseException("Konnte Datenbankverzeichnis nicht anlegen: {$dbDir}");
     }
 
     $targets = [
@@ -57,17 +57,17 @@ function runSetup(array $config): array
         $sqlFile = (string)$info['sql'];
 
         if (!is_file($sqlFile)) {
-            throw new RuntimeException("SQL-Datei nicht gefunden: {$sqlFile}");
+            throw new AFS_ConfigurationException("SQL-Datei nicht gefunden: {$sqlFile}");
         }
 
         $dir = dirname($path);
         if (!is_dir($dir) && !@mkdir($dir, 0777, true) && !is_dir($dir)) {
-            throw new RuntimeException("Konnte Verzeichnis nicht anlegen: {$dir}");
+            throw new AFS_DatabaseException("Konnte Verzeichnis nicht anlegen: {$dir}");
         }
 
         $initSql = file_get_contents($sqlFile);
         if ($initSql === false || trim($initSql) === '') {
-            throw new RuntimeException("SQL-Datei ist leer oder nicht lesbar: {$sqlFile}");
+            throw new AFS_ConfigurationException("SQL-Datei ist leer oder nicht lesbar: {$sqlFile}");
         }
 
         $wasPresent = is_file($path);

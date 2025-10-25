@@ -16,12 +16,12 @@ try {
     try {
         $tracker = createStatusTracker($config, 'categories');
         $tracker->logInfo('Schema-Migration ausgeführt', $changes, 'maintenance');
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         // Wenn Status-Tracker fehlschlägt, Migration nicht abbrechen
     }
 
     api_ok(['changes' => $changes]);
-} catch (Throwable $e) {
+} catch (\Throwable $e) {
     api_error($e->getMessage());
 }
 

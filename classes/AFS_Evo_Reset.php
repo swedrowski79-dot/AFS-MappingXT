@@ -32,7 +32,7 @@ class AFS_Evo_Reset
                 $statement = sprintf('DELETE FROM %s', self::quoteIdent($table));
                 $count = $pdo->exec($statement);
                 if ($count === false) {
-                    throw new RuntimeException('Fehler beim Leeren der Tabelle ' . $table);
+                    throw new AFS_DatabaseException('Fehler beim Leeren der Tabelle ' . $table);
                 }
                 $affectedRows[$table] = $count;
             }

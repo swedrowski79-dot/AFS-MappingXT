@@ -43,7 +43,7 @@ class MSSQL
     {
         $this->conn = sqlsrv_connect($this->serverName, $this->connectionOptions);
         if (!$this->conn) {
-            throw new RuntimeException($this->formatErrors(sqlsrv_errors()));
+            throw new AFS_DatabaseException($this->formatErrors(sqlsrv_errors()));
         }
     }
 
@@ -77,7 +77,7 @@ class MSSQL
         int $limit = 100
     ): array {
         if ($orderBy === '') {
-            throw new InvalidArgumentException('ORDER BY ist für OFFSET/FETCH erforderlich.');
+            throw new AFS_ValidationException('ORDER BY ist für OFFSET/FETCH erforderlich.');
         }
         [$sql, $params] = $this->buildSelect($fields, $table, $where, $params, $orderBy);
         $sql .= ' OFFSET ? ROWS FETCH NEXT ? ROWS ONLY';
@@ -184,7 +184,7 @@ class MSSQL
                 if (preg_match('/^([A-Za-z0-9_\.]+)\s*(ASC|DESC)?$/i', $p, $m)) {
                     $orderQuoted[] = $this->qIdent($m[1]) . (isset($m[2]) ? ' ' . strtoupper($m[2]) : '');
                 } else {
-                    throw new InvalidArgumentException("Ungültiger ORDER BY Ausdruck: {$p}");
+                    throw new AFS_ValidationException("Ungültiger ORDER BY Ausdruck: {$p}");
                 }
             }
             $sql .= ' ORDER BY ' . implode(', ', $orderQuoted);

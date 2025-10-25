@@ -58,7 +58,7 @@ function createStatusTracker(array $config, string $job = 'categories'): AFS_Evo
 {
     $statusDb = $config['paths']['status_db'] ?? (dirname(__DIR__) . '/db/status.db');
     if (!is_file($statusDb)) {
-        throw new RuntimeException("status.db nicht gefunden: {$statusDb}");
+        throw new AFS_DatabaseException("status.db nicht gefunden: {$statusDb}");
     }
     $maxErrors = $config['status']['max_errors'] ?? 200;
     return new AFS_Evo_StatusTracker($statusDb, $job, (int)$maxErrors);
@@ -68,7 +68,7 @@ function createEvoPdo(array $config): PDO
 {
     $dataDb = $config['paths']['data_db'] ?? (dirname(__DIR__) . '/db/evo.db');
     if (!is_file($dataDb)) {
-        throw new RuntimeException("evo.db nicht gefunden: {$dataDb}");
+        throw new AFS_DatabaseException("evo.db nicht gefunden: {$dataDb}");
     }
     $pdo = new PDO('sqlite:' . $dataDb);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -80,7 +80,7 @@ function createEvoDeltaPdo(array $config): PDO
 {
     $deltaDb = $config['paths']['delta_db'] ?? (dirname(__DIR__) . '/db/evo_delta.db');
     if (!is_file($deltaDb)) {
-        throw new RuntimeException("Delta-Datenbank nicht gefunden: {$deltaDb}");
+        throw new AFS_DatabaseException("Delta-Datenbank nicht gefunden: {$deltaDb}");
     }
     $pdo = new PDO('sqlite:' . $deltaDb);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -92,7 +92,7 @@ function createStatusPdo(array $config): PDO
 {
     $statusDb = $config['paths']['status_db'] ?? (dirname(__DIR__) . '/db/status.db');
     if (!is_file($statusDb)) {
-        throw new RuntimeException("status.db nicht gefunden: {$statusDb}");
+        throw new AFS_DatabaseException("status.db nicht gefunden: {$statusDb}");
     }
     $pdo = new PDO('sqlite:' . $statusDb);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -146,9 +146,9 @@ function createSyncEnvironment(array $config, string $job = 'categories'): array
     $mssql = createMssql($config);
     try {
         $mssql->scalar('SELECT 1');
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         $mssql->close();
-        throw new RuntimeException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
+        throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
     }
     $dataSource = new AFS_Get_Data($mssql);
     $afs = new AFS($dataSource, $config);
