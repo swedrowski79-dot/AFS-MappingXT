@@ -68,7 +68,9 @@ function calculateHashWithoutCache(array $data): string
 
 function calculateHashWithCache(array $data): string
 {
-    $cacheKey = 'hash:' . md5(serialize($data));
+    // Use json_encode for deterministic cache key generation
+    ksort($data);
+    $cacheKey = 'hash:' . md5(json_encode($data, JSON_UNESCAPED_UNICODE));
     
     return AFS_Cache::remember($cacheKey, function() use ($data) {
         echo "   → Computing SHA-256 hash...\n";
@@ -78,7 +80,7 @@ function calculateHashWithCache(array $data): string
     }, 3600); // 1 hour TTL
 }
 
-$testData = array_fill(0, 100, 'test_data_' . rand());
+$testData = array_fill(0, 100, 'test_data_fixed_value');
 
 $start = microtime(true);
 $hash1 = calculateHashWithCache($testData);
