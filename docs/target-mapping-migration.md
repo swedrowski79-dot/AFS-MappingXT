@@ -146,7 +146,7 @@ Target-Mapping geladen | version: 1.0.0 | stage: artikel
    - Prüft Parameter-Mapping
    - Testet alle Relationship-Operationen
 
-3. **`test_mixed_mode_validation.php`** ⭐ **NEU**
+3. **`test_mixed_mode_validation.php`** **[NEU]**
    - Umfassende 5-Phasen-Validierung der neuen Mapping-Logik
    - Vergleich alte vs. neue Implementierung
    - Datenverlust-Erkennung
