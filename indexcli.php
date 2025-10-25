@@ -114,6 +114,21 @@ function createStatusTrackerCli(array $config, string $job, int $maxErrors): AFS
     return new AFS_Evo_StatusTracker($statusDb, $job, $maxErrors);
 }
 
+function createMappingLoggerCli(array $config): ?AFS_MappingLogger
+{
+    $loggingConfig = $config['logging'] ?? [];
+    $enableFileLogging = $loggingConfig['enable_file_logging'] ?? true;
+    
+    if (!$enableFileLogging) {
+        return null;
+    }
+    
+    $logDir = $config['paths']['log_dir'] ?? (__DIR__ . '/logs');
+    $mappingVersion = $loggingConfig['mapping_version'] ?? '1.0.0';
+    
+    return new AFS_MappingLogger($logDir, $mappingVersion);
+}
+
 /**
  * @return array{tracker:AFS_Evo_StatusTracker,evo:AFS_Evo,mssql:MSSQL}
  */
@@ -159,7 +174,8 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
 
     $dataSource = new AFS_Get_Data($mssql);
     $afs = new AFS($dataSource, $config);
-    $evo = new AFS_Evo($pdo, $afs, $tracker, $config);
+    $logger = createMappingLoggerCli($config);
+    $evo = new AFS_Evo($pdo, $afs, $tracker, $config, $logger);
 
     return [
         'tracker' => $tracker,

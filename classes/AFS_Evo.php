@@ -9,6 +9,7 @@ class AFS_Evo
     private AFS_Evo_CategorySync $categories;
     private AFS_Evo_ArticleSync $articles;
     private ?AFS_Evo_StatusTracker $status;
+    private ?AFS_MappingLogger $logger;
     private AFS $afs;
     /** @var array<string,mixed> */
     private array $config;
@@ -16,10 +17,11 @@ class AFS_Evo
     /**
      * @param array<string,mixed> $config
      */
-    public function __construct(PDO $db, AFS $afs, ?AFS_Evo_StatusTracker $status = null, array $config = [])
+    public function __construct(PDO $db, AFS $afs, ?AFS_Evo_StatusTracker $status = null, array $config = [], ?AFS_MappingLogger $logger = null)
     {
         $this->db        = $db;
         $this->status     = $status;
+        $this->logger     = $logger;
         $this->afs        = $afs;
         $this->config     = $config;
         $this->images     = new AFS_Evo_ImageSync($db, $afs, $status);
@@ -71,11 +73,22 @@ class AFS_Evo
         $currentStage = 'initialisierung';
         $this->status?->begin($currentStage, 'Starte Synchronisation');
 
+        // Log sync start
+        $this->logger?->logSyncStart([
+            'copy_images' => $copyImages,
+            'copy_documents' => $copyDocuments,
+            'image_source' => $imageSourceDir,
+            'document_source' => $documentSourceDir,
+        ]);
+
         try {
             $currentStage = 'bilder';
             [$summary['bilder'], $duration] = $this->executeStage($currentStage, 'Importiere Bilder', fn () => $this->importBilder());
             $this->status?->advance($currentStage, [
                 'message' => sprintf('Bilder importiert (%d Einträge, %s)', count($summary['bilder']), $this->formatDuration($duration)),
+            ]);
+            $this->logger?->logStageComplete($currentStage, $duration, [
+                'total_records' => count($summary['bilder']),
             ]);
 
             $imageConfig = $this->config['paths']['media']['images'] ?? [];
@@ -159,12 +172,21 @@ class AFS_Evo
             $this->status?->advance($currentStage, [
                 'message' => sprintf('Attribute importiert (%d Einträge, %s)', count($summary['attribute']), $this->formatDuration($attrDuration)),
             ]);
+            $this->logger?->logStageComplete($currentStage, $attrDuration, [
+                'total_records' => count($summary['attribute']),
+            ]);
 
             $currentStage = 'warengruppen';
             [$summary['warengruppen'], $catDuration] = $this->executeStage($currentStage, 'Importiere Warengruppen', fn () => $this->importWarengruppen());
             $wg = $summary['warengruppen'];
             $this->status?->advance($currentStage, [
                 'message' => sprintf('Warengruppen importiert (neu: %d · aktualisiert: %d · Eltern: %d · %s)', $wg['inserted'] ?? 0, $wg['updated'] ?? 0, $wg['parent_set'] ?? 0, $this->formatDuration($catDuration)),
+            ]);
+            $this->logger?->logRecordChanges('Warengruppen', $wg['inserted'] ?? 0, $wg['updated'] ?? 0, 0, ($wg['inserted'] ?? 0) + ($wg['updated'] ?? 0));
+            $this->logger?->logStageComplete($currentStage, $catDuration, [
+                'inserted' => $wg['inserted'] ?? 0,
+                'updated' => $wg['updated'] ?? 0,
+                'parent_set' => $wg['parent_set'] ?? 0,
             ]);
 
             $currentStage = 'artikel';
@@ -190,6 +212,13 @@ class AFS_Evo
                 ],
                 $currentStage
             );
+            $this->logger?->logRecordChanges('Artikel', $art['inserted'] ?? 0, $art['updated'] ?? 0, $art['deactivated'] ?? 0, $processed);
+            $this->logger?->logStageComplete($currentStage, $articleDuration, [
+                'processed' => $processed,
+                'inserted' => $art['inserted'] ?? 0,
+                'updated' => $art['updated'] ?? 0,
+                'deactivated' => $art['deactivated'] ?? 0,
+            ]);
             $this->status?->advance($currentStage, [
                 'message' => sprintf('Artikel importiert (neu: %d · aktualisiert: %d · offline: %d · %s)', $art['inserted'] ?? 0, $art['updated'] ?? 0, $art['deactivated'] ?? 0, $this->formatDuration($articleDuration)),
                 'processed' => $processed,
@@ -205,7 +234,7 @@ class AFS_Evo
                     'total' => 0,
                 ]);
 
-                $deltaExporter = new AFS_Evo_DeltaExporter($this->db, $deltaPath, $this->status);
+                $deltaExporter = new AFS_Evo_DeltaExporter($this->db, $deltaPath, $this->status, $this->logger);
                 $deltaSummary = $deltaExporter->export();
                 $summary['delta'] = $deltaSummary;
 
@@ -229,6 +258,9 @@ class AFS_Evo
                 'abschluss'
             );
 
+            // Log sync completion to file
+            $this->logger?->logSyncComplete($overallDuration, $summary);
+
             $this->status?->complete([
                 'processed' => $processed,
                 'total' => $articleTotal,
@@ -240,6 +272,12 @@ class AFS_Evo
                 'trace' => $e->getTraceAsString(),
             ], $currentStage);
             $this->status?->fail($e->getMessage(), $currentStage);
+            
+            // Log error to file
+            $this->logger?->logError('sync_error', $e->getMessage(), $e, [
+                'stage' => $currentStage,
+            ]);
+            
             throw $e;
         }
 

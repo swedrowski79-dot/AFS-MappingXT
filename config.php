@@ -13,6 +13,7 @@ return [
         'data_db'    => __DIR__ . '/db/evo.db',        // evo.db
         'status_db'  => __DIR__ . '/db/status.db',     // status.db
         'delta_db'   => __DIR__ . '/db/evo_delta.db',  // enthält nur geänderte Datensätze
+        'log_dir'    => __DIR__ . '/logs',             // Log-Verzeichnis für tägliche JSON-Logs
         'api_base'   => 'api/',                        // Pfad relativ zu index.php
         'media'      => [
             'images' => [
@@ -32,6 +33,12 @@ return [
 
     'status' => [
         'max_errors' => 200,
+    ],
+
+    'logging' => [
+        'mapping_version' => '1.0.0',          // Mapping-Konfigurationsversion für Logging
+        'log_rotation_days' => 30,             // Log-Dateien älter als X Tage werden gelöscht
+        'enable_file_logging' => true,         // JSON-Logging in tägliche Dateien aktivieren
     ],
 
     'mssql' => [
