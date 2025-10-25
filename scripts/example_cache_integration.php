@@ -66,18 +66,35 @@ function calculateHashWithoutCache(array $data): string
     return hash('sha256', $json);
 }
 
+/**
+ * Recursively sort an array by key.
+ *
+ * @param array &$array
+ * @return void
+ */
+function recursiveKsort(array &$array): void
+{
+    ksort($array);
+    foreach ($array as &$value) {
+        if (is_array($value)) {
+            recursiveKsort($value);
+        }
+    }
+    unset($value);
+}
+
 function calculateHashWithCache(array $data): string
 {
     // Use json_encode for deterministic cache key generation
-    // Note: For nested arrays, consider implementing recursive ksort
-    // for truly deterministic keys in production code
-    ksort($data);
+    // Now using recursive ksort for nested arrays
+    recursiveKsort($data);
     $cacheKey = 'hash:' . md5(json_encode($data, JSON_UNESCAPED_UNICODE));
     
     return AFS_Cache::remember($cacheKey, function() use ($data) {
         echo "   → Computing SHA-256 hash...\n";
-        ksort($data);
-        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $dataCopy = $data;
+        recursiveKsort($dataCopy);
+        $json = json_encode($dataCopy, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         return hash('sha256', $json);
     }, 3600); // 1 hour TTL
 }
