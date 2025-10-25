@@ -29,18 +29,9 @@ temp/
 .DS_Store
 Thumbs.db
 
-# Environment and Docker
+# Environment
 .env
-docker-compose.override.yml
 
 # Composer
 vendor/
 composer.lock
-
-# Node.js
-node_modules/
-package-lock.json
-
-# Built assets (minified versions are generated)
-assets/css/*.min.css
-assets/js/*.min.js
