@@ -25,6 +25,8 @@ class AFS_TargetMappingConfig
     /**
      * Load and parse the YAML configuration file
      * 
+     * Uses AFS_ConfigCache to avoid repeatedly parsing the same configuration file.
+     * 
      * @throws AFS_ConfigurationException if file cannot be loaded or parsed
      */
     private function load(): void
@@ -37,6 +39,14 @@ class AFS_TargetMappingConfig
             throw new AFS_ConfigurationException('YAML extension is not loaded. Please install php-yaml.');
         }
 
+        // Try to get from cache first
+        $cached = AFS_ConfigCache::get($this->configPath);
+        if ($cached !== null) {
+            $this->config = $cached;
+            return;
+        }
+
+        // Cache miss - load and parse the file
         $content = file_get_contents($this->configPath);
         if ($content === false) {
             throw new AFS_ConfigurationException("Failed to read target configuration file: {$this->configPath}");
@@ -55,6 +65,9 @@ class AFS_TargetMappingConfig
         }
 
         $this->config = $parsed;
+
+        // Store in cache for future use
+        AFS_ConfigCache::set($this->configPath, $parsed);
     }
 
     /**
