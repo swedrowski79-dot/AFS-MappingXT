@@ -36,10 +36,12 @@ $requiredFiles = [
     'docker/afs-mappingxt.conf',
     'docker/php-fpm.conf',
     'docker/php.ini',
+    'docker/docker-entrypoint.sh',
     'api/health.php',
     'scripts/benchmark_server.php',
     'docs/APACHE_PHP_FPM_SETUP.md',
     'docs/QUICK_START_DOCKER.md',
+    'docs/CONFIGURATION_MANAGEMENT.md',
 ];
 
 echo "Checking configuration files...\n";
