@@ -17,7 +17,7 @@ echo "  - PHP_MAX_EXECUTION_TIME: ${PHP_MAX_EXECUTION_TIME}"
 echo "  - TZ: ${TZ}"
 
 # Update php.ini with environment variables
-cat > /usr/local/etc/php/conf.d/custom.ini << EOF
+cat > /usr/local/etc/php/conf.d/custom.ini <<EOF
 ; Custom PHP Configuration for AFS-MappingXT
 ; Optimized for performance and security
 ; Environment variables are substituted at container startup
@@ -90,12 +90,14 @@ yaml.output_width = 80
 EOF
 
 # Update php-fpm.conf with environment variables
-cat > /usr/local/etc/php-fpm.d/zz-custom.conf << EOF
+cat > /usr/local/etc/php-fpm.d/zz-custom.conf <<EOF
 ; PHP-FPM Pool Configuration for AFS-MappingXT
 ; Optimized for Apache mpm_event
 ; Environment variables are substituted at container startup
 
 [afs-mappingxt]
+user = www-data
+group = www-data
 
 ; Unix socket for better performance than TCP
 listen = /run/php/php-fpm.sock
@@ -117,7 +119,7 @@ pm.start_servers = 10
 ; Minimum number of spare server processes
 pm.min_spare_servers = 5
 
-; Maximum number of spare server processes  
+; Maximum number of spare server processes
 pm.max_spare_servers = 15
 
 ; Maximum number of requests each child process should execute before respawning
