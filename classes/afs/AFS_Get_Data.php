@@ -23,7 +23,7 @@
  *  $dokumente  = $afs->getDokumente();
  */
 
-require_once __DIR__ . '/MSSQL.php';
+require_once __DIR__ . '/../mssql/MSSQL.php';
 
 class AFS_Get_Data
 {
