@@ -7,6 +7,7 @@
  * - Creating consistent hashes from article/entity data
  * - Detecting changes by comparing hashes
  * - Supporting efficient change detection without full field comparison
+ * - Supporting partial hash scopes (price, media, content) for selective updates
  */
 class AFS_HashManager
 {
@@ -121,6 +122,9 @@ class AFS_HashManager
             'last_update_ts',
             'last_imported_hash',
             'last_seen_hash',
+            'price_hash',
+            'media_hash',
+            'content_hash',
             // XT-specific IDs
             'XT_Category_ID',
             'xt_category_id',
@@ -137,5 +141,61 @@ class AFS_HashManager
         }
         
         return $hashableFields;
+    }
+    
+    /**
+     * Generate partial hashes for different scopes (price, media, content)
+     * 
+     * This enables selective table updates - only update related tables
+     * when their specific scope has changed.
+     * 
+     * @param array<string,mixed> $payload Complete article data payload
+     * @param array<string,array<string>> $scopeDefinitions Field groupings by scope
+     * @return array<string,string> Map of scope name => hash
+     */
+    public function generatePartialHashes(array $payload, array $scopeDefinitions): array
+    {
+        $hashes = [];
+        
+        foreach ($scopeDefinitions as $scopeName => $fieldList) {
+            // Extract only the fields that belong to this scope
+            $scopeData = [];
+            foreach ($fieldList as $fieldName) {
+                // Convert to lowercase to match payload keys
+                $fieldKey = strtolower($fieldName);
+                if (array_key_exists($fieldKey, $payload)) {
+                    $scopeData[$fieldKey] = $payload[$fieldKey];
+                }
+            }
+            
+            // Generate hash for this scope's data
+            if (!empty($scopeData)) {
+                $hashes[$scopeName] = $this->generateHash($scopeData);
+            } else {
+                // Empty scope gets a null hash
+                $hashes[$scopeName] = null;
+            }
+        }
+        
+        return $hashes;
+    }
+    
+    /**
+     * Determine which scopes have changed by comparing old and new partial hashes
+     * 
+     * @param array<string,string|null> $oldHashes Previous scope hashes
+     * @param array<string,string|null> $newHashes Current scope hashes
+     * @return array<string,bool> Map of scope name => has_changed
+     */
+    public function detectScopeChanges(array $oldHashes, array $newHashes): array
+    {
+        $changes = [];
+        
+        foreach ($newHashes as $scope => $newHash) {
+            $oldHash = $oldHashes[$scope] ?? null;
+            $changes[$scope] = $this->hasChanged($oldHash, $newHash);
+        }
+        
+        return $changes;
     }
 }
