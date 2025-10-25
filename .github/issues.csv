@@ -67,17 +67,22 @@ Implementiere `HashManager`, um Änderungen effizient zu erkennen.
 **Akzeptanzkriterien:**
 - Delta-Datei enthält ausschließlich geänderte Artikel  
 - Keine Dubletten"
-[DELTA] Teil-Hashes & selektive Updates integrieren,"delta,optimization",swedrowski79-dot,"**Ziel:**  
+[DELTA] Teil-Hashes & selektive Updates integrieren,"delta,optimization,completed,reverted",swedrowski79-dot,"**Status: COMPLETED & REVERTED**  
+Diese Funktion wurde implementiert, aber später wieder entfernt, da die Teilbereichs-Hashes (`price_hash`, `media_hash`, `content_hash`) nicht mehr benötigt wurden und Schemafehler verursachten. Das System verwendet jetzt ausschließlich das vereinfachte, einheitliche Hash-System mit `last_imported_hash` und `last_seen_hash` für robuste Änderungserkennung.
+
+**Original-Ziel:**  
 Erweiterung der Hash-Logik um Teilbereiche (`price`, `media`, `content`).
 
-**To-Dos:**
-- [ ] Mehrere Hash-Scopes berechnen  
-- [ ] Nur betroffene Tabellen updaten  
-- [ ] Felddefinitionen in YAML (`change_detection`) ergänzen
+**Original To-Dos:**
+- [x] Mehrere Hash-Scopes berechnen  
+- [x] Nur betroffene Tabellen updaten  
+- [x] Felddefinitionen in YAML (`change_detection`) ergänzen
+- [x] Feature wieder entfernt (nicht mehr benötigt)
 
-**Akzeptanzkriterien:**
-- Preis-, Medien- und Inhaltsänderungen getrennt erkennbar  
-- Dokumentation im Code vorhanden"
+**Entfernt in:**
+- Code-Referenzen entfernt
+- Dokumentation bereinigt
+- Vereinfachtes Hash-System wird verwendet"
 [LOG] Einheitliches Mapping- und Delta-Logging implementieren,"logging,quality",swedrowski79-dot,"**Ziel:**  
 Konsistentes Logging für alle Mapping- und Delta-Läufe.
 

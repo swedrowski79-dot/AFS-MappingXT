@@ -100,18 +100,27 @@ issues:
 
   - title: "[DELTA] Teil-Hashes & selektive Updates integrieren"
     body: |
-      **Ziel:**  
+      **Status: COMPLETED & REVERTED**  
+      Diese Funktion wurde implementiert, aber später wieder entfernt, da die Teilbereichs-Hashes 
+      (`price_hash`, `media_hash`, `content_hash`) nicht mehr benötigt wurden und Schemafehler verursachten.
+      
+      Das System verwendet jetzt ausschließlich das vereinfachte, einheitliche Hash-System mit 
+      `last_imported_hash` und `last_seen_hash` für robuste Änderungserkennung.
+
+      **Original-Ziel:**  
       Erweiterung der Hash-Logik um Teilbereiche (`price`, `media`, `content`).
 
-      **To-Dos:**
-      - [ ] Mehrere Hash-Scopes berechnen  
-      - [ ] Nur betroffene Tabellen updaten  
-      - [ ] Felddefinitionen in YAML (`change_detection`) ergänzen
+      **Original To-Dos:**
+      - [x] Mehrere Hash-Scopes berechnen  
+      - [x] Nur betroffene Tabellen updaten  
+      - [x] Felddefinitionen in YAML (`change_detection`) ergänzen
+      - [x] Feature wieder entfernt (nicht mehr benötigt)
 
-      **Akzeptanzkriterien:**
-      - Preis-, Medien- und Inhaltsänderungen getrennt erkennbar  
-      - Dokumentation im Code vorhanden
-    labels: [delta, optimization]
+      **Entfernt in:**
+      - Code-Referenzen entfernt
+      - Dokumentation bereinigt
+      - Vereinfachtes Hash-System wird verwendet
+    labels: [delta, optimization, completed, reverted]
 
   - title: "[LOG] Einheitliches Mapping- und Delta-Logging implementieren"
     body: |
