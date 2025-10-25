@@ -182,6 +182,39 @@ Das System verwendet ein zweistufiges Logging-Konzept:
 1. **StatusTracker** (`db/status.db`): Speichert den aktuellen Sync-Status für die Web-Oberfläche (temporär, begrenzte Einträge)
 2. **MappingLogger** (`logs/YYYY-MM-DD.log`): Permanente, strukturierte JSON-Logs für alle Mapping- und Delta-Operationen
 
+### Lean & Targeted Logging
+
+Das Logging-System ist optimiert für **schlanke und gezielte** Protokollierung:
+
+**Standard-Modus (log_level='warning'):**
+- ✅ Nur WARNING und ERROR Meldungen werden geloggt
+- ✅ INFO-Meldungen (Routine-Operationen) werden gefiltert
+- ✅ Reduzierte Sample-Größen (5 statt 12) für kompakte Fehlerberichte
+- ✅ Geringeres Log-Volumen bei gleichbleibender Aussagekraft
+
+**Verbose-Modus (log_level='info'):**
+- Alle Informationen werden geloggt (für detailliertes Troubleshooting)
+- Empfohlen nur während der Fehlersuche
+
+**Konfiguration:**
+```php
+// config.php
+'logging' => [
+    'mapping_version' => '1.0.0',
+    'log_rotation_days' => 30,
+    'enable_file_logging' => true,
+    'log_level' => 'warning',  // 'info', 'warning', or 'error'
+    'sample_size' => 5,        // Anzahl der Beispiele in Fehler-Arrays
+],
+```
+
+**Umgebungsvariablen:**
+```bash
+# .env
+AFS_LOG_LEVEL=warning        # Minimaler Log-Level
+AFS_LOG_SAMPLE_SIZE=5        # Sample-Größe für Fehler-Arrays
+```
+
 ### JSON-Log-Format
 
 Jeder Log-Eintrag ist eine JSON-Zeile mit folgender Struktur:
@@ -211,9 +244,9 @@ Jeder Log-Eintrag ist eine JSON-Zeile mit folgender Struktur:
 - `delta_export`: Delta-Export in separate Datenbank
 
 **Log-Level:**
-- `info`: Normale Informationen
-- `warning`: Warnungen (z.B. fehlende Dateien)
-- `error`: Fehler mit Exception-Details
+- `info`: Normale Informationen (gefiltert im Standard-Modus)
+- `warning`: Warnungen (z.B. fehlende Dateien) - **immer geloggt**
+- `error`: Fehler mit Exception-Details - **immer geloggt**
 
 ### Log-Rotation
 
@@ -224,6 +257,8 @@ Logs älter als 30 Tage werden automatisch gelöscht (konfigurierbar in `config.
     'mapping_version' => '1.0.0',
     'log_rotation_days' => 30,
     'enable_file_logging' => true,
+    'log_level' => 'warning',
+    'sample_size' => 5,
 ],
 ```
 
@@ -237,13 +272,21 @@ cat logs/2025-10-25.log | jq .
 # Nur Fehler filtern
 cat logs/2025-10-25.log | jq 'select(.level == "error")'
 
+# Nur Warnungen und Fehler
+cat logs/2025-10-25.log | jq 'select(.level == "warning" or .level == "error")'
+
 # Sync-Zusammenfassungen anzeigen
 cat logs/2025-10-25.log | jq 'select(.operation == "sync_complete")'
 ```
 
 **Programmatisch:**
 ```php
-$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0');
+// Standard-Modus (nur Warnings und Errors)
+$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0', 'warning');
+
+// Verbose-Modus (alle Logs)
+$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0', 'info');
+
 $entries = $logger->readLogs('2025-10-25', 100); // Letzte 100 Einträge
 
 foreach ($entries as $entry) {
