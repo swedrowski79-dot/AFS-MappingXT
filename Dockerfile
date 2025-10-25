@@ -1,11 +1,19 @@
 # Multi-Stage Dockerfile for AFS-MappingXT
 # Apache with mpm_event + PHP-FPM for optimal performance
 # Based on Debian bookworm
+#
+# Optimizations applied:
+# - Added --no-install-recommends to all apt-get install commands (reduces image size)
+# - Added apt-get clean to all package installation steps (reduces layer size)
+# - Proper cleanup with rm -rf /var/lib/apt/lists/* after each apt operation
+# - Combined COPY and chmod using --chmod flag (reduces layers)
+# - Optimized layer ordering: dependencies first, application code last (better caching)
+# - Created directories before copying application files (cleaner layer structure)
 
 FROM php:8.3-fpm-bookworm AS php-base
 
 # Install system dependencies and PHP extensions
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
@@ -17,13 +25,15 @@ RUN apt-get update && apt-get install -y \
     unixodbc-dev \
     gnupg \
     curl \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Microsoft ODBC Driver for SQL Server (for MSSQL support)
 RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/microsoft.gpg \
     && echo "deb [arch=amd64] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install PHP extensions
@@ -57,18 +67,18 @@ COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-custom.conf.template
 COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini.template
 
 # Entrypoint that renders configuration from templates
-COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY --chmod=755 docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy application files
-COPY --chown=www-data:www-data . /var/www/html/
-
-# Create necessary directories
+# Create necessary directories with proper ownership before copying application files
+# These directories are excluded by .dockerignore as they will be mounted as volumes
 RUN mkdir -p /var/www/html/db /var/www/html/logs /var/www/html/Files/Bilder /var/www/html/Files/Dokumente \
     && chown -R www-data:www-data /var/www/html
+
+# Copy application files
+COPY --chown=www-data:www-data . /var/www/html/
 
 # Healthcheck - check if PHP-FPM is listening
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
@@ -83,10 +93,11 @@ CMD ["php-fpm"]
 FROM debian:bookworm-slim AS apache
 
 # Install Apache with mpm_event (not mpm_prefork)
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     apache2 \
     libapache2-mod-fcgid \
     curl \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Enable required Apache modules
