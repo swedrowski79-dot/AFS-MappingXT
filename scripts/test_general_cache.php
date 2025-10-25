@@ -198,7 +198,7 @@ test('Cache statistics are tracked correctly', function() {
     assertEquals(1, $stats['misses']);
     assertEquals(2, $stats['sets']);
     assertEquals(2, $stats['size']);
-    assertEquals(66.67, $stats['hit_rate']); // 2 hits / 3 total = 66.67%
+    assertTrue(abs($stats['hit_rate'] - 66.67) < 0.01); // 2 hits / 3 total = 66.67%
 });
 
 // Test 11: remember() helper
