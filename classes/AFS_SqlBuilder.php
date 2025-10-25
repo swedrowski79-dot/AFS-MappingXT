@@ -110,7 +110,7 @@ class AFS_SqlBuilder
     {
         $tableName = $this->mapping->getRelationshipTableName($relationshipName);
         if ($tableName === null) {
-            throw new RuntimeException("Relationship not found: {$relationshipName}");
+            throw new AFS_ConfigurationException("Relationship not found: {$relationshipName}");
         }
 
         $table = $this->quote($tableName);
@@ -121,86 +121,6 @@ class AFS_SqlBuilder
         return sprintf(
             "DELETE FROM %s WHERE %s",
             $table,
-            implode(" AND ", $whereParts)
-        );
-    }
-
-    /**
-     * Build a SELECT statement for an entity
-     * 
-     * @param string $entityName Name of the entity
-     * @param array $selectFields Fields to select (empty = all non-auto-increment)
-     * @param array $whereFields Fields to use in WHERE clause
-     * @return string SQL statement
-     */
-    public function buildEntitySelect(string $entityName, array $selectFields = [], array $whereFields = []): string
-    {
-        $tableName = $this->mapping->getTableName($entityName);
-        if ($tableName === null) {
-            throw new RuntimeException("Entity not found: {$entityName}");
-        }
-
-        $table = $this->quote($tableName);
-        
-        // If no select fields specified, select all non-auto-increment fields
-        if (empty($selectFields)) {
-            $fields = $this->mapping->getFields($entityName);
-            foreach ($fields as $fieldName => $fieldConfig) {
-                if (!isset($fieldConfig['auto_increment']) || !$fieldConfig['auto_increment']) {
-                    $selectFields[] = $fieldName;
-                }
-            }
-        }
-
-        $quotedFields = array_map([$this, 'quote'], $selectFields);
-        $selectClause = "SELECT " . implode(", ", $quotedFields);
-        $fromClause = "FROM " . $table;
-
-        if (empty($whereFields)) {
-            return $selectClause . " " . $fromClause;
-        }
-
-        $whereParts = array_map(function($field) {
-            return sprintf("%s = :%s", $this->quote($field), strtolower($field));
-        }, $whereFields);
-
-        return sprintf(
-            "%s %s WHERE %s",
-            $selectClause,
-            $fromClause,
-            implode(" AND ", $whereParts)
-        );
-    }
-
-    /**
-     * Build an UPDATE statement for an entity
-     * 
-     * @param string $entityName Name of the entity
-     * @param array $updateFields Fields to update
-     * @param array $whereFields Fields to use in WHERE clause
-     * @return string SQL statement
-     */
-    public function buildEntityUpdate(string $entityName, array $updateFields, array $whereFields): string
-    {
-        $tableName = $this->mapping->getTableName($entityName);
-        if ($tableName === null) {
-            throw new RuntimeException("Entity not found: {$entityName}");
-        }
-
-        $table = $this->quote($tableName);
-        
-        $updatePairs = array_map(function($field) {
-            return sprintf("%s = :%s", $this->quote($field), strtolower($field));
-        }, $updateFields);
-
-        $whereParts = array_map(function($field) {
-            return sprintf("%s = :%s", $this->quote($field), strtolower($field));
-        }, $whereFields);
-
-        return sprintf(
-            "UPDATE %s SET %s WHERE %s",
-            $table,
-            implode(", ", $updatePairs),
             implode(" AND ", $whereParts)
         );
     }

@@ -61,7 +61,8 @@ function createStatusTracker(array $config, string $job = 'categories'): AFS_Evo
         throw new AFS_DatabaseException("status.db nicht gefunden: {$statusDb}");
     }
     $maxErrors = $config['status']['max_errors'] ?? 200;
-    return new AFS_Evo_StatusTracker($statusDb, $job, (int)$maxErrors);
+    $logLevel = $config['logging']['log_level'] ?? 'warning';
+    return new AFS_Evo_StatusTracker($statusDb, $job, (int)$maxErrors, $logLevel);
 }
 
 function createEvoPdo(array $config): PDO
@@ -131,8 +132,9 @@ function createMappingLogger(array $config): ?AFS_MappingLogger
     
     $logDir = $config['paths']['log_dir'] ?? (dirname(__DIR__) . '/logs');
     $mappingVersion = $loggingConfig['mapping_version'] ?? '1.0.0';
+    $logLevel = $loggingConfig['log_level'] ?? 'warning';
     
-    return new AFS_MappingLogger($logDir, $mappingVersion);
+    return new AFS_MappingLogger($logDir, $mappingVersion, $logLevel);
 }
 
 function createSyncEnvironment(array $config, string $job = 'categories'): array

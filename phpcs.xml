@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<ruleset name="AFS-MappingXT">
+    <description>PSR-12 coding standard for AFS-MappingXT project</description>
+
+    <!-- Show progress and colors -->
+    <arg value="p"/>
+    <arg name="colors"/>
+
+    <!-- Use PSR-12 as the base standard -->
+    <rule ref="PSR12"/>
+
+    <!-- Paths to check -->
+    <file>./api</file>
+    <file>./classes</file>
+    <file>./src</file>
+    <file>./scripts</file>
+    <file>autoload.php</file>
+    <file>config.php</file>
+    <file>index.php</file>
+    <file>indexcli.php</file>
+
+    <!-- Exclude patterns -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/db/*</exclude-pattern>
+    <exclude-pattern>*/logs/*</exclude-pattern>
+    <exclude-pattern>*/Files/*</exclude-pattern>
+    <exclude-pattern>*/docker/*</exclude-pattern>
+    <exclude-pattern>*/.git/*</exclude-pattern>
+
+    <!-- Additional rules for code quality -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="150"/>
+        </properties>
+    </rule>
+
+    <!-- Allow long lines in specific cases -->
+    <rule ref="Generic.Files.LineLength.TooLong">
+        <severity>5</severity>
+    </rule>
+</ruleset>

@@ -17,7 +17,6 @@ This document summarizes the security headers and best practices implemented in 
 - `index.php` - Main UI entry point
 - `api/_bootstrap.php` - All API endpoints
 - `api/health.php` - Health check endpoint
-- `api/sync_status_stream.php` - Server-Sent Events endpoint
 
 #### Headers Implemented:
 

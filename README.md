@@ -20,6 +20,7 @@
   - [Fehler-Analyse für Medien](#fehler-analyse-für-medien)
 - [Datenbanken & Tabellen](#datenbanken--tabellen)
 - [Klassenüberblick](#klassenüberblick)
+- [Code Style & Qualität](#code-style--qualität)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -39,6 +40,8 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 
 **Neu:** Einheitliches JSON-Logging für alle Mapping- und Delta-Operationen – jeder Lauf wird mit Mapping-Version, Datensatzanzahl, Änderungen und Dauer protokolliert. Details siehe [Logging](#logging).
 
+**Neu:** Umfassender Caching-Layer für teure Berechnungen und Datenbankabfragen – reduziert Datenbankzugriffe und verbessert die Performance durch intelligentes In-Memory-Caching mit TTL-Steuerung. Details siehe [docs/GENERAL_CACHE.md](docs/GENERAL_CACHE.md) und [docs/CACHING.md](docs/CACHING.md).
+
 **Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mappings/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [CLEANUP_VALIDATION.md](docs/CLEANUP_VALIDATION.md) und [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
 
 ---
@@ -51,10 +54,12 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 | Web Server           | Apache 2.4 mit mpm_event + PHP-FPM (empfohlen) oder mod_php |
 | Datenbanken          | MSSQL (Quelle), SQLite (`db/evo.db`, `db/status.db`) |
 | Logging              | JSON-Logs in `logs/YYYY-MM-DD.log` (strukturiert, rotierbar) |
+| Caching              | Zwei-Ebenen-System: `AFS_ConfigCache` (YAML), `AFS_Cache` (allgemein) |
 | Deployment           | Docker Compose (empfohlen) oder manuelle Installation |
-| Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs) |
+| Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs), `assets/` (CSS/JS) |
 | Autoload             | Simple PSR-0-ähnlicher Loader (`autoload.php`) |
 | Web-Oberfläche       | Einzelne `index.php` mit fetch-basierten API-Calls |
+| Asset Build          | npm-basiertes Build-System für CSS/JS-Minifizierung – siehe [ASSET_BUILD.md](docs/ASSET_BUILD.md) |
 | Sicherheit           | Umfassende Security-Headers, CSP, Permissions-Policy – siehe [SECURITY.md](docs/SECURITY.md) |
 
 ---
@@ -82,8 +87,9 @@ Ausführliche Dokumentation siehe [docs/SECURITY.md](docs/SECURITY.md)
 - Siehe [Quick Start Guide](docs/QUICK_START_DOCKER.md)
 
 **Option 2: Manuelle Installation**
-- PHP ≥ 8.1 CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`, `yaml`)
+- PHP ≥ 8.1 CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`)
 - Apache 2.4 mit mpm_event + PHP-FPM (siehe [Apache PHP-FPM Setup](docs/APACHE_PHP_FPM_SETUP.md))
+- **Node.js ≥ 14.x und npm** (für Asset-Build)
 - Schreibrechte im Projektordner (für `Files/` und `db/`)
 - Netzwerkzugriff auf den MSSQL-Server
 - Optional: `sqlite3` CLI (zum manuellen Inspektieren der Datenbanken)
@@ -103,7 +109,14 @@ docker-compose up -d
 1. Projekt auf Zielsystem kopieren
 2. Abhängige PHP-Extensions installieren
 3. Apache mpm_event + PHP-FPM einrichten (siehe [docs/APACHE_PHP_FPM_SETUP.md](docs/APACHE_PHP_FPM_SETUP.md))
-4. Die SQLite-Datenbanken initialisieren:
+4. **Assets bauen:**
+   ```bash
+   npm install
+   npm run build
+   # oder: make build
+   ```
+   Siehe [ASSET_BUILD.md](docs/ASSET_BUILD.md) für Details.
+5. Die SQLite-Datenbanken initialisieren:
    ```bash
    php scripts/setup.php
   ```
@@ -111,6 +124,7 @@ docker-compose up -d
 - Bei Updates von älteren Installationen:
   - `php scripts/migrate_update_columns.php` (fügt die neuen `update`-Spalten in den Verknüpfungstabellen hinzu)
   - `php scripts/migrate_add_hash_columns.php` (fügt Hash-Spalten für effiziente Ängerungserkennung hinzu)
+  - `php scripts/migrate_add_indexes.php` (fügt Performance-Indizes hinzu - **empfohlen für bestehende Installationen**)
   - ~~`php scripts/migrate_add_partial_hash_columns.php`~~ (DEPRECATED: Teil-Hash-Spalten wurden entfernt)
 
 ### Konfiguration
@@ -179,6 +193,39 @@ Das System verwendet ein zweistufiges Logging-Konzept:
 1. **StatusTracker** (`db/status.db`): Speichert den aktuellen Sync-Status für die Web-Oberfläche (temporär, begrenzte Einträge)
 2. **MappingLogger** (`logs/YYYY-MM-DD.log`): Permanente, strukturierte JSON-Logs für alle Mapping- und Delta-Operationen
 
+### Lean & Targeted Logging
+
+Das Logging-System ist optimiert für **schlanke und gezielte** Protokollierung:
+
+**Standard-Modus (log_level='warning'):**
+- ✅ Nur WARNING und ERROR Meldungen werden geloggt
+- ✅ INFO-Meldungen (Routine-Operationen) werden gefiltert
+- ✅ Reduzierte Sample-Größen (5 statt 12) für kompakte Fehlerberichte
+- ✅ Geringeres Log-Volumen bei gleichbleibender Aussagekraft
+
+**Verbose-Modus (log_level='info'):**
+- Alle Informationen werden geloggt (für detailliertes Troubleshooting)
+- Empfohlen nur während der Fehlersuche
+
+**Konfiguration:**
+```php
+// config.php
+'logging' => [
+    'mapping_version' => '1.0.0',
+    'log_rotation_days' => 30,
+    'enable_file_logging' => true,
+    'log_level' => 'warning',  // 'info', 'warning', or 'error'
+    'sample_size' => 5,        // Anzahl der Beispiele in Fehler-Arrays
+],
+```
+
+**Umgebungsvariablen:**
+```bash
+# .env
+AFS_LOG_LEVEL=warning        # Minimaler Log-Level
+AFS_LOG_SAMPLE_SIZE=5        # Sample-Größe für Fehler-Arrays
+```
+
 ### JSON-Log-Format
 
 Jeder Log-Eintrag ist eine JSON-Zeile mit folgender Struktur:
@@ -208,9 +255,9 @@ Jeder Log-Eintrag ist eine JSON-Zeile mit folgender Struktur:
 - `delta_export`: Delta-Export in separate Datenbank
 
 **Log-Level:**
-- `info`: Normale Informationen
-- `warning`: Warnungen (z.B. fehlende Dateien)
-- `error`: Fehler mit Exception-Details
+- `info`: Normale Informationen (gefiltert im Standard-Modus)
+- `warning`: Warnungen (z.B. fehlende Dateien) - **immer geloggt**
+- `error`: Fehler mit Exception-Details - **immer geloggt**
 
 ### Log-Rotation
 
@@ -221,6 +268,8 @@ Logs älter als 30 Tage werden automatisch gelöscht (konfigurierbar in `config.
     'mapping_version' => '1.0.0',
     'log_rotation_days' => 30,
     'enable_file_logging' => true,
+    'log_level' => 'warning',
+    'sample_size' => 5,
 ],
 ```
 
@@ -234,13 +283,21 @@ cat logs/2025-10-25.log | jq .
 # Nur Fehler filtern
 cat logs/2025-10-25.log | jq 'select(.level == "error")'
 
+# Nur Warnungen und Fehler
+cat logs/2025-10-25.log | jq 'select(.level == "warning" or .level == "error")'
+
 # Sync-Zusammenfassungen anzeigen
 cat logs/2025-10-25.log | jq 'select(.operation == "sync_complete")'
 ```
 
 **Programmatisch:**
 ```php
-$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0');
+// Standard-Modus (nur Warnings und Errors)
+$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0', 'warning');
+
+// Verbose-Modus (alle Logs)
+$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0', 'info');
+
 $entries = $logger->readLogs('2025-10-25', 100); // Letzte 100 Einträge
 
 foreach ($entries as $entry) {
@@ -282,6 +339,11 @@ Nach dem Kopieren werden fehlende oder fehlgeschlagene Dateien analysiert:
   - `Artikel_Bilder` (Artikel-ID ↔ Bild-ID, `update` markiert neue/gelöschte Verknüpfungen)
   - `Artikel_Dokumente` (Artikel-ID ↔ Dokument-ID, `update` markiert neue/gelöschte Verknüpfungen)
   - `Attrib_Artikel` (Artikel ↔ Attribute inkl. Wertänderungen über `update`)
+- **Performance-Indizes**: Umfassende Indexierung für optimale Query-Performance
+  - Update-Flag-Indizes für schnellen Delta-Export (10-100x schneller)
+  - Foreign-Key-Indizes für effiziente Junction-Table-Lookups (40x schneller)
+  - XT_ID-Indizes für bi-direktionale Synchronisation
+  - Details siehe [docs/INDEX_STRATEGY.md](docs/INDEX_STRATEGY.md)
 
 ### `db/evo_delta.db`
 - Wird nach jedem Lauf erzeugt (gleiche Tabellenschemata wie `evo.db`)
@@ -313,8 +375,9 @@ Scripts `scripts/create_evo.sql` & `scripts/create_status.sql` enthalten die vol
 | `AFS_Evo_ArticleSync` | Hauptlogik: Artikel schreiben, Medien & Attribute verknüpfen |
 | `AFS_HashManager` | **NEU:** Effiziente Änderungserkennung via SHA-256 Hashes (siehe [HashManager.md](docs/HashManager.md)) |
 | `AFS_ConfigCache` | **NEU:** In-Memory-Cache für YAML-Konfigurationsdateien – beschleunigt wiederholte Config-Loads um 3-5x |
-| `AFS_MappingConfig` | YAML-Konfiguration für Source-Datenbank-Mapping (nutzt `AFS_ConfigCache`) |
-| `AFS_TargetMappingConfig` | YAML-Konfiguration für Target-Datenbank-Mapping (nutzt `AFS_ConfigCache`) |
+| `AFS_YamlParser` | **NEU:** Native PHP YAML-Parser – keine externe Extension erforderlich |
+| `AFS_MappingConfig` | YAML-Konfiguration für Source-Datenbank-Mapping (nutzt `AFS_ConfigCache` und `AFS_YamlParser`) |
+| `AFS_TargetMappingConfig` | YAML-Konfiguration für Target-Datenbank-Mapping (nutzt `AFS_ConfigCache` und `AFS_YamlParser`) |
 | `AFS_Evo_StatusTracker` | Managt `sync_status`/`sync_log` in SQLite, Fortschrittsbalken & Logs für UI |
 | `AFS_MappingLogger` | **NEU:** Strukturiertes JSON-Logging in tägliche Dateien mit Mapping-Version, Änderungen und Dauer |
 | `AFS_Evo_Reset` | Utility zum Leeren aller EVO-Tabellen |
@@ -334,15 +397,41 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 
 | Script | Beschreibung |
 |--------|--------------|
+| `verify_yaml_extension.php` | **[VERALTET]** Verifiziert früher YAML-Extension (nicht mehr benötigt) |
 | `test_yaml_mapping.php` | Validiert YAML-Konfiguration und SQL-Generierung aus source_afs.yml |
 | `test_target_mapping.php` | Validiert target_sqlite.yml Konfiguration und UPSERT-Statements |
 | `test_config_cache.php` | **[NEU]** Testet Caching-Layer für YAML-Konfigurationen |
 | `test_articlesync_mapping.php` | Integration-Test für AFS_Evo_ArticleSync mit Target-Mapping |
 | `test_mixed_mode_validation.php` | Umfassende Validierung der Mapping-Logik |
 | `validate_no_hardcodings.php` | **[NEU]** Bestätigt keine Hardcodings oder Legacy-Code mehr vorhanden |
+| `detect_unused_code.php` | **[NEU]** Automatische Erkennung nicht genutzter Klassen und Methoden |
 | `test_hashmanager.php` | Tests für effiziente Änderungserkennung via Hashes |
 | `test_mapping_logger.php` | Tests für strukturiertes JSON-Logging |
+| `test_index_performance.php` | **[NEU]** Validiert Datenbank-Index-Performance und Nutzung |
 | `analyze_performance.php` | **[NEU]** Projektweite Performance-Analyse und Benchmarking |
+
+### Dead Code Detection
+
+Das Projekt enthält ein automatisches Werkzeug zur Erkennung nicht genutzter Klassen und Funktionen:
+
+```bash
+# Standard-Analyse
+php scripts/detect_unused_code.php
+
+# Mit ausführlicher Ausgabe
+php scripts/detect_unused_code.php --verbose
+
+# JSON-Ausgabe für automatische Verarbeitung
+php scripts/detect_unused_code.php --json
+```
+
+Das Tool analysiert:
+- Alle PHP-Klassen im `/classes` Verzeichnis
+- Verwendungsmuster im gesamten Projekt
+- Identifiziert nicht verwendete öffentliche Methoden
+- Ignoriert automatisch Magic Methods und Exception-Klassen
+
+Detaillierte Dokumentation: [docs/DEAD_CODE_DETECTION.md](docs/DEAD_CODE_DETECTION.md)
 
 ### Performance-Analyse
 
@@ -402,11 +491,16 @@ Detaillierte Dokumentation: [docs/MIXED_MODE_VALIDATION.md](docs/MIXED_MODE_VALI
 ### Alle Tests ausführen
 
 ```bash
+# YAML Extension verifizieren
+php scripts/verify_yaml_extension.php
+
+# Mapping und Konfiguration testen
 php scripts/test_yaml_mapping.php
 php scripts/test_target_mapping.php
 php scripts/test_articlesync_mapping.php
 php scripts/test_mixed_mode_validation.php
 php scripts/validate_no_hardcodings.php
+php scripts/test_index_performance.php
 php scripts/analyze_performance.php
 ```
 
@@ -415,6 +509,43 @@ php scripts/analyze_performance.php
 php scripts/validate_no_hardcodings.php
 ```
 Dieser Test bestätigt, dass das System vollständig mapping-basiert ist und keine Hardcodings oder Legacy-Code mehr enthält. Details siehe [CLEANUP_VALIDATION.md](docs/CLEANUP_VALIDATION.md).
+
+---
+
+## Code Style & Qualität
+
+Das Projekt folgt dem **PSR-12: Extended Coding Style** Standard für konsistenten, lesbaren und wartbaren PHP-Code.
+
+### Werkzeuge
+
+- **PHP_CodeSniffer**: Automatische Überprüfung und Korrektur von Code-Style-Verstößen
+- **PHPStan**: Statische Code-Analyse zur Fehlererkennung
+- **EditorConfig**: Einheitliche Editor-Einstellungen für alle Entwickler
+
+### Verwendung
+
+```bash
+# Dependencies installieren
+composer install
+
+# Code-Style prüfen
+composer cs:check
+
+# Code-Style automatisch korrigieren
+composer cs:fix
+
+# Statische Analyse durchführen
+composer stan
+
+# Alle Qualitätsprüfungen ausführen
+composer test:style
+```
+
+### CI/CD Integration
+
+GitHub Actions führt automatisch Code-Style-Checks bei Pull Requests und Pushes auf `main` und `develop` Branches durch. Die Pipeline schlägt fehl, wenn PSR-12-Verstöße oder Type-Fehler erkannt werden.
+
+Ausführliche Dokumentation siehe [docs/CODE_STYLE.md](docs/CODE_STYLE.md)
 
 ---
 
