@@ -4,7 +4,17 @@ declare(strict_types=1);
 
 /**
  * Zentrale Konfiguration für AFS → SQLite Sync
- * Passe die Werte bei Bedarf an (oder nutze Umgebungsvariablen als Fallback).
+ * 
+ * Alle Werte können über Umgebungsvariablen (.env) konfiguriert werden.
+ * Die hier angegebenen Werte dienen als Fallback-Defaults.
+ * 
+ * Unterstützte Umgebungsvariablen:
+ * - AFS_MSSQL_HOST, AFS_MSSQL_PORT, AFS_MSSQL_DB, AFS_MSSQL_USER, AFS_MSSQL_PASS
+ * - AFS_MEDIA_SOURCE (Quellverzeichnis für Bilder und Dokumente)
+ * - AFS_MAX_ERRORS (Maximum Logeinträge)
+ * - AFS_LOG_ROTATION_DAYS (Log-Rotation in Tagen)
+ * - AFS_MAPPING_VERSION (Mapping-Version für Logs)
+ * - PHP_MEMORY_LIMIT, PHP_MAX_EXECUTION_TIME, TZ (Docker/PHP-Konfiguration)
  */
 return [
     'paths' => [
@@ -17,28 +27,28 @@ return [
         'api_base'   => 'api/',                        // Pfad relativ zu index.php
         'media'      => [
             'images' => [
-                'source' => '/var/www/data',   // Quellverzeichnis für Bilder
+                'source' => getenv('AFS_MEDIA_SOURCE') ?: '/var/www/data',   // Quellverzeichnis für Bilder
                 'target' => __DIR__ . '/Files/Bilder',          // Zielverzeichnis Bilder
             ],
             'documents' => [
-                'source' => '/var/www/data',// Quellverzeichnis für Dokumente
+                'source' => getenv('AFS_MEDIA_SOURCE') ?: '/var/www/data',// Quellverzeichnis für Dokumente
                 'target' => __DIR__ . '/Files/Dokumente',       // Zielverzeichnis Dokumente
             ],
         ],
         'metadata' => [
-            'articles'   => null, // Pfad zum Stammverzeichnis der Artikel-Metadaten (Ordner je Artikelnummer)
-            'categories' => null, // Pfad zum Stammverzeichnis der Warengruppen-Metadaten (Ordner je Warengruppenname)
+            'articles'   => getenv('AFS_METADATA_ARTICLES') ?: null, // Pfad zum Stammverzeichnis der Artikel-Metadaten (Ordner je Artikelnummer)
+            'categories' => getenv('AFS_METADATA_CATEGORIES') ?: null, // Pfad zum Stammverzeichnis der Warengruppen-Metadaten (Ordner je Warengruppenname)
         ],
     ],
 
     'status' => [
-        'max_errors' => 200,
+        'max_errors' => (int)(getenv('AFS_MAX_ERRORS') ?: 200),
     ],
 
     'logging' => [
-        'mapping_version' => '1.0.0',          // Mapping-Konfigurationsversion für Logging
-        'log_rotation_days' => 30,             // Log-Dateien älter als X Tage werden gelöscht
-        'enable_file_logging' => true,         // JSON-Logging in tägliche Dateien aktivieren
+        'mapping_version' => getenv('AFS_MAPPING_VERSION') ?: '1.0.0',          // Mapping-Konfigurationsversion für Logging
+        'log_rotation_days' => (int)(getenv('AFS_LOG_ROTATION_DAYS') ?: 30),   // Log-Dateien älter als X Tage werden gelöscht
+        'enable_file_logging' => (bool)(getenv('AFS_ENABLE_FILE_LOGGING') !== false ? getenv('AFS_ENABLE_FILE_LOGGING') : true), // JSON-Logging in tägliche Dateien aktivieren
     ],
 
     'mssql' => [

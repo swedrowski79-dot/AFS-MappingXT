@@ -114,12 +114,30 @@ docker-compose up -d
   - ~~`php scripts/migrate_add_partial_hash_columns.php`~~ (DEPRECATED: Teil-Hash-Spalten wurden entfernt)
 
 ### Konfiguration
-- Kopiere `config.php` bzw. passe folgende Einträge an:
-  - `paths.data_db`, `paths.status_db`: Speicherort der SQLite-Dateien
-  - `paths.media.images` / `paths.media.documents`: Quell- und Zielpfade für Medien
-  - `mssql.*`: Zugangsdaten (Host, Port, DB, User, Passwort)
-  - `status.max_errors`: Max. Logeinträge, bevor alte Einträge rotiert werden
-- Zugangsdaten können optional per Umgebungsvariablen (`AFS_MSSQL_*`) definiert werden
+
+**AFS-MappingXT verwendet ein einheitliches, umgebungsvariablenbasiertes Konfigurationsmanagement.**
+
+1. **Erstelle eine `.env`-Datei:**
+   ```bash
+   cp .env.example .env
+   nano .env
+   ```
+
+2. **Konfiguriere die Werte in `.env`:**
+   - `AFS_MSSQL_*`: MSSQL-Datenbankverbindung (Host, Port, DB, User, Passwort)
+   - `PHP_MEMORY_LIMIT`, `PHP_MAX_EXECUTION_TIME`: PHP-Konfiguration
+   - `AFS_MEDIA_SOURCE`: Quellverzeichnis für Medien
+   - `TZ`: Zeitzone
+   - Weitere Optionen siehe [docs/CONFIGURATION_MANAGEMENT.md](docs/CONFIGURATION_MANAGEMENT.md)
+
+3. **Docker-Container starten:**
+   ```bash
+   docker-compose up -d
+   ```
+
+Alle Konfigurationswerte haben sinnvolle Defaults und können zentral über Umgebungsvariablen gesteuert werden.
+
+**Ausführliche Dokumentation:** [docs/CONFIGURATION_MANAGEMENT.md](docs/CONFIGURATION_MANAGEMENT.md)
 
 ---
 
