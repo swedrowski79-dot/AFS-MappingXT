@@ -107,7 +107,6 @@ Security headers are implemented at three levels for defense in depth:
   - `index.php` (main UI)
   - `api/_bootstrap.php` (API responses)
   - `api/health.php` (health check endpoint)
-  - `api/sync_status_stream.php` (SSE endpoint)
 - **Scope**: Individual PHP responses
 - **Purpose**: Ensures security headers are present even if Apache headers fail
 
