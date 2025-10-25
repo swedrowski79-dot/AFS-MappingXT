@@ -212,7 +212,15 @@ $debugTables = [
     };
   </script>
   <script>
-<?php echo file_get_contents(__DIR__ . '/assets/js/main.js'); ?>
+<?php
+$mainJsPath = __DIR__ . '/assets/js/main.js';
+if (is_readable($mainJsPath)) {
+    echo file_get_contents($mainJsPath);
+} else {
+    // Optionally, log the error here
+    echo "console.error('main.js konnte nicht geladen werden.');";
+}
+?>
   </script>
 </body>
 </html>
