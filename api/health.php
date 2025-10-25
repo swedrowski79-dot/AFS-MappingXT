@@ -1,4 +1,5 @@
 <?php
+
 // Simple health check endpoint for Docker healthcheck
 // Returns 200 OK if PHP-FPM is working
 

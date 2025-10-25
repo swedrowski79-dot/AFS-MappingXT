@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+
 /**
  * Display generated SQL statements for documentation purposes
  */
