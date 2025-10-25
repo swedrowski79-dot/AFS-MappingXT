@@ -17,7 +17,7 @@ services:
       # Mount databases
       - ./db:/var/www/html/db
       # Mount media files
-      - c:\welafix_old\AFS\Webshop:/var/www/html/Files
+      - c:\welafix_old\AFS\Webshop:/var/www/html/srcFiles
       # PHP-FPM socket for Apache
       - php-fpm-socket:/run/php
     environment:

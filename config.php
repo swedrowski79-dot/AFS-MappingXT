@@ -27,17 +27,17 @@ return [
         'api_base'   => 'api/',                        // Pfad relativ zu index.php
         'media'      => [
             'images' => [
-                'source' => getenv('AFS_MEDIA_SOURCE') ?: '/var/www/data',   // Quellverzeichnis für Bilder
+                'source' => getenv('AFS_MEDIA_SOURCE') ?: __DIR__ . '/srcFiles/Photos',   // Quellverzeichnis für Bilder
                 'target' => __DIR__ . '/Files/Bilder',          // Zielverzeichnis Bilder
             ],
             'documents' => [
-                'source' => getenv('AFS_MEDIA_SOURCE') ?: '/var/www/data',// Quellverzeichnis für Dokumente
+                'source' => getenv('AFS_MEDIA_SOURCE') ?:  __DIR__ . '/srcFiles/Dokumente',// Quellverzeichnis für Dokumente
                 'target' => __DIR__ . '/Files/Dokumente',       // Zielverzeichnis Dokumente
             ],
         ],
         'metadata' => [
-            'articles'   => getenv('AFS_METADATA_ARTICLES') ?: null, // Pfad zum Stammverzeichnis der Artikel-Metadaten (Ordner je Artikelnummer)
-            'categories' => getenv('AFS_METADATA_CATEGORIES') ?: null, // Pfad zum Stammverzeichnis der Warengruppen-Metadaten (Ordner je Warengruppenname)
+            'articles'   => getenv('AFS_METADATA_ARTICLES') ?:  __DIR__ . '/srcFiles/Data/Artikel', // Pfad zum Stammverzeichnis der Artikel-Metadaten (Ordner je Artikelnummer)
+            'categories' => getenv('AFS_METADATA_CATEGORIES') ?:  __DIR__ . '/srcFiles/Data/Warengruppen', // Pfad zum Stammverzeichnis der Warengruppen-Metadaten (Ordner je Warengruppenname)
         ],
     ],
 
