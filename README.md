@@ -350,7 +350,6 @@ php scripts/test_mixed_mode_validation.php
 php scripts/validate_no_hardcodings.php
 php scripts/analyze_performance.php
 ```
-```
 
 **Cleanup-Validierung:**
 ```bash
