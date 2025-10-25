@@ -52,7 +52,6 @@ jobs:
 
       - name: Detect unused code
         run: php scripts/detect_unused_code.php
-        continue-on-error: false
 
   asset-build:
     name: Asset Build Check
