@@ -73,6 +73,7 @@ COPY --chmod=755 docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 WORKDIR /var/www/html
 
 # Create necessary directories with proper ownership before copying application files
+# These directories are excluded by .dockerignore as they will be mounted as volumes
 RUN mkdir -p /var/www/html/db /var/www/html/logs /var/www/html/Files/Bilder /var/www/html/Files/Dokumente \
     && chown -R www-data:www-data /var/www/html
 
