@@ -25,7 +25,7 @@ function runTest(string $name, callable $test): void
         $test();
         echo "✓ {$name}\n";
         $testsPassed++;
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         echo "✗ {$name}\n";
         echo "  Error: {$e->getMessage()}\n";
         $testsFailed++;
