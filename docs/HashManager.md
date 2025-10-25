@@ -139,7 +139,7 @@ public function import(): array {
         
         // Compute hash of current data
         $hashableFields = $this->hashManager->extractHashableFields($payload);
-        $currentHash = $hashManager->generateHash($hashableFields);
+        $currentHash = $this->hashManager->generateHash($hashableFields);
         $existingHash = $existing['last_imported_hash'] ?? null;
         
         // Always persist last_seen_hash
@@ -152,7 +152,7 @@ public function import(): array {
             $upsert->execute($payload);
             $stats['updated']++;
         } else {
-            // Skip - no update needed
+            // Data unchanged - skip update
             continue;
         }
     }
