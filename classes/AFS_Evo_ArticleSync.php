@@ -15,6 +15,8 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     private AFS_TargetMappingConfig $targetMapping;
     private AFS_SqlBuilder $sqlBuilder;
     private AFS_HashManager $hashManager;
+    /** @var array<int,string>|null */
+    private ?array $articleParameterKeys = null;
 
     public function __construct(
         PDO $db,
@@ -158,7 +160,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                     // Set update flag and persist last_imported_hash (matching last_seen_hash on update)
                     $payload['update'] = 1;
                     $payload['last_imported_hash'] = $currentHash;
-                    $upsert->execute($payload);
+                    $upsert->execute($this->prepareArticleUpsertParams($payload));
 
                     if ($artikelId === null) {
                         $artikelId = (int)$this->db->lastInsertId();
@@ -581,6 +583,28 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
             'last_imported_hash' => null,
             'last_seen_hash'    => null,
         ];
+    }
+
+    private function getArticleParameterKeys(): array
+    {
+        if ($this->articleParameterKeys === null) {
+            $mapping = $this->sqlBuilder->getParameterMapping('articles');
+            $this->articleParameterKeys = array_map(
+                static fn(string $param): string => ':' . $param,
+                array_values($mapping)
+            );
+        }
+        return $this->articleParameterKeys;
+    }
+
+    private function prepareArticleUpsertParams(array $payload): array
+    {
+        $params = [];
+        foreach ($this->getArticleParameterKeys() as $placeholder) {
+            $key = ltrim($placeholder, ':');
+            $params[$placeholder] = $payload[$key] ?? null;
+        }
+        return $params;
     }
     
     /**
