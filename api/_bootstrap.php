@@ -16,6 +16,9 @@ if (!is_file($configFile) || !is_file($autoloadFile)) {
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: SAMEORIGIN');
     header('X-XSS-Protection: 1; mode=block');
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Vary: Accept-Encoding');
     header_remove('X-Powered-By');
     header_remove('Server');
     echo json_encode(['ok' => false, 'error' => 'System nicht korrekt eingerichtet.']);
@@ -35,6 +38,14 @@ function api_json(array $payload, int $status = 200): void
     header('X-Frame-Options: SAMEORIGIN');
     header('X-XSS-Protection: 1; mode=block');
     header('Referrer-Policy: strict-origin-when-cross-origin');
+    
+    // Cache headers for API responses (no caching for dynamic data)
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    
+    // Vary header for proper content negotiation
+    header('Vary: Accept-Encoding');
     
     // Remove server signature
     header_remove('X-Powered-By');

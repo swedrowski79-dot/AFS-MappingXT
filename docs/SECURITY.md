@@ -100,7 +100,7 @@ Security headers are implemented at three levels for defense in depth:
 - **File**: `.htaccess`
 - **Scope**: Directory-level configuration
 - **Purpose**: Provides security headers when Apache configuration cannot be modified
-- **Additional**: Includes CORS headers for API endpoints
+- **Additional**: Includes CORS headers for API endpoints, HTTP compression, and cache control
 
 ### 4. PHP Application Level
 - **Files**: 
@@ -109,6 +109,97 @@ Security headers are implemented at three levels for defense in depth:
   - `api/health.php` (health check endpoint)
 - **Scope**: Individual PHP responses
 - **Purpose**: Ensures security headers are present even if Apache headers fail
+
+## HTTP Compression
+
+The application implements HTTP compression for optimal performance:
+
+### Compression Configuration
+
+```apache
+<IfModule mod_deflate.c>
+    # Text files
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript application/json
+    
+    # XML files
+    AddOutputFilterByType DEFLATE application/xml application/xhtml+xml application/rss+xml
+    
+    # SVG
+    AddOutputFilterByType DEFLATE image/svg+xml
+    
+    # Fonts
+    AddOutputFilterByType DEFLATE application/font-woff application/font-woff2
+    
+    # Vary header for proper caching of compressed content
+    Header append Vary Accept-Encoding
+</IfModule>
+```
+
+**Benefits**:
+- Reduces bandwidth usage by 60-80% for text-based resources
+- Improves page load times significantly
+- Minimal CPU overhead on modern servers
+
+## Cache Control Headers
+
+The application implements comprehensive caching strategies for different resource types:
+
+### Static Assets - Long Cache (1 year, immutable)
+
+Images and fonts are cached with long expiration times and marked as immutable:
+
+```apache
+# Images
+<FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# Fonts
+<FilesMatch "\.(woff|woff2|ttf|otf|eot)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+```
+
+### CSS and JavaScript - Moderate Cache (1 month, revalidation)
+
+```apache
+<FilesMatch "\.(css|js)$">
+    Header set Cache-Control "public, max-age=2592000, must-revalidate"
+</FilesMatch>
+```
+
+### Dynamic Content - No Cache
+
+API endpoints and dynamic PHP content are marked as non-cacheable:
+
+```apache
+<FilesMatch "\.php$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</FilesMatch>
+```
+
+### API Response Headers
+
+All API responses include proper cache control headers:
+
+```php
+// API responses (dynamic data - no caching)
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+header('Vary: Accept-Encoding');
+```
+
+**Cache-Control Directives Explained**:
+- `public`: Response may be cached by any cache (browser, CDN)
+- `max-age=N`: Maximum time (in seconds) the resource is considered fresh
+- `immutable`: Indicates the resource will never change (optimizes cache behavior)
+- `must-revalidate`: Forces cache to verify with server after expiration
+- `no-cache`: Must revalidate with server before using cached copy
+- `no-store`: Do not cache this response at all
 
 ## PHP Security Configuration
 
