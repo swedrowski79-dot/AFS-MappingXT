@@ -6,11 +6,13 @@ class AFS_Evo_DeltaExporter
 {
     private PDO $db;
     private string $targetPath;
+    private ?AFS_Evo_StatusTracker $status;
 
-    public function __construct(PDO $db, string $targetPath)
+    public function __construct(PDO $db, string $targetPath, ?AFS_Evo_StatusTracker $status = null)
     {
         $this->db = $db;
         $this->targetPath = $targetPath;
+        $this->status = $status;
     }
 
     /**
@@ -21,6 +23,8 @@ class AFS_Evo_DeltaExporter
      */
     public function export(): array
     {
+        $startTime = microtime(true);
+        
         $this->ensureDirectory(dirname($this->targetPath));
         if (is_file($this->targetPath)) {
             @unlink($this->targetPath);
@@ -33,6 +37,7 @@ class AFS_Evo_DeltaExporter
 
         $tables = $this->tablesWithUpdateColumn();
         if ($tables === []) {
+            $this->status?->logInfo('Delta-Export übersprungen: Keine Tabellen mit update-Spalte gefunden', [], 'delta_export');
             return [];
         }
 
@@ -52,6 +57,24 @@ class AFS_Evo_DeltaExporter
         }
 
         $this->resetUpdateFlags($tables);
+        
+        // Calculate statistics
+        $totalTables = count($exportCounts);
+        $totalRows = array_sum($exportCounts);
+        $duration = microtime(true) - $startTime;
+        
+        // Log detailed statistics
+        $this->status?->logInfo(
+            sprintf('Delta-Export abgeschlossen: %d Tabellen, %d Datensätze in %.2fs', $totalTables, $totalRows, $duration),
+            [
+                'target' => $this->targetPath,
+                'tables' => $exportCounts,
+                'total_tables' => $totalTables,
+                'total_rows' => $totalRows,
+                'duration_seconds' => round($duration, 2),
+            ],
+            'delta_export'
+        );
 
         return $exportCounts;
     }
