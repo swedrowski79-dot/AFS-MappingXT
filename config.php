@@ -56,7 +56,7 @@ return [
     'mssql' => [
         'host'     => getenv('AFS_MSSQL_HOST') ?: '10.0.1.82',
         'port'     => (int)(getenv('AFS_MSSQL_PORT') ?: 1435),
-        'database' => getenv('AFS_MSSQL_DB')   ?: 'AFS_WAWI_DB',
+        'database' => getenv('AFS_MSSQL_DB')   ?: 'AFS_2018',
         'username' => getenv('AFS_MSSQL_USER') ?: 'sa',
         'password' => getenv('AFS_MSSQL_PASS') ?: 'W3laf!x',
         'encrypt'  => true,   // ODBC18-Default, lassen
@@ -82,3 +82,4 @@ return [
         'title'         => 'AFS-Schnittstelle',
     ],
 ];
+
