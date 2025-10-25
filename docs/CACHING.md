@@ -70,8 +70,33 @@ AFS_ConfigCache::remove('/path/to/config.yml');
 
 ## Testing
 
-Die Caching-Funktionalität kann durch direkten Aufruf im Code getestet werden.
+Um die Caching-Funktionalität zu testen, können Sie z.B. wie folgt vorgehen:
 
+```php
+// Vor dem Test: Cache leeren
+AFS_ConfigCache::clear();
+
+// 1. Erste Anfrage (Cache Miss)
+$config1 = new AFS_MappingConfig('/path/to/source_afs.yml');
+$stats1 = AFS_ConfigCache::getStats();
+echo "Nach erstem Laden: Hits={$stats1['hits']}, Misses={$stats1['misses']}\n";
+
+// 2. Zweite Anfrage (Cache Hit)
+$config2 = new AFS_MappingConfig('/path/to/source_afs.yml');
+$stats2 = AFS_ConfigCache::getStats();
+echo "Nach zweitem Laden: Hits={$stats2['hits']}, Misses={$stats2['misses']}\n";
+
+// 3. Datei ändern (z.B. per touch)
+touch('/path/to/source_afs.yml');
+$config3 = new AFS_MappingConfig('/path/to/source_afs.yml');
+$stats3 = AFS_ConfigCache::getStats();
+echo "Nach Dateiänderung: Hits={$stats3['hits']}, Misses={$stats3['misses']}\n";
+
+// 4. Cache manuell leeren
+AFS_ConfigCache::clear();
+$config4 = new AFS_MappingConfig('/path/to/source_afs.yml');
+$stats4 = AFS_ConfigCache::getStats();
+echo "Nach Cache-Leerung: Hits={$stats4['hits']}, Misses={$stats4['misses']}\n";
 ## Vorteile
 
 ### Performance
