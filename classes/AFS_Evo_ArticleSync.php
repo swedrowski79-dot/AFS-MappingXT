@@ -102,7 +102,6 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
         
         $deactivateSql = "UPDATE {$this->quoteIdent($tableName)} SET Online = 0, " . $this->quoteIdent('update') . " = 1 WHERE ID = :id";
         $markArticleUpdateSql = "UPDATE {$this->quoteIdent($tableName)} SET " . $this->quoteIdent('update') . " = 1 WHERE ID = :id";
-        $updateSeenHashSql = "UPDATE {$this->quoteIdent($tableName)} SET last_seen_hash = :hash WHERE ID = :id";
 
         $this->db->beginTransaction();
         try {
@@ -116,7 +115,6 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
             $insertDoc    = $this->db->prepare($insertDocSql);
             $deactivate   = $this->db->prepare($deactivateSql);
             $markArticleUpdate = $this->db->prepare($markArticleUpdateSql);
-            $updateSeenHash = $this->db->prepare($updateSeenHashSql);
 
         foreach ($rows as $row) {
             if (!is_array($row)) {
@@ -160,20 +158,11 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
 
                 if ($existing !== null) {
                     $artikelMap[$artikelnummer]['seen'] = true;
-                    if (!$shouldUpdate) {
-                        $existingMetaTitle = $existing['meta_title'] ?? null;
-                        $existingMetaDescription = $existing['meta_description'] ?? null;
-                        if ($existingMetaTitle !== ($payload['meta_title'] ?? null) || $existingMetaDescription !== ($payload['meta_description'] ?? null)) {
-                            $shouldUpdate = true;
-                        }
-                    }
                 }
 
                 if (!$shouldUpdate) {
-                    // Update last_seen_hash even if no changes (for tracking)
-                    if ($existingId !== null) {
-                        $updateSeenHash->execute([':hash' => $currentHash, ':id' => $existingId]);
-                    }
+                    // Data unchanged - no database update needed
+                    // The existing last_imported_hash already matches current data
                     continue;
                 }
 
