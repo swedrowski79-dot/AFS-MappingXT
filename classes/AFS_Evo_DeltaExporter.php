@@ -7,12 +7,14 @@ class AFS_Evo_DeltaExporter
     private PDO $db;
     private string $targetPath;
     private ?AFS_Evo_StatusTracker $status;
+    private ?AFS_MappingLogger $logger;
 
-    public function __construct(PDO $db, string $targetPath, ?AFS_Evo_StatusTracker $status = null)
+    public function __construct(PDO $db, string $targetPath, ?AFS_Evo_StatusTracker $status = null, ?AFS_MappingLogger $logger = null)
     {
         $this->db = $db;
         $this->targetPath = $targetPath;
         $this->status = $status;
+        $this->logger = $logger;
     }
 
     /**
@@ -63,7 +65,7 @@ class AFS_Evo_DeltaExporter
         $totalRows = array_sum($exportCounts);
         $duration = microtime(true) - $startTime;
         
-        // Log detailed statistics
+        // Log to StatusTracker (for UI)
         $this->status?->logInfo(
             sprintf('Delta-Export abgeschlossen: %d Tabellen, %d Datensätze in %.2fs', $totalTables, $totalRows, $duration),
             [
@@ -75,6 +77,9 @@ class AFS_Evo_DeltaExporter
             ],
             'delta_export'
         );
+
+        // Log to file logger (for permanent records)
+        $this->logger?->logDeltaExport($duration, $exportCounts, $totalRows, $this->targetPath);
 
         return $exportCounts;
     }

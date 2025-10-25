@@ -104,6 +104,21 @@ function createMssql(array $config): MSSQL
     );
 }
 
+function createMappingLogger(array $config): ?AFS_MappingLogger
+{
+    $loggingConfig = $config['logging'] ?? [];
+    $enableFileLogging = $loggingConfig['enable_file_logging'] ?? true;
+    
+    if (!$enableFileLogging) {
+        return null;
+    }
+    
+    $logDir = $config['paths']['log_dir'] ?? (dirname(__DIR__) . '/logs');
+    $mappingVersion = $loggingConfig['mapping_version'] ?? '1.0.0';
+    
+    return new AFS_MappingLogger($logDir, $mappingVersion);
+}
+
 function createSyncEnvironment(array $config, string $job = 'categories'): array
 {
     $tracker = createStatusTracker($config, $job);
@@ -121,7 +136,8 @@ function createSyncEnvironment(array $config, string $job = 'categories'): array
     }
     $dataSource = new AFS_Get_Data($mssql);
     $afs = new AFS($dataSource, $config);
-    $evo = new AFS_Evo($pdo, $afs, $tracker, $config);
+    $logger = createMappingLogger($config);
+    $evo = new AFS_Evo($pdo, $afs, $tracker, $config, $logger);
 
     return [$tracker, $evo, $mssql];
 }
