@@ -83,8 +83,8 @@ try {
     
     echo "Indices created successfully\n\n";
     
-    // Drop obsolete partial hash indices if they exist (for Artikel table)
-    echo "Cleaning up obsolete partial hash indices...\n";
+    // Drop obsolete indices from older schema versions (if they exist)
+    echo "Cleaning up obsolete indices from previous versions...\n";
     $obsoleteIndices = [
         'ix_artikel_price_hash',
         'ix_artikel_media_hash',
@@ -94,7 +94,7 @@ try {
     foreach ($obsoleteIndices as $indexName) {
         try {
             $db->exec("DROP INDEX IF EXISTS {$indexName}");
-            echo "  Dropped index: {$indexName}\n";
+            echo "  Dropped obsolete index: {$indexName}\n";
         } catch (PDOException $e) {
             // Index might not exist, that's okay
             echo "  Index not found (already removed): {$indexName}\n";

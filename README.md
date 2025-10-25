@@ -34,7 +34,7 @@ Dieses Projekt synchronisiert AFS-ERP Daten nach xt:Commerce (EVO). Die Synchron
 
 Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen auf dieselben Klassen und Status-Tabellen zu.
 
-**Neu:** Effiziente Änderungserkennung via SHA-256 Hashes – nur tatsächlich geänderte Artikel werden aktualisiert. **Teil-Hashes** (Preis, Medien, Inhalt) ermöglichen selektive Updates: nur betroffene Tabellen werden aktualisiert. Details siehe [HashManager.md](docs/HashManager.md).
+**Neu:** Effiziente Änderungserkennung via SHA-256 Hashes – nur tatsächlich geänderte Artikel werden aktualisiert. Das System verwendet ein vereinfachtes, einheitliches Hash-System mit `last_imported_hash` und `last_seen_hash` für robuste Änderungserkennung. Details siehe [HashManager.md](docs/HashManager.md).
 
 **Neu:** Einheitliches JSON-Logging für alle Mapping- und Delta-Operationen – jeder Lauf wird mit Mapping-Version, Datensatzanzahl, Änderungen und Dauer protokolliert. Details siehe [Logging](#logging).
 
@@ -282,7 +282,6 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 | `test_mixed_mode_validation.php` | Umfassende Validierung der Mapping-Logik |
 | `validate_no_hardcodings.php` | **[NEU]** Bestätigt keine Hardcodings oder Legacy-Code mehr vorhanden |
 | `test_hashmanager.php` | Tests für effiziente Änderungserkennung via Hashes |
-| ~~`test_partial_hashes.php`~~ | DEPRECATED: Tests für selektive Updates via Teil-Hashes (nicht mehr verwendet) |
 | `test_mapping_logger.php` | Tests für strukturiertes JSON-Logging |
 
 ### Mixed Mode Validation Test
