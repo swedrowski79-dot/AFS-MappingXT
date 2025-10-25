@@ -5,11 +5,19 @@ class AFS_Evo_StatusTracker
     private PDO $db;
     private string $job;
     private int $maxErrors;
+    private string $minLevel;
+    
+    private const LEVEL_PRIORITY = [
+        'info' => 1,
+        'warning' => 2,
+        'error' => 3,
+    ];
 
-    public function __construct(string $statusDbPath, string $job = 'categories', int $maxErrors = 200)
+    public function __construct(string $statusDbPath, string $job = 'categories', int $maxErrors = 200, string $minLevel = 'warning')
     {
         $this->job = $job;
         $this->maxErrors = max(1, $maxErrors);
+        $this->minLevel = strtolower($minLevel);
 
         $this->db = new PDO('sqlite:' . $statusDbPath);
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -85,6 +93,13 @@ class AFS_Evo_StatusTracker
 
     public function logEvent(string $message, array $context = [], ?string $stage = null, string $level = 'info'): void
     {
+        $levelLower = strtolower($level);
+        
+        // Filter based on minimum log level
+        if (!$this->shouldLog($levelLower)) {
+            return;
+        }
+        
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare(
@@ -93,7 +108,7 @@ class AFS_Evo_StatusTracker
             );
             $stmt->execute([
                 ':job' => $this->job,
-                ':level' => strtolower($level),
+                ':level' => $levelLower,
                 ':stage' => $stage,
                 ':message' => $message,
                 ':context' => $context === [] ? null : json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -250,5 +265,19 @@ class AFS_Evo_StatusTracker
     private function quoteIdent(string $ident): string
     {
         return '"' . str_replace('"', '""', $ident) . '"';
+    }
+    
+    /**
+     * Check if a message with the given level should be logged
+     * 
+     * @param string $level Log level to check
+     * @return bool True if the message should be logged
+     */
+    private function shouldLog(string $level): bool
+    {
+        $minPriority = self::LEVEL_PRIORITY[$this->minLevel] ?? 1;
+        $msgPriority = self::LEVEL_PRIORITY[$level] ?? 1;
+        
+        return $msgPriority >= $minPriority;
     }
 }

@@ -277,7 +277,7 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
                     'Artikel nicht mehr im Datenbestand gefunden - offline gesetzt',
                     [
                         'count' => count($missing),
-                        'ids' => array_slice($missing, 0, 15),
+                        'ids' => array_slice($missing, 0, self::ERROR_SAMPLE_SIZE),
                     ],
                     'artikel'
                 );

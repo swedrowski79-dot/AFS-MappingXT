@@ -25,6 +25,7 @@ $testConfig = [
         'mapping_version' => '1.0.0-test',
         'log_rotation_days' => 30,
         'enable_file_logging' => true,
+        'log_level' => 'info', // Use info level for comprehensive test
     ],
 ];
 
@@ -41,7 +42,8 @@ try {
     }
     
     $mappingVersion = $loggingConfig['mapping_version'] ?? '1.0.0';
-    $logger = new AFS_MappingLogger($logDir, $mappingVersion);
+    $logLevel = $loggingConfig['log_level'] ?? 'warning';
+    $logger = new AFS_MappingLogger($logDir, $mappingVersion, $logLevel);
     
     echo "   ✓ Logger created successfully\n";
     echo "   - Log directory: {$logDir}\n";

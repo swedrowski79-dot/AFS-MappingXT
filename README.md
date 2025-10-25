@@ -40,6 +40,8 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 
 **Neu:** Einheitliches JSON-Logging für alle Mapping- und Delta-Operationen – jeder Lauf wird mit Mapping-Version, Datensatzanzahl, Änderungen und Dauer protokolliert. Details siehe [Logging](#logging).
 
+**Neu:** Umfassender Caching-Layer für teure Berechnungen und Datenbankabfragen – reduziert Datenbankzugriffe und verbessert die Performance durch intelligentes In-Memory-Caching mit TTL-Steuerung. Details siehe [docs/GENERAL_CACHE.md](docs/GENERAL_CACHE.md) und [docs/CACHING.md](docs/CACHING.md).
+
 **Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mappings/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [CLEANUP_VALIDATION.md](docs/CLEANUP_VALIDATION.md) und [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
 
 ---
@@ -52,10 +54,12 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 | Web Server           | Apache 2.4 mit mpm_event + PHP-FPM (empfohlen) oder mod_php |
 | Datenbanken          | MSSQL (Quelle), SQLite (`db/evo.db`, `db/status.db`) |
 | Logging              | JSON-Logs in `logs/YYYY-MM-DD.log` (strukturiert, rotierbar) |
+| Caching              | Zwei-Ebenen-System: `AFS_ConfigCache` (YAML), `AFS_Cache` (allgemein) |
 | Deployment           | Docker Compose (empfohlen) oder manuelle Installation |
-| Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs) |
+| Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs), `assets/` (CSS/JS) |
 | Autoload             | Simple PSR-0-ähnlicher Loader (`autoload.php`) |
 | Web-Oberfläche       | Einzelne `index.php` mit fetch-basierten API-Calls |
+| Asset Build          | npm-basiertes Build-System für CSS/JS-Minifizierung – siehe [ASSET_BUILD.md](docs/ASSET_BUILD.md) |
 | Sicherheit           | Umfassende Security-Headers, CSP, Permissions-Policy – siehe [SECURITY.md](docs/SECURITY.md) |
 
 ---
@@ -85,6 +89,7 @@ Ausführliche Dokumentation siehe [docs/SECURITY.md](docs/SECURITY.md)
 **Option 2: Manuelle Installation**
 - PHP ≥ 8.1 CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`)
 - Apache 2.4 mit mpm_event + PHP-FPM (siehe [Apache PHP-FPM Setup](docs/APACHE_PHP_FPM_SETUP.md))
+- **Node.js ≥ 14.x und npm** (für Asset-Build)
 - Schreibrechte im Projektordner (für `Files/` und `db/`)
 - Netzwerkzugriff auf den MSSQL-Server
 - Optional: `sqlite3` CLI (zum manuellen Inspektieren der Datenbanken)
@@ -104,7 +109,14 @@ docker-compose up -d
 1. Projekt auf Zielsystem kopieren
 2. Abhängige PHP-Extensions installieren
 3. Apache mpm_event + PHP-FPM einrichten (siehe [docs/APACHE_PHP_FPM_SETUP.md](docs/APACHE_PHP_FPM_SETUP.md))
-4. Die SQLite-Datenbanken initialisieren:
+4. **Assets bauen:**
+   ```bash
+   npm install
+   npm run build
+   # oder: make build
+   ```
+   Siehe [ASSET_BUILD.md](docs/ASSET_BUILD.md) für Details.
+5. Die SQLite-Datenbanken initialisieren:
    ```bash
    php scripts/setup.php
   ```
@@ -181,6 +193,39 @@ Das System verwendet ein zweistufiges Logging-Konzept:
 1. **StatusTracker** (`db/status.db`): Speichert den aktuellen Sync-Status für die Web-Oberfläche (temporär, begrenzte Einträge)
 2. **MappingLogger** (`logs/YYYY-MM-DD.log`): Permanente, strukturierte JSON-Logs für alle Mapping- und Delta-Operationen
 
+### Lean & Targeted Logging
+
+Das Logging-System ist optimiert für **schlanke und gezielte** Protokollierung:
+
+**Standard-Modus (log_level='warning'):**
+- ✅ Nur WARNING und ERROR Meldungen werden geloggt
+- ✅ INFO-Meldungen (Routine-Operationen) werden gefiltert
+- ✅ Reduzierte Sample-Größen (5 statt 12) für kompakte Fehlerberichte
+- ✅ Geringeres Log-Volumen bei gleichbleibender Aussagekraft
+
+**Verbose-Modus (log_level='info'):**
+- Alle Informationen werden geloggt (für detailliertes Troubleshooting)
+- Empfohlen nur während der Fehlersuche
+
+**Konfiguration:**
+```php
+// config.php
+'logging' => [
+    'mapping_version' => '1.0.0',
+    'log_rotation_days' => 30,
+    'enable_file_logging' => true,
+    'log_level' => 'warning',  // 'info', 'warning', or 'error'
+    'sample_size' => 5,        // Anzahl der Beispiele in Fehler-Arrays
+],
+```
+
+**Umgebungsvariablen:**
+```bash
+# .env
+AFS_LOG_LEVEL=warning        # Minimaler Log-Level
+AFS_LOG_SAMPLE_SIZE=5        # Sample-Größe für Fehler-Arrays
+```
+
 ### JSON-Log-Format
 
 Jeder Log-Eintrag ist eine JSON-Zeile mit folgender Struktur:
@@ -210,9 +255,9 @@ Jeder Log-Eintrag ist eine JSON-Zeile mit folgender Struktur:
 - `delta_export`: Delta-Export in separate Datenbank
 
 **Log-Level:**
-- `info`: Normale Informationen
-- `warning`: Warnungen (z.B. fehlende Dateien)
-- `error`: Fehler mit Exception-Details
+- `info`: Normale Informationen (gefiltert im Standard-Modus)
+- `warning`: Warnungen (z.B. fehlende Dateien) - **immer geloggt**
+- `error`: Fehler mit Exception-Details - **immer geloggt**
 
 ### Log-Rotation
 
@@ -223,6 +268,8 @@ Logs älter als 30 Tage werden automatisch gelöscht (konfigurierbar in `config.
     'mapping_version' => '1.0.0',
     'log_rotation_days' => 30,
     'enable_file_logging' => true,
+    'log_level' => 'warning',
+    'sample_size' => 5,
 ],
 ```
 
@@ -236,13 +283,21 @@ cat logs/2025-10-25.log | jq .
 # Nur Fehler filtern
 cat logs/2025-10-25.log | jq 'select(.level == "error")'
 
+# Nur Warnungen und Fehler
+cat logs/2025-10-25.log | jq 'select(.level == "warning" or .level == "error")'
+
 # Sync-Zusammenfassungen anzeigen
 cat logs/2025-10-25.log | jq 'select(.operation == "sync_complete")'
 ```
 
 **Programmatisch:**
 ```php
-$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0');
+// Standard-Modus (nur Warnings und Errors)
+$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0', 'warning');
+
+// Verbose-Modus (alle Logs)
+$logger = new AFS_MappingLogger(__DIR__ . '/logs', '1.0.0', 'info');
+
 $entries = $logger->readLogs('2025-10-25', 100); // Letzte 100 Einträge
 
 foreach ($entries as $entry) {
