@@ -1,9 +1,7 @@
 # ------------------------------------------------------------
 # Multi-Stage Dockerfile for AFS-MappingXT
-<<<<<<< HEAD
 # PHP-FPM (Debian bookworm) + Apache (mpm_event) via FCGI
 # ------------------------------------------------------------
-=======
 # Apache with mpm_event + PHP-FPM for optimal performance
 # Based on Debian bookworm
 #
@@ -14,14 +12,12 @@
 # - Combined COPY and chmod using --chmod flag (reduces layers)
 # - Optimized layer ordering: dependencies first, application code last (better caching)
 # - Created directories before copying application files (cleaner layer structure)
->>>>>>> 3dabfaccaa42c969fd70897f652e9cf2de03d79f
 
 # =========================
 # Stage 1: PHP-FPM Runtime
 # =========================
 FROM php:8.3-fpm-bookworm AS php-base
 
-<<<<<<< HEAD
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Europe/Berlin
 
@@ -49,7 +45,6 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # PECL-Erweiterungen
 RUN pecl install sqlsrv pdo_sqlsrv yaml \
  && docker-php-ext-enable sqlsrv pdo_sqlsrv yaml
-=======
 # Install system dependencies and PHP extensions
 # Minimal set of dependencies for the application
 RUN apt-get update && apt-get install -y \
@@ -84,19 +79,15 @@ RUN (pecl install sqlsrv pdo_sqlsrv && \
     docker-php-ext-enable sqlsrv pdo_sqlsrv && \
     echo "✓ MSSQL extensions installed successfully") || \
     echo "⚠ MSSQL extensions installation failed (this is optional)"
->>>>>>> 3dabfaccaa42c969fd70897f652e9cf2de03d79f
 
 # Konfig-Templates & Entrypoint
 COPY docker/php-fpm.conf /usr/local/etc/php-fpm.d/zz-custom.conf.template
-<<<<<<< HEAD
 COPY docker/php.ini      /usr/local/etc/php/conf.d/custom.ini.template
 COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-=======
 COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini.template
 
 # Entrypoint that renders configuration from templates
 COPY --chmod=755 docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
->>>>>>> 3dabfaccaa42c969fd70897f652e9cf2de03d79f
 
 # WICHTIG:
 #  - +x setzen
@@ -107,26 +98,21 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
 # Arbeitsverzeichnis
 WORKDIR /var/www/html
 
-<<<<<<< HEAD
 # App-Code
 COPY --chown=www-data:www-data . /var/www/html/
 
 # Verzeichnisse (Logs, DB, Files)
-=======
 # Create necessary directories with proper ownership before copying application files
 # These directories are excluded by .dockerignore as they will be mounted as volumes
->>>>>>> 3dabfaccaa42c969fd70897f652e9cf2de03d79f
 RUN mkdir -p /var/www/html/db /var/www/html/logs /var/www/html/Files/Bilder /var/www/html/Files/Dokumente \
  && chown -R www-data:www-data /var/www/html
 
-<<<<<<< HEAD
 # Healthcheck: PHP-FPM Prozess ok?
-=======
+
 # Copy application files
 COPY --chown=www-data:www-data . /var/www/html/
 
 # Healthcheck - check if PHP-FPM is listening
->>>>>>> 3dabfaccaa42c969fd70897f652e9cf2de03d79f
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD php -v || exit 1
 
@@ -140,10 +126,9 @@ CMD ["php-fpm"]
 # =========================
 FROM debian:bookworm-slim AS apache
 
-<<<<<<< HEAD
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Europe/Berlin
-=======
+
 # Install Apache with mpm_event (not mpm_prefork)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apache2 \
@@ -151,7 +136,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
->>>>>>> 3dabfaccaa42c969fd70897f652e9cf2de03d79f
 
 # Apache + FCGI
 RUN apt-get update && apt-get install -y --no-install-recommends \
