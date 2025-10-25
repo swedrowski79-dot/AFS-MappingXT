@@ -378,11 +378,6 @@ metadata/categories/ → Meta_Title
 **Funktion:** Liefert aktuellen Sync-Status aus `sync_status`  
 **Rückgabe:** JSON mit state, stage, progress, message
 
-#### `sync_status_stream.php`
-**Methode:** GET  
-**Funktion:** Server-Sent Events (SSE) für Live-Updates  
-**Rückgabe:** Stream von Status-Events
-
 #### `sync_status_reset.php`
 **Methode:** POST  
 **Funktion:** Setzt Status zurück auf `ready`  
