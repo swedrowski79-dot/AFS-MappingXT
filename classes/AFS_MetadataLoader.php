@@ -52,7 +52,7 @@ class AFS_MetadataLoader
         $result = [];
         try {
             $iterator = new DirectoryIterator($baseDir);
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             return [];
         }
 

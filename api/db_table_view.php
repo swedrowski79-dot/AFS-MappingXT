@@ -100,7 +100,7 @@ try {
 
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-} catch (Throwable $e) {
+} catch (\Throwable $e) {
     http_response_code(500);
     echo renderError($e->getMessage(), $table, $limitParam, $page, $allowedTables, $allowedLimits, $dbKey, $allowedDbs);
     exit;

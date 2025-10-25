@@ -25,21 +25,21 @@ class AFS_MappingConfig
     /**
      * Load and parse the YAML configuration file
      * 
-     * @throws RuntimeException if file cannot be loaded or parsed
+     * @throws AFS_ConfigurationException if file cannot be loaded or parsed
      */
     private function load(): void
     {
         if (!is_file($this->configPath)) {
-            throw new RuntimeException("Configuration file not found: {$this->configPath}");
+            throw new AFS_ConfigurationException("Configuration file not found: {$this->configPath}");
         }
 
         if (!extension_loaded('yaml')) {
-            throw new RuntimeException('YAML extension is not loaded. Please install php-yaml.');
+            throw new AFS_ConfigurationException('YAML extension is not loaded. Please install php-yaml.');
         }
 
         $content = file_get_contents($this->configPath);
         if ($content === false) {
-            throw new RuntimeException("Failed to read configuration file: {$this->configPath}");
+            throw new AFS_ConfigurationException("Failed to read configuration file: {$this->configPath}");
         }
 
         // Replace environment variable placeholders
@@ -51,7 +51,7 @@ class AFS_MappingConfig
 
         $parsed = yaml_parse($content);
         if ($parsed === false) {
-            throw new RuntimeException("Failed to parse YAML configuration: {$this->configPath}");
+            throw new AFS_ConfigurationException("Failed to parse YAML configuration: {$this->configPath}");
         }
 
         $this->config = $parsed;
@@ -103,13 +103,13 @@ class AFS_MappingConfig
      * 
      * @param string $entityName Name of the entity
      * @return string SQL SELECT query
-     * @throws RuntimeException if entity not found
+     * @throws AFS_ConfigurationException if entity not found
      */
     public function buildSelectQuery(string $entityName): string
     {
         $entity = $this->getEntity($entityName);
         if ($entity === null) {
-            throw new RuntimeException("Entity not found: {$entityName}");
+            throw new AFS_ConfigurationException("Entity not found: {$entityName}");
         }
 
         $table = $entity['table'] ?? '';
@@ -117,7 +117,7 @@ class AFS_MappingConfig
         $where = $entity['where'] ?? '';
 
         if (empty($table) || empty($fields)) {
-            throw new RuntimeException("Invalid entity configuration for: {$entityName}");
+            throw new AFS_ConfigurationException("Invalid entity configuration for: {$entityName}");
         }
 
         $selectParts = [];

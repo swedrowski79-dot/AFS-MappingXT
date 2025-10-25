@@ -18,7 +18,7 @@ try {
     ]);
 } catch (AFS_SyncBusyException $e) {
     api_error($e->getMessage(), 409);
-} catch (Throwable $e) {
+} catch (\Throwable $e) {
     if (isset($tracker)) {
         $tracker->logError($e->getMessage(), ['endpoint' => 'sync_start'], 'api');
         $tracker->fail($e->getMessage(), 'api');

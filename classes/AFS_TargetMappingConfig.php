@@ -25,21 +25,21 @@ class AFS_TargetMappingConfig
     /**
      * Load and parse the YAML configuration file
      * 
-     * @throws RuntimeException if file cannot be loaded or parsed
+     * @throws AFS_ConfigurationException if file cannot be loaded or parsed
      */
     private function load(): void
     {
         if (!is_file($this->configPath)) {
-            throw new RuntimeException("Target configuration file not found: {$this->configPath}");
+            throw new AFS_ConfigurationException("Target configuration file not found: {$this->configPath}");
         }
 
         if (!extension_loaded('yaml')) {
-            throw new RuntimeException('YAML extension is not loaded. Please install php-yaml.');
+            throw new AFS_ConfigurationException('YAML extension is not loaded. Please install php-yaml.');
         }
 
         $content = file_get_contents($this->configPath);
         if ($content === false) {
-            throw new RuntimeException("Failed to read target configuration file: {$this->configPath}");
+            throw new AFS_ConfigurationException("Failed to read target configuration file: {$this->configPath}");
         }
 
         // Replace environment variable placeholders
@@ -51,7 +51,7 @@ class AFS_TargetMappingConfig
 
         $parsed = yaml_parse($content);
         if ($parsed === false) {
-            throw new RuntimeException("Failed to parse YAML target configuration: {$this->configPath}");
+            throw new AFS_ConfigurationException("Failed to parse YAML target configuration: {$this->configPath}");
         }
 
         $this->config = $parsed;
@@ -161,7 +161,7 @@ class AFS_TargetMappingConfig
     {
         $entity = $this->getEntity($entityName);
         if ($entity === null) {
-            throw new RuntimeException("Entity not found: {$entityName}");
+            throw new AFS_ConfigurationException("Entity not found: {$entityName}");
         }
 
         $table = $entity['table'] ?? null;
@@ -169,7 +169,7 @@ class AFS_TargetMappingConfig
         $fields = $entity['fields'] ?? [];
 
         if (empty($table) || empty($fields)) {
-            throw new RuntimeException("Invalid entity configuration for: {$entityName}");
+            throw new AFS_ConfigurationException("Invalid entity configuration for: {$entityName}");
         }
 
         $insertFields = [];
@@ -206,13 +206,13 @@ class AFS_TargetMappingConfig
      * @param string $relationshipName Name of the relationship
      * @param array $excludeFields Fields to exclude from the statement
      * @return array Array with keys 'insert_sql', 'insert_fields', 'update_fields'
-     * @throws RuntimeException if relationship not found
+     * @throws AFS_ConfigurationException if relationship not found
      */
     public function buildRelationshipUpsertStatement(string $relationshipName, array $excludeFields = []): array
     {
         $relationship = $this->getRelationship($relationshipName);
         if ($relationship === null) {
-            throw new RuntimeException("Relationship not found: {$relationshipName}");
+            throw new AFS_ConfigurationException("Relationship not found: {$relationshipName}");
         }
 
         $table = $relationship['table'] ?? null;
@@ -220,7 +220,7 @@ class AFS_TargetMappingConfig
         $uniqueConstraint = $relationship['unique_constraint'] ?? [];
 
         if (empty($table) || empty($fields)) {
-            throw new RuntimeException("Invalid relationship configuration for: {$relationshipName}");
+            throw new AFS_ConfigurationException("Invalid relationship configuration for: {$relationshipName}");
         }
 
         $insertFields = [];
