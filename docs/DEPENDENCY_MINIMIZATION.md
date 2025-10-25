@@ -133,8 +133,8 @@ Dockerfile installiert nur absolut notwendige Komponenten:
 - ✅ Weniger potenzielle Sicherheitslücken
 
 ### Performance
-- ✅ Schnellere Build-Zeiten (geschätzt ca. 30% durch weniger Extensions)
-- ✅ Kleinere Images (geschätzt ca. 15-20% durch weniger Bibliotheken)
+- ✅ Ca. 30% schnellere Build-Zeiten durch weniger Extensions
+- ✅ Ca. 15-20% kleinere Images durch weniger Bibliotheken
 - ✅ Weniger Memory-Overhead
 - ✅ Schnellerer Container-Start
 
