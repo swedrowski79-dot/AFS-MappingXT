@@ -7,12 +7,13 @@
  * - Creating consistent hashes from article/entity data
  * - Detecting changes by comparing hashes
  * - Supporting efficient change detection without full field comparison
- * - Supporting partial hash scopes (price, media, content) for selective updates
+ * 
+ * Uses only last_imported_hash and last_seen_hash for robust change detection.
  */
 class AFS_HashManager
 {
     /**
-     * Generate a SHA-256 hash from raw field data
+     * Build a SHA-256 hash from raw field data
      * 
      * The hash is computed from a normalized, deterministic representation
      * of the input data to ensure stability across multiple runs.
@@ -20,7 +21,7 @@ class AFS_HashManager
      * @param array<string,mixed> $fields Array of field name => value pairs
      * @return string SHA-256 hash (64 character hex string)
      */
-    public function generateHash(array $fields): string
+    public function buildHash(array $fields): string
     {
         // Sort fields by key to ensure deterministic ordering
         ksort($fields);
@@ -28,11 +29,22 @@ class AFS_HashManager
         // Normalize and serialize the data
         $normalized = $this->normalizeFields($fields);
         
-        // Create deterministic string representation
-        $data = json_encode($normalized, JSON_THROW_ON_ERROR);
+        // Create deterministic string representation with unescaped Unicode/slashes
+        $data = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         
         // Generate SHA-256 hash
         return hash('sha256', $data);
+    }
+    
+    /**
+     * Generate a SHA-256 hash from raw field data (alias for buildHash for backwards compatibility)
+     * 
+     * @param array<string,mixed> $fields Array of field name => value pairs
+     * @return string SHA-256 hash (64 character hex string)
+     */
+    public function generateHash(array $fields): string
+    {
+        return $this->buildHash($fields);
     }
     
     /**
@@ -122,9 +134,6 @@ class AFS_HashManager
             'last_update_ts',
             'last_imported_hash',
             'last_seen_hash',
-            'price_hash',
-            'media_hash',
-            'content_hash',
             // XT-specific IDs
             'XT_Category_ID',
             'xt_category_id',
@@ -141,61 +150,5 @@ class AFS_HashManager
         }
         
         return $hashableFields;
-    }
-    
-    /**
-     * Generate partial hashes for different scopes (price, media, content)
-     * 
-     * This enables selective table updates - only update related tables
-     * when their specific scope has changed.
-     * 
-     * @param array<string,mixed> $payload Complete article data payload
-     * @param array<string,array<string>> $scopeDefinitions Field groupings by scope
-     * @return array<string,string> Map of scope name => hash
-     */
-    public function generatePartialHashes(array $payload, array $scopeDefinitions): array
-    {
-        $hashes = [];
-        
-        foreach ($scopeDefinitions as $scopeName => $fieldList) {
-            // Extract only the fields that belong to this scope
-            $scopeData = [];
-            foreach ($fieldList as $fieldName) {
-                // Convert to lowercase to match payload keys
-                $fieldKey = strtolower($fieldName);
-                if (array_key_exists($fieldKey, $payload)) {
-                    $scopeData[$fieldKey] = $payload[$fieldKey];
-                }
-            }
-            
-            // Generate hash for this scope's data
-            if (!empty($scopeData)) {
-                $hashes[$scopeName] = $this->generateHash($scopeData);
-            } else {
-                // Empty scope gets a null hash
-                $hashes[$scopeName] = null;
-            }
-        }
-        
-        return $hashes;
-    }
-    
-    /**
-     * Determine which scopes have changed by comparing old and new partial hashes
-     * 
-     * @param array<string,string|null> $oldHashes Previous scope hashes
-     * @param array<string,string|null> $newHashes Current scope hashes
-     * @return array<string,bool> Map of scope name => has_changed
-     */
-    public function detectScopeChanges(array $oldHashes, array $newHashes): array
-    {
-        $changes = [];
-        
-        foreach ($newHashes as $scope => $newHash) {
-            $oldHash = $oldHashes[$scope] ?? null;
-            $changes[$scope] = $this->hasChanged($oldHash, $newHash);
-        }
-        
-        return $changes;
     }
 }

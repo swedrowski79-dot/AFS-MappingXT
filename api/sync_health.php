@@ -29,10 +29,57 @@ function checkSqlite(string $path): array
         $pdo = new PDO('sqlite:' . $path);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->query('SELECT 1');
+        
+        // Check if this is the data DB and verify hash columns exist
+        if (strpos($path, 'evo.db') !== false) {
+            $result = checkHashColumns($pdo);
+            return [
+                'ok' => $result['ok'], 
+                'message' => $result['ok'] ? 'OK' : $result['message'],
+                'path' => $path,
+                'hash_columns' => $result
+            ];
+        }
+        
         return ['ok' => true, 'message' => 'OK', 'path' => $path];
     } catch (Throwable $e) {
         return ['ok' => false, 'message' => $e->getMessage(), 'path' => $path];
     }
+}
+
+function checkHashColumns(PDO $pdo): array
+{
+    $tables = ['Artikel', 'Bilder', 'Dokumente', 'Attribute', 'category'];
+    $result = ['ok' => true, 'tables' => []];
+    
+    foreach ($tables as $table) {
+        try {
+            $pragma = $pdo->query("PRAGMA table_info({$table})");
+            $columns = $pragma->fetchAll(PDO::FETCH_ASSOC);
+            $columnNames = array_column($columns, 'name');
+            
+            $hasImported = in_array('last_imported_hash', $columnNames, true);
+            $hasSeen = in_array('last_seen_hash', $columnNames, true);
+            
+            $tableOk = $hasImported && $hasSeen;
+            $result['tables'][$table] = [
+                'ok' => $tableOk,
+                'last_imported_hash' => $hasImported,
+                'last_seen_hash' => $hasSeen,
+            ];
+            
+            if (!$tableOk) {
+                $result['ok'] = false;
+                $result['message'] = 'Hash-Spalten fehlen in einigen Tabellen';
+            }
+        } catch (Throwable $e) {
+            $result['tables'][$table] = ['ok' => false, 'error' => $e->getMessage()];
+            $result['ok'] = false;
+            $result['message'] = 'Fehler beim Prüfen der Hash-Spalten';
+        }
+    }
+    
+    return $result;
 }
 
 function checkMssqlHealth(array $cfg): array
