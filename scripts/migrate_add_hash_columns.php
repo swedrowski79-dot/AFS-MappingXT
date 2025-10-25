@@ -70,6 +70,7 @@ try {
     
     $indices = [
         "CREATE INDEX IF NOT EXISTS ix_artikel_imported_hash ON Artikel(last_imported_hash)",
+        "CREATE INDEX IF NOT EXISTS ix_artikel_seen_hash ON Artikel(last_seen_hash)",
         "CREATE INDEX IF NOT EXISTS ix_bilder_imported_hash ON Bilder(last_imported_hash)",
         "CREATE INDEX IF NOT EXISTS ix_dokumente_imported_hash ON Dokumente(last_imported_hash)",
         "CREATE INDEX IF NOT EXISTS ix_attribute_imported_hash ON Attribute(last_imported_hash)",
@@ -81,6 +82,25 @@ try {
     }
     
     echo "Indices created successfully\n\n";
+    
+    // Drop obsolete partial hash indices if they exist (for Artikel table)
+    echo "Cleaning up obsolete partial hash indices...\n";
+    $obsoleteIndices = [
+        'ix_artikel_price_hash',
+        'ix_artikel_media_hash',
+        'ix_artikel_content_hash',
+    ];
+    
+    foreach ($obsoleteIndices as $indexName) {
+        try {
+            $db->exec("DROP INDEX IF EXISTS {$indexName}");
+            echo "  Dropped index: {$indexName}\n";
+        } catch (PDOException $e) {
+            // Index might not exist, that's okay
+            echo "  Index not found (already removed): {$indexName}\n";
+        }
+    }
+    echo "\n";
     
     $db->commit();
     
