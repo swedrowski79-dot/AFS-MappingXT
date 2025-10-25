@@ -348,6 +348,8 @@ php scripts/test_target_mapping.php
 php scripts/test_articlesync_mapping.php
 php scripts/test_mixed_mode_validation.php
 php scripts/validate_no_hardcodings.php
+php scripts/analyze_performance.php
+```
 ```
 
 **Cleanup-Validierung:**
