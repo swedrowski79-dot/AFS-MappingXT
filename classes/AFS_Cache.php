@@ -211,7 +211,7 @@ class AFS_Cache
         // Estimate memory usage (rough approximation)
         $memoryBytes = 0;
         foreach (self::$cache as $entry) {
-            $memoryBytes += strlen(serialize($entry));
+            $memoryBytes += strlen(json_encode($entry));
         }
 
         return [
