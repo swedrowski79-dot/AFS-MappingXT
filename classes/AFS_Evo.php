@@ -205,7 +205,7 @@ class AFS_Evo
                     'total' => 0,
                 ]);
 
-                $deltaExporter = new AFS_Evo_DeltaExporter($this->db, $deltaPath);
+                $deltaExporter = new AFS_Evo_DeltaExporter($this->db, $deltaPath, $this->status);
                 $deltaSummary = $deltaExporter->export();
                 $summary['delta'] = $deltaSummary;
 
@@ -217,15 +217,6 @@ class AFS_Evo
                     'processed' => $deltaRows,
                     'total' => $deltaRows,
                 ]);
-
-                $this->status?->logInfo(
-                    'Delta-Export abgeschlossen',
-                    [
-                        'tables' => $deltaSummary,
-                        'target' => $deltaPath,
-                    ],
-                    $currentStage
-                );
             }
 
             $overallDuration = microtime(true) - $overallStart;
