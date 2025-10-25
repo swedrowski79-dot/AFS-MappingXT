@@ -4,6 +4,21 @@
 
 Das AFS-MappingXT System verwendet einen intelligenten In-Memory-Cache für YAML-Konfigurationsdateien, um wiederholtes Parsen derselben Konfigurationen zu vermeiden.
 
+**Hinweis**: Für allgemeines Caching von Datenbankabfragen, Berechnungen und anderen teuren Operationen siehe [GENERAL_CACHE.md](GENERAL_CACHE.md).
+
+## Zwei Caching-Ebenen
+
+Das System bietet zwei spezialisierte Caching-Schichten:
+
+1. **`AFS_ConfigCache`** (dieses Dokument) - Spezialisiert auf YAML-Konfigurationsdateien
+   - Automatische mtime-basierte Invalidierung
+   - Optimiert für Konfigurationsdateien
+
+2. **`AFS_Cache`** ([GENERAL_CACHE.md](GENERAL_CACHE.md)) - Allgemeiner Cache für teure Operationen
+   - TTL-basierte Ablaufsteuerung
+   - Pattern-basierte Invalidierung
+   - Flexible API für beliebige Datentypen
+
 ## Implementierung
 
 Die Caching-Funktionalität wird durch die Klasse `AFS_ConfigCache` (`classes/AFS_ConfigCache.php`) bereitgestellt.
@@ -162,6 +177,7 @@ Eine Hit-Rate von >90% ist typisch in produktiven Systemen.
 
 ## Siehe auch
 
+- [General Cache](GENERAL_CACHE.md) - Allgemeiner Caching-Layer für Datenbankabfragen und teure Berechnungen
 - [Performance Analysis](PERFORMANCE_ANALYSIS.md) - Detaillierte Performance-Metriken
 - [Performance Summary](PERFORMANCE_SUMMARY.md) - Executive Summary
 - [YAML Mapping Guide](YAML_MAPPING_GUIDE.md) - YAML-Konfigurationsformat

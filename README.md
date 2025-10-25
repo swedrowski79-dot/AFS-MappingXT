@@ -40,6 +40,8 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 
 **Neu:** Einheitliches JSON-Logging für alle Mapping- und Delta-Operationen – jeder Lauf wird mit Mapping-Version, Datensatzanzahl, Änderungen und Dauer protokolliert. Details siehe [Logging](#logging).
 
+**Neu:** Umfassender Caching-Layer für teure Berechnungen und Datenbankabfragen – reduziert Datenbankzugriffe und verbessert die Performance durch intelligentes In-Memory-Caching mit TTL-Steuerung. Details siehe [docs/GENERAL_CACHE.md](docs/GENERAL_CACHE.md) und [docs/CACHING.md](docs/CACHING.md).
+
 **Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mappings/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [CLEANUP_VALIDATION.md](docs/CLEANUP_VALIDATION.md) und [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
 
 ---
@@ -52,6 +54,7 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 | Web Server           | Apache 2.4 mit mpm_event + PHP-FPM (empfohlen) oder mod_php |
 | Datenbanken          | MSSQL (Quelle), SQLite (`db/evo.db`, `db/status.db`) |
 | Logging              | JSON-Logs in `logs/YYYY-MM-DD.log` (strukturiert, rotierbar) |
+| Caching              | Zwei-Ebenen-System: `AFS_ConfigCache` (YAML), `AFS_Cache` (allgemein) |
 | Deployment           | Docker Compose (empfohlen) oder manuelle Installation |
 | Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs) |
 | Autoload             | Simple PSR-0-ähnlicher Loader (`autoload.php`) |
