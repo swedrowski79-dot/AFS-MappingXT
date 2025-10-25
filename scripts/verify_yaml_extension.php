@@ -1,6 +1,34 @@
 #!/usr/bin/env php
 <?php
 /**
+ * DEPRECATED: Verify YAML Extension Installation
+ * 
+ * This script is DEPRECATED and no longer needed.
+ * 
+ * AFS-MappingXT now uses a native PHP YAML parser (AFS_YamlParser)
+ * that eliminates the need for the php-yaml PECL extension.
+ * 
+ * See: classes/AFS_YamlParser.php
+ * See: docs/YAML_EXTENSION_SETUP.md
+ */
+
+echo "\n";
+echo "⚠️  DEPRECATED: This script is no longer needed.\n";
+echo "\n";
+echo "AFS-MappingXT now uses a native PHP YAML parser (AFS_YamlParser)\n";
+echo "that eliminates the need for the php-yaml PECL extension.\n";
+echo "\n";
+echo "To verify YAML functionality, run instead:\n";
+echo "  php scripts/validate_yaml_removal.php\n";
+echo "\n";
+
+exit(0);
+
+// ============================================================================
+// DEPRECATED CODE BELOW (kept for reference)
+// ============================================================================
+
+/**
  * Verify YAML Extension Installation
  * 
  * This script checks if the YAML extension is properly installed and working
