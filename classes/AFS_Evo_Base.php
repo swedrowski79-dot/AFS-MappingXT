@@ -5,7 +5,7 @@ abstract class AFS_Evo_Base
     // Constants for performance tuning
     protected const CHUNK_SIZE_FOR_ID_MAP = 500;
     protected const PROGRESS_UPDATE_INTERVAL = 10;
-    protected const ERROR_SAMPLE_SIZE = 12;
+    protected const ERROR_SAMPLE_SIZE = 5;  // Reduced from 12 for lean logging
     
     protected PDO $db;
     protected AFS $afs;

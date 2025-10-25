@@ -95,7 +95,7 @@ try {
     
     // Test 1: Export with StatusTracker
     echo "3. Testing DeltaExporter with StatusTracker...\n";
-    $statusTracker = new AFS_Evo_StatusTracker($statusDbPath, 'test_job');
+    $statusTracker = new AFS_Evo_StatusTracker($statusDbPath, 'test_job', 200, 'info'); // Use 'info' level to capture all logs
     $exporter = new AFS_Evo_DeltaExporter($db, $deltaDbPath, $statusTracker);
     
     $stats = $exporter->export();
