@@ -109,7 +109,7 @@ function createStatusTrackerCli(array $config, string $job, int $maxErrors): AFS
 {
     $statusDb = $config['paths']['status_db'] ?? (__DIR__ . '/db/status.db');
     if (!is_file($statusDb)) {
-        throw new RuntimeException("status.db nicht gefunden: {$statusDb}");
+        throw new AFS_DatabaseException("status.db nicht gefunden: {$statusDb}");
     }
     return new AFS_Evo_StatusTracker($statusDb, $job, $maxErrors);
 }
@@ -143,7 +143,7 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
 
     $dataDb = $config['paths']['data_db'] ?? (__DIR__ . '/db/evo.db');
     if (!is_file($dataDb)) {
-        throw new RuntimeException("SQLite-Datei nicht gefunden: {$dataDb}");
+        throw new AFS_DatabaseException("SQLite-Datei nicht gefunden: {$dataDb}");
     }
     $pdo = new PDO('sqlite:' . $dataDb);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -169,7 +169,7 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
         $mssql->scalar('SELECT 1');
     } catch (Throwable $e) {
         $mssql->close();
-        throw new RuntimeException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
+        throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
     }
 
     $dataSource = new AFS_Get_Data($mssql);
