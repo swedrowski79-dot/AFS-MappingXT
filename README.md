@@ -29,6 +29,8 @@ Dieses Projekt synchronisiert AFS-ERP Daten nach xt:Commerce (EVO). Die Synchron
 
 Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen auf dieselben Klassen und Status-Tabellen zu.
 
+**Neu:** Effiziente Änderungserkennung via SHA-256 Hashes – nur tatsächlich geänderte Artikel werden aktualisiert. Details siehe [HashManager.md](docs/HashManager.md).
+
 ---
 
 ## Technische Fakten
@@ -59,8 +61,9 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
    php scripts/setup.php
   ```
   Dadurch werden `db/evo.db` und `db/status.db` gemäß `scripts/create_*.sql` erstellt.
-- Bei Updates von älteren Installationen: `php scripts/migrate_update_columns.php`
-  (fügt die neuen `update`-Spalten in den Verknüpfungstabellen hinzu)
+- Bei Updates von älteren Installationen:
+  - `php scripts/migrate_update_columns.php` (fügt die neuen `update`-Spalten in den Verknüpfungstabellen hinzu)
+  - `php scripts/migrate_add_hash_columns.php` (fügt Hash-Spalten für effiziente Änderungserkennung hinzu)
 
 ### Konfiguration
 - Kopiere `config.php` bzw. passe folgende Einträge an:
@@ -164,6 +167,7 @@ Scripts `scripts/create_evo.sql` & `scripts/create_status.sql` enthalten die vol
 | `AFS_Evo_AttributeSync` | Überträgt Attribute für Artikel |
 | `AFS_Evo_CategorySync` | Synchronisiert Warengruppen (inkl. Parent-Verknüpfungen) |
 | `AFS_Evo_ArticleSync` | Hauptlogik: Artikel schreiben, Medien & Attribute verknüpfen |
+| `AFS_HashManager` | **NEU:** Effiziente Änderungserkennung via SHA-256 Hashes (siehe [HashManager.md](docs/HashManager.md)) |
 | `AFS_Evo_StatusTracker` | Managt `sync_status`/`sync_log`, Fortschrittsbalken & Logs |
 | `AFS_Evo_Reset` | Utility zum Leeren aller EVO-Tabellen |
 | `AFS_Evo_DeltaExporter` | Exportiert Datensätze mit `update = 1` in `evo_delta.db` und setzt Flags zurück |
