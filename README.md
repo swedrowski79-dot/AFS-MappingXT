@@ -38,6 +38,8 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 
 **Neu:** Einheitliches JSON-Logging für alle Mapping- und Delta-Operationen – jeder Lauf wird mit Mapping-Version, Datensatzanzahl, Änderungen und Dauer protokolliert. Details siehe [Logging](#logging).
 
+**Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mappings/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [CLEANUP_VALIDATION.md](docs/CLEANUP_VALIDATION.md) und [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
+
 ---
 
 ## Technische Fakten
@@ -277,7 +279,8 @@ Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
 | `test_yaml_mapping.php` | Validiert YAML-Konfiguration und SQL-Generierung aus source_afs.yml |
 | `test_target_mapping.php` | Validiert target_sqlite.yml Konfiguration und UPSERT-Statements |
 | `test_articlesync_mapping.php` | Integration-Test für AFS_Evo_ArticleSync mit Target-Mapping |
-| `test_mixed_mode_validation.php` | **[NEU]** Umfassende Validierung der neuen Mapping-Logik (siehe unten) |
+| `test_mixed_mode_validation.php` | Umfassende Validierung der Mapping-Logik |
+| `validate_no_hardcodings.php` | **[NEU]** Bestätigt keine Hardcodings oder Legacy-Code mehr vorhanden |
 | `test_hashmanager.php` | Tests für effiziente Änderungserkennung via Hashes |
 | `test_partial_hashes.php` | Tests für selektive Updates via Teil-Hashes |
 | `test_mapping_logger.php` | Tests für strukturiertes JSON-Logging |
@@ -317,7 +320,14 @@ php scripts/test_yaml_mapping.php
 php scripts/test_target_mapping.php
 php scripts/test_articlesync_mapping.php
 php scripts/test_mixed_mode_validation.php
+php scripts/validate_no_hardcodings.php
 ```
+
+**Cleanup-Validierung:**
+```bash
+php scripts/validate_no_hardcodings.php
+```
+Dieser Test bestätigt, dass das System vollständig mapping-basiert ist und keine Hardcodings oder Legacy-Code mehr enthält. Details siehe [CLEANUP_VALIDATION.md](docs/CLEANUP_VALIDATION.md).
 
 ---
 
