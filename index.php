@@ -8,6 +8,10 @@ header('X-Frame-Options: SAMEORIGIN');
 header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
+// Cache headers for HTML page (no caching for dynamic UI)
+header('Cache-Control: no-cache, must-revalidate');
+header('Pragma: no-cache');
+
 // Remove server signature
 header_remove('X-Powered-By');
 header_remove('Server');

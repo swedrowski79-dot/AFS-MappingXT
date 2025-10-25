@@ -11,6 +11,10 @@ header('X-Frame-Options: SAMEORIGIN');
 header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
+// Cache headers for health endpoint (short cache for monitoring)
+header('Cache-Control: public, max-age=30, must-revalidate');
+header('Vary: Accept-Encoding');
+
 // Remove server signature
 header_remove('X-Powered-By');
 header_remove('Server');
