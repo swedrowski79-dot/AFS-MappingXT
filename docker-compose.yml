@@ -24,13 +24,21 @@ services:
       # MSSQL Connection (override in .env)
       - AFS_MSSQL_HOST=${AFS_MSSQL_HOST:-10.0.1.82}
       - AFS_MSSQL_PORT=${AFS_MSSQL_PORT:-1435}
-      - AFS_MSSQL_DB=${AFS_MSSQL_DB:-AFS_2018}
+      - AFS_MSSQL_DB=${AFS_MSSQL_DB:-AFS_WAWI_DB}
       - AFS_MSSQL_USER=${AFS_MSSQL_USER:-sa}
       - AFS_MSSQL_PASS=${AFS_MSSQL_PASS:-W3laf!x}
-      # PHP Configuration
-      - PHP_MEMORY_LIMIT=256M
-      - PHP_MAX_EXECUTION_TIME=300
-      - TZ=Europe/Berlin
+      # PHP Configuration (override in .env)
+      - PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT:-256M}
+      - PHP_MAX_EXECUTION_TIME=${PHP_MAX_EXECUTION_TIME:-300}
+      - TZ=${TZ:-Europe/Berlin}
+      # Application Configuration (override in .env)
+      - AFS_MEDIA_SOURCE=${AFS_MEDIA_SOURCE:-/var/www/data}
+      - AFS_METADATA_ARTICLES=${AFS_METADATA_ARTICLES:-}
+      - AFS_METADATA_CATEGORIES=${AFS_METADATA_CATEGORIES:-}
+      - AFS_MAX_ERRORS=${AFS_MAX_ERRORS:-200}
+      - AFS_LOG_ROTATION_DAYS=${AFS_LOG_ROTATION_DAYS:-30}
+      - AFS_MAPPING_VERSION=${AFS_MAPPING_VERSION:-1.0.0}
+      - AFS_ENABLE_FILE_LOGGING=${AFS_ENABLE_FILE_LOGGING:-true}
     networks:
       - afs-network
     healthcheck:
