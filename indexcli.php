@@ -85,6 +85,7 @@ Verfügbare Kommandos:
   log                 Protokollausgabe (alle Ebenen) – optional: --level=info|warning|error
   errors              Alias für "log --level=error"
   clear-errors        Protokoll leeren
+  update              Manuell nach Updates suchen und installieren
 
 Optionen:
   --job=NAME               Name des Sync-Jobs (Standard: categories)
@@ -96,9 +97,59 @@ Optionen:
   --document-dest=/pfad    Zielverzeichnis (optional)
   --max-errors=ZAHL        Maximale Logeinträge überschreibt config.php
   --limit=ZAHL             Anzahl Logeinträge bei log/errors (Standard 200)
+  --skip-update            GitHub-Update beim Start überspringen
 
 TXT;
     exit(0);
+}
+
+/**
+ * Check and perform GitHub update if enabled
+ */
+function checkGitHubUpdate(array $config, bool $skipUpdate = false): void
+{
+    if ($skipUpdate) {
+        return;
+    }
+    
+    $githubConfig = $config['github'] ?? [];
+    $autoUpdate = $githubConfig['auto_update'] ?? false;
+    $branch = $githubConfig['branch'] ?? '';
+    
+    if (!$autoUpdate) {
+        return;
+    }
+    
+    try {
+        $updater = new AFS_GitHubUpdater(__DIR__, $autoUpdate, $branch);
+        echo "Prüfe auf GitHub-Updates...\n";
+        
+        $result = $updater->checkAndUpdate();
+        
+        if ($result['checked']) {
+            $info = $result['info'];
+            if ($info['available'] ?? false) {
+                echo sprintf(
+                    "Updates verfügbar: %d Commit(s) hinter remote (%s -> %s)\n",
+                    $info['commits_behind'],
+                    $info['current_commit'],
+                    $info['remote_commit']
+                );
+                
+                if ($result['updated']) {
+                    echo "✓ Update erfolgreich durchgeführt.\n";
+                } else {
+                    echo "× Update nicht durchgeführt: " . ($result['message'] ?? 'Unbekannter Fehler') . "\n";
+                }
+            } else {
+                echo "✓ Anwendung ist auf dem neuesten Stand.\n";
+            }
+        }
+        echo "\n";
+    } catch (Throwable $e) {
+        // Don't fail on update errors, just warn
+        echo "Warnung: GitHub-Update fehlgeschlagen: " . $e->getMessage() . "\n\n";
+    }
 }
 
 $job = $args->getString('job') ?? 'categories';
@@ -228,6 +279,49 @@ function printStatus(array $status): void
 }
 
 switch ($args->command) {
+    case 'update':
+        // Manual update command
+        try {
+            $githubConfig = $config['github'] ?? [];
+            $branch = $githubConfig['branch'] ?? '';
+            
+            $updater = new AFS_GitHubUpdater(__DIR__, true, $branch);
+            
+            echo "Prüfe auf GitHub-Updates...\n";
+            $result = $updater->checkAndUpdate();
+            
+            if ($result['checked']) {
+                $info = $result['info'];
+                if ($info['available'] ?? false) {
+                    echo sprintf(
+                        "Updates verfügbar: %d Commit(s) hinter remote (%s -> %s)\n",
+                        $info['commits_behind'],
+                        $info['current_commit'],
+                        $info['remote_commit']
+                    );
+                    
+                    if ($result['updated']) {
+                        echo "✓ Update erfolgreich durchgeführt.\n";
+                        exit(0);
+                    } else {
+                        $message = $result['message'] ?? 'Unbekannter Fehler';
+                        echo "× Update fehlgeschlagen: {$message}\n";
+                        if (isset($result['result']['output'])) {
+                            echo "Details: {$result['result']['output']}\n";
+                        }
+                        exit(1);
+                    }
+                } else {
+                    echo "✓ Anwendung ist bereits auf dem neuesten Stand.\n";
+                    exit(0);
+                }
+            }
+        } catch (Throwable $e) {
+            fwrite(STDERR, "Fehler beim Update: " . $e->getMessage() . "\n");
+            exit(1);
+        }
+        break;
+
     case 'status':
         $tracker = createStatusTrackerCli($config, $job, $maxErrors);
         $status = $tracker->getStatus();
@@ -280,6 +374,10 @@ switch ($args->command) {
         exit(0);
 
     case 'run':
+        // Check for updates at startup (unless --skip-update is set)
+        $skipUpdate = $args->getBool('skip-update', false);
+        checkGitHubUpdate($config, $skipUpdate);
+        
         $copyImages = $args->getBool('copy-images', false);
         $imageSource = $args->getString('image-source');
         $imageDest = $args->getString('image-dest');
