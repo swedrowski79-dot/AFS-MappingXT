@@ -104,7 +104,10 @@ $debugTables = [
         <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
         <p>Überblick &amp; Steuerung der AFS-Daten-Synchronisation</p>
       </div>
-      <div class="tag">API-Basis · <code><?= htmlspecialchars($apiBase, ENT_QUOTES, 'UTF-8') ?></code></div>
+      <div class="tag">
+        <a href="<?= htmlspecialchars($baseUrl, ENT_QUOTES, 'UTF-8') ?>settings.php" style="color: inherit; text-decoration: none; margin-right: 1rem;">⚙️ Einstellungen</a>
+        API-Basis · <code><?= htmlspecialchars($apiBase, ENT_QUOTES, 'UTF-8') ?></code>
+      </div>
     </header>
 
     <div class="grid">
