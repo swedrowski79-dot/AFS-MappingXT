@@ -83,7 +83,7 @@ return [
     ],
 
     'github' => [
-        'auto_update' => (bool)(getenv('AFS_GITHUB_AUTO_UPDATE') !== false ? filter_var(getenv('AFS_GITHUB_AUTO_UPDATE'), FILTER_VALIDATE_BOOLEAN) : false),  // Automatically update from GitHub
+        'auto_update' => filter_var(getenv('AFS_GITHUB_AUTO_UPDATE'), FILTER_VALIDATE_BOOLEAN),  // Automatically update from GitHub
         'branch' => getenv('AFS_GITHUB_BRANCH') ?: '',  // Branch to update from (empty = current branch)
     ],
 ];
