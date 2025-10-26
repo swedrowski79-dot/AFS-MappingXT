@@ -40,9 +40,7 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 
 **Neu:** Einheitliches JSON-Logging für alle Mapping- und Delta-Operationen – jeder Lauf wird mit Mapping-Version, Datensatzanzahl, Änderungen und Dauer protokolliert. Details siehe [Logging](#logging).
 
-**Neu:** Umfassender Caching-Layer für teure Berechnungen und Datenbankabfragen – reduziert Datenbankzugriffe und verbessert die Performance durch intelligentes In-Memory-Caching mit TTL-Steuerung. Details siehe [docs/GENERAL_CACHE.md](docs/GENERAL_CACHE.md) und [docs/CACHING.md](docs/CACHING.md).
-
-**Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mappings/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [CLEANUP_VALIDATION.md](docs/CLEANUP_VALIDATION.md) und [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
+**Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mappings/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
 
 ---
 
@@ -54,12 +52,11 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 | Web Server           | Apache 2.4 mit mpm_event + PHP-FPM (empfohlen) oder mod_php |
 | Datenbanken          | MSSQL (Quelle), SQLite (`db/evo.db`, `db/status.db`) |
 | Logging              | JSON-Logs in `logs/YYYY-MM-DD.log` (strukturiert, rotierbar) |
-| Caching              | Zwei-Ebenen-System: `AFS_ConfigCache` (YAML), `AFS_Cache` (allgemein) |
+| Caching              | `AFS_ConfigCache` für YAML-Konfigurationsdateien |
 | Deployment           | Docker Compose (empfohlen) oder manuelle Installation |
 | Verzeichnisstruktur  | `classes/` (Business Logic), `api/` (Endpoints), `scripts/` (CLI-Helfer), `Files/` (Medienausgabe), `logs/` (JSON-Logs), `assets/` (CSS/JS) |
 | Autoload             | Simple PSR-0-ähnlicher Loader (`autoload.php`) |
 | Web-Oberfläche       | Einzelne `index.php` mit fetch-basierten API-Calls |
-| Asset Build          | npm-basiertes Build-System für CSS/JS-Minifizierung – siehe [ASSET_BUILD.md](docs/ASSET_BUILD.md) |
 | Sicherheit           | Umfassende Security-Headers, CSP, Permissions-Policy – siehe [SECURITY.md](docs/SECURITY.md) |
 
 ---
@@ -88,8 +85,7 @@ Ausführliche Dokumentation siehe [docs/SECURITY.md](docs/SECURITY.md)
 
 **Option 2: Manuelle Installation**
 - PHP ≥ 8.1 CLI (empfohlen mit Extensions: `pdo_sqlite`, `pdo_sqlsrv`/`sqlsrv`, `json`)
-- Apache 2.4 mit mpm_event + PHP-FPM (siehe [Apache PHP-FPM Setup](docs/APACHE_PHP_FPM_SETUP.md))
-- **Node.js ≥ 14.x und npm** (für Asset-Build)
+- Apache 2.4 mit mpm_event + PHP-FPM
 - Schreibrechte im Projektordner (für `Files/` und `db/`)
 - Netzwerkzugriff auf den MSSQL-Server
 - Optional: `sqlite3` CLI (zum manuellen Inspektieren der Datenbanken)
@@ -108,15 +104,8 @@ docker-compose up -d
 **Manuell:**
 1. Projekt auf Zielsystem kopieren
 2. Abhängige PHP-Extensions installieren
-3. Apache mpm_event + PHP-FPM einrichten (siehe [docs/APACHE_PHP_FPM_SETUP.md](docs/APACHE_PHP_FPM_SETUP.md))
-4. **Assets bauen:**
-   ```bash
-   npm install
-   npm run build
-   # oder: make build
-   ```
-   Siehe [ASSET_BUILD.md](docs/ASSET_BUILD.md) für Details.
-5. Die SQLite-Datenbanken initialisieren:
+3. Apache mpm_event + PHP-FPM einrichten
+4. Die SQLite-Datenbanken initialisieren:
    ```bash
    php scripts/setup.php
   ```
@@ -125,7 +114,6 @@ docker-compose up -d
   - `php scripts/migrate_update_columns.php` (fügt die neuen `update`-Spalten in den Verknüpfungstabellen hinzu)
   - `php scripts/migrate_add_hash_columns.php` (fügt Hash-Spalten für effiziente Ängerungserkennung hinzu)
   - `php scripts/migrate_add_indexes.php` (fügt Performance-Indizes hinzu - **empfohlen für bestehende Installationen**)
-  - ~~`php scripts/migrate_add_partial_hash_columns.php`~~ (DEPRECATED: Teil-Hash-Spalten wurden entfernt)
 
 ### Konfiguration
 
@@ -343,7 +331,6 @@ Nach dem Kopieren werden fehlende oder fehlgeschlagene Dateien analysiert:
   - Update-Flag-Indizes für schnellen Delta-Export (10-100x schneller)
   - Foreign-Key-Indizes für effiziente Junction-Table-Lookups (40x schneller)
   - XT_ID-Indizes für bi-direktionale Synchronisation
-  - Details siehe [docs/INDEX_STRATEGY.md](docs/INDEX_STRATEGY.md)
 
 ### `db/evo_delta.db`
 - Wird nach jedem Lauf erzeugt (gleiche Tabellenschemata wie `evo.db`)
@@ -386,166 +373,6 @@ Scripts `scripts/create_evo.sql` & `scripts/create_status.sql` enthalten die vol
 | `AFS_SyncBusyException` | Spezielle Exception bei parallelen Sync-Versuchen |
 
 Hilfsklassen wie `AFS_Evo_Base` stellen gemeinsame Utilities (Artikelreferenz, Logging, Normalisierung) bereit.
-
----
-
-## Testing
-
-Das Projekt enthält umfassende Test-Skripte zur Validierung der Mapping-Logik:
-
-### Verfügbare Tests
-
-| Script | Beschreibung |
-|--------|--------------|
-| `verify_yaml_extension.php` | **[VERALTET]** Verifiziert früher YAML-Extension (nicht mehr benötigt) |
-| `test_yaml_mapping.php` | Validiert YAML-Konfiguration und SQL-Generierung aus source_afs.yml |
-| `test_target_mapping.php` | Validiert target_sqlite.yml Konfiguration und UPSERT-Statements |
-| `test_config_cache.php` | **[NEU]** Testet Caching-Layer für YAML-Konfigurationen |
-| `test_articlesync_mapping.php` | Integration-Test für AFS_Evo_ArticleSync mit Target-Mapping |
-| `test_mixed_mode_validation.php` | Umfassende Validierung der Mapping-Logik |
-| `validate_no_hardcodings.php` | **[NEU]** Bestätigt keine Hardcodings oder Legacy-Code mehr vorhanden |
-| `detect_unused_code.php` | **[NEU]** Automatische Erkennung nicht genutzter Klassen und Methoden |
-| `test_hashmanager.php` | Tests für effiziente Änderungserkennung via Hashes |
-| `test_mapping_logger.php` | Tests für strukturiertes JSON-Logging |
-| `test_index_performance.php` | **[NEU]** Validiert Datenbank-Index-Performance und Nutzung |
-| `analyze_performance.php` | **[NEU]** Projektweite Performance-Analyse und Benchmarking |
-
-### Dead Code Detection
-
-Das Projekt enthält ein automatisches Werkzeug zur Erkennung nicht genutzter Klassen und Funktionen:
-
-```bash
-# Standard-Analyse
-php scripts/detect_unused_code.php
-
-# Mit ausführlicher Ausgabe
-php scripts/detect_unused_code.php --verbose
-
-# JSON-Ausgabe für automatische Verarbeitung
-php scripts/detect_unused_code.php --json
-```
-
-Das Tool analysiert:
-- Alle PHP-Klassen im `/classes` Verzeichnis
-- Verwendungsmuster im gesamten Projekt
-- Identifiziert nicht verwendete öffentliche Methoden
-- Ignoriert automatisch Magic Methods und Exception-Klassen
-
-Detaillierte Dokumentation: [docs/DEAD_CODE_DETECTION.md](docs/DEAD_CODE_DETECTION.md)
-
-### Performance-Analyse
-
-Das Projekt enthält ein umfassendes Performance-Analyse-Tool zur Identifikation von Bottlenecks und Optimierungsmöglichkeiten:
-
-```bash
-# Standard-Analyse
-php scripts/analyze_performance.php
-
-# Detaillierte Analyse mit mehr Iterationen
-php scripts/analyze_performance.php --detailed
-
-# Mit JSON-Export
-php scripts/analyze_performance.php --export=json
-```
-
-Das Tool analysiert:
-- Konfigurationsverarbeitung
-- YAML-Mapping-Performance
-- SQL-Generierung
-- Datenbank-Operationen
-- Hash-Berechnungen
-- Speichernutzung
-- Datei I/O
-- Klassen-Instanziierung
-
-Detaillierte Performance-Dokumentation: [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md)
-
-### Mixed Mode Validation Test
-
-Das `test_mixed_mode_validation.php` Script führt eine umfassende 5-Phasen-Validierung durch:
-
-1. **Konfigurationsvalidierung**: Lädt und validiert beide YAML-Mappings
-2. **SQL-Generierungsvalidierung**: Testet dynamische SQL-Generierung
-3. **Datenkonsistenzvalidierung**: Prüft Feldvollständigkeit und Constraints
-4. **Performance-Vergleich**: Misst und validiert Laufzeiten
-5. **Datenverlust-Erkennung**: Prüft auf fehlende Konfigurationen
-
-```bash
-# Ausführung
-php scripts/test_mixed_mode_validation.php
-
-# Ergebnis
-✓ VALIDATION PASSED - Results are 100% identical
-✓ No data loss detected
-✓ Performance within acceptable thresholds
-```
-
-**Akzeptanzkriterien (erfüllt):**
-- ✅ Ergebnis 100% identisch
-- ✅ Log dokumentiert Unterschiede
-- ✅ Keine Datenverluste
-- ✅ Performance akzeptabel
-
-Detaillierte Dokumentation: [docs/MIXED_MODE_VALIDATION.md](docs/MIXED_MODE_VALIDATION.md)
-
-### Alle Tests ausführen
-
-```bash
-# YAML Extension verifizieren
-php scripts/verify_yaml_extension.php
-
-# Mapping und Konfiguration testen
-php scripts/test_yaml_mapping.php
-php scripts/test_target_mapping.php
-php scripts/test_articlesync_mapping.php
-php scripts/test_mixed_mode_validation.php
-php scripts/validate_no_hardcodings.php
-php scripts/test_index_performance.php
-php scripts/analyze_performance.php
-```
-
-**Cleanup-Validierung:**
-```bash
-php scripts/validate_no_hardcodings.php
-```
-Dieser Test bestätigt, dass das System vollständig mapping-basiert ist und keine Hardcodings oder Legacy-Code mehr enthält. Details siehe [CLEANUP_VALIDATION.md](docs/CLEANUP_VALIDATION.md).
-
----
-
-## Code Style & Qualität
-
-Das Projekt folgt dem **PSR-12: Extended Coding Style** Standard für konsistenten, lesbaren und wartbaren PHP-Code.
-
-### Werkzeuge
-
-- **PHP_CodeSniffer**: Automatische Überprüfung und Korrektur von Code-Style-Verstößen
-- **PHPStan**: Statische Code-Analyse zur Fehlererkennung
-- **EditorConfig**: Einheitliche Editor-Einstellungen für alle Entwickler
-
-### Verwendung
-
-```bash
-# Dependencies installieren
-composer install
-
-# Code-Style prüfen
-composer cs:check
-
-# Code-Style automatisch korrigieren
-composer cs:fix
-
-# Statische Analyse durchführen
-composer stan
-
-# Alle Qualitätsprüfungen ausführen
-composer test:style
-```
-
-### CI/CD Integration
-
-GitHub Actions führt automatisch Code-Style-Checks bei Pull Requests und Pushes auf `main` und `develop` Branches durch. Die Pipeline schlägt fehl, wenn PSR-12-Verstöße oder Type-Fehler erkannt werden.
-
-Ausführliche Dokumentation siehe [docs/CODE_STYLE.md](docs/CODE_STYLE.md)
 
 ---
 

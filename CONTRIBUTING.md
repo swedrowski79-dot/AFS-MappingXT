@@ -2,24 +2,6 @@
 
 Thank you for considering contributing to AFS-MappingXT! This document outlines the process and guidelines for contributing to this project.
 
-## Code Style
-
-This project follows the **PSR-12: Extended Coding Style** standard. All code contributions must comply with this standard.
-
-### Setup
-
-1. Install dependencies:
-   ```bash
-   composer install
-   ```
-
-2. Before committing, check your code:
-   ```bash
-   composer test:style
-   ```
-
-See [CODE_STYLE.md](docs/CODE_STYLE.md) and [CODE_STYLE_QUICKSTART.md](docs/CODE_STYLE_QUICKSTART.md) for detailed information.
-
 ## Development Workflow
 
 1. **Fork the repository** (if external contributor)
@@ -28,10 +10,7 @@ See [CODE_STYLE.md](docs/CODE_STYLE.md) and [CODE_STYLE_QUICKSTART.md](docs/CODE
    git checkout -b feature/your-feature-name
    ```
 3. **Make your changes**
-4. **Test your changes**:
-   - Run code style checks: `composer cs:check`
-   - Fix style issues: `composer cs:fix`
-   - Run static analysis: `composer stan`
+4. **Test your changes** thoroughly
 5. **Commit your changes**:
    ```bash
    git commit -m "Add feature: your feature description"
@@ -46,21 +25,9 @@ See [CODE_STYLE.md](docs/CODE_STYLE.md) and [CODE_STYLE_QUICKSTART.md](docs/CODE
 
 - **Target branch**: Always create PRs against `develop`, not `main`
 - **Description**: Provide a clear description of what changes you made and why
-- **Testing**: Ensure all automated checks pass
-- **Code style**: All code must pass PSR-12 checks
+- **Testing**: Ensure all functionality works as expected
 - **Documentation**: Update documentation if you change functionality
 - **Commits**: Use clear, descriptive commit messages
-
-## Code Quality Requirements
-
-All pull requests must pass the following checks:
-
-1. **PSR-12 compliance** (enforced by PHP_CodeSniffer)
-2. **Static analysis** (enforced by PHPStan level 5)
-3. **No syntax errors**
-4. **Follows project conventions**
-
-These checks run automatically via GitHub Actions when you create a PR.
 
 ## Commit Message Guidelines
 
@@ -120,7 +87,9 @@ When reporting issues, please include:
 AFS-MappingXT/
 ├── api/              # API endpoints
 ├── classes/          # Business logic classes
-├── src/              # Namespaced source code
+│   ├── afs/          # AFS-related classes
+│   ├── mssql/        # Database connection classes
+│   └── mapping/      # Mapping classes
 ├── scripts/          # CLI scripts
 ├── docs/             # Documentation
 ├── mappings/         # YAML mapping configurations
@@ -128,13 +97,6 @@ AFS-MappingXT/
 ├── db/               # SQLite databases
 └── logs/             # Log files
 ```
-
-## Development Tools
-
-- **PHP_CodeSniffer**: Code style checking and fixing
-- **PHPStan**: Static analysis
-- **EditorConfig**: Editor configuration
-- **Git**: Version control
 
 ## Questions?
 

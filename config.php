@@ -82,3 +82,4 @@ return [
         'title'         => 'AFS-Schnittstelle',
     ],
 ];
+
