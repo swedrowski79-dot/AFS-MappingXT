@@ -256,7 +256,7 @@ php indexcli.php run --skip-update
 
 ## Beispiel-Workflow
 
-### Szenario: Wöchentliche automatische Updates
+### Szenario: Tägliche automatische Updates
 
 ```bash
 # 1. .env konfigurieren
@@ -286,9 +286,12 @@ fetch('/api/github_update.php')
     });
 
 // Update erzwingen
+const formData = new FormData();
+formData.append('force', '1');
+
 fetch('/api/github_update.php', {
     method: 'POST',
-    body: new FormData([['force', '1']])
+    body: formData
 })
     .then(response => response.json())
     .then(data => {
