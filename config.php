@@ -137,5 +137,39 @@ return [
             array_map('trim', explode(',', getenv('SYNC_ENABLED_ACTIONS') ?: 'sync_afs_to_evo'))
         ),
     ],
+
+    // ============================================================================
+    // Server-to-Server Data Transfer API Configuration
+    // Configuration for secure data transfer between different servers
+    // ============================================================================
+    'data_transfer' => [
+        // API Key for authentication (required)
+        'api_key' => getenv('DATA_TRANSFER_API_KEY') ?: '',
+        
+        // Database transfer paths
+        'database' => [
+            'enabled' => filter_var(getenv('DATA_TRANSFER_ENABLE_DB'), FILTER_VALIDATE_BOOLEAN),
+            'source' => getenv('DB_TRANSFER_SOURCE') ?: __DIR__ . '/db/evo_delta.db',
+            'target' => getenv('DB_TRANSFER_TARGET') ?: '/tmp/evo_delta.db',
+        ],
+        
+        // Images transfer paths
+        'images' => [
+            'enabled' => filter_var(getenv('DATA_TRANSFER_ENABLE_IMAGES') ?: 'true', FILTER_VALIDATE_BOOLEAN),
+            'source' => getenv('IMAGES_TRANSFER_SOURCE') ?: __DIR__ . '/Files/Bilder',
+            'target' => getenv('IMAGES_TRANSFER_TARGET') ?: '/tmp/Bilder',
+        ],
+        
+        // Documents transfer paths
+        'documents' => [
+            'enabled' => filter_var(getenv('DATA_TRANSFER_ENABLE_DOCUMENTS') ?: 'true', FILTER_VALIDATE_BOOLEAN),
+            'source' => getenv('DOCUMENTS_TRANSFER_SOURCE') ?: __DIR__ . '/Files/Dokumente',
+            'target' => getenv('DOCUMENTS_TRANSFER_TARGET') ?: '/tmp/Dokumente',
+        ],
+        
+        // Transfer options
+        'max_file_size' => (int)(getenv('DATA_TRANSFER_MAX_FILE_SIZE') ?: 104857600), // 100MB
+        'log_transfers' => filter_var(getenv('DATA_TRANSFER_LOG_TRANSFERS') ?: 'true', FILTER_VALIDATE_BOOLEAN),
+    ],
 ];
 
