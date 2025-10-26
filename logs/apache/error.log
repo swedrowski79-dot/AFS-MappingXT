@@ -18,3 +18,10 @@ AH00558: apache2: Could not reliably determine the server's fully qualified doma
 AH00558: apache2: Could not reliably determine the server's fully qualified domain name, using 172.18.0.3. Set the 'ServerName' directive globally to suppress this message
 [Sat Oct 25 22:43:13.503212 2025] [mpm_event:notice] [pid 21:tid 21] AH00489: Apache/2.4.65 (Debian) mod_fcgid/2.3.9 configured -- resuming normal operations
 [Sat Oct 25 22:43:13.503633 2025] [core:notice] [pid 21:tid 21] AH00094: Command line: '/usr/sbin/apache2 -D FOREGROUND'
+AH00558: apache2: Could not reliably determine the server's fully qualified domain name, using 172.18.0.3. Set the 'ServerName' directive globally to suppress this message
+[Sun Oct 26 22:13:30.434293 2025] [mpm_event:notice] [pid 21:tid 21] AH00489: Apache/2.4.65 (Debian) mod_fcgid/2.3.9 configured -- resuming normal operations
+[Sun Oct 26 22:13:30.434747 2025] [core:notice] [pid 21:tid 21] AH00094: Command line: '/usr/sbin/apache2 -D FOREGROUND'
+AH00558: apache2: Could not reliably determine the server's fully qualified domain name, using 172.18.0.3. Set the 'ServerName' directive globally to suppress this message
+[Sun Oct 26 22:15:05.409422 2025] [core:warn] [pid 8:tid 8] AH00098: pid file /var/run/apache2/apache2.pid overwritten -- Unclean shutdown of previous Apache run?
+[Sun Oct 26 22:15:05.411061 2025] [mpm_event:notice] [pid 8:tid 8] AH00489: Apache/2.4.65 (Debian) mod_fcgid/2.3.9 configured -- resuming normal operations
+[Sun Oct 26 22:15:05.411389 2025] [core:notice] [pid 8:tid 8] AH00094: Command line: '/usr/sbin/apache2 -D FOREGROUND'

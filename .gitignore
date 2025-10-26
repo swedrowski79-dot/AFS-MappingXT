@@ -1,37 +1,64 @@
-# Database files
-db/*.db
-db/*.db-shm
-db/*.db-wal
-
-# Log files - keep directory but ignore log files
-logs/*.log
-logs/performance_analysis_*.json
-
-# Media files
-Files/Bilder/*
-Files/Dokumente/*
-!Files/Bilder/.gitkeep
-!Files/Dokumente/.gitkeep
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# OS files
+# === Betriebssystem-Dateien ===
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Icon?
+desktop.ini
 
-# Environment
-.env
+# === Logs & temporäre Daten ===
+logs/
+files/
+*.log
+*.tmp
+tmp/
+cache/
+*.bak
 
-# Composer
+# === PHP & Composer ===
 vendor/
 composer.lock
+
+# === Konfigurationsdateien ===
+config/local_settings.php
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# === IDE & Editor-Dateien ===
+.idea/
+.vscode/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# === Node & Frontend-Builds ===
+node_modules/
+dist/
+build/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === System & Docker ===
+docker-compose.override.yml
+*.pid
+*.seed
+*.sql
+*.sqlite
+*.db
+*.db-journal
+
+# === Backup-Dateien ===
+*.bak
+*.old
+*.orig
+*.swp
+
+# === Test- & Coverage-Dateien ===
+coverage/
+phpunit.xml
+phpunit.xml.dist
+*.coverage
+*.cov
