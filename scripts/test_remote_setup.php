@@ -78,10 +78,10 @@ try {
 }
 
 // Test 3: Test initial_setup.php GET request (check setup status)
-test_header("Test 3: Initial Setup API - GET Request");
+test_header("Test 3: Initial Setup API - Logic Validation");
 try {
-    // Test by simulating HTTP request using curl internally
-    // Since we can't include the file (it calls exit), we'll test the logic directly
+    // Test the logic by checking file existence
+    // (Cannot include API file directly as it calls exit)
     $envPath = $root . '/.env';
     $envExists = file_exists($envPath);
     

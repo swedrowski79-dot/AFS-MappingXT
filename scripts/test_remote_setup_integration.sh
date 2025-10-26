@@ -43,7 +43,11 @@ log_warning() {
 
 # Check if curl is available
 if ! command -v curl &> /dev/null; then
-    log_error "curl is required but not installed. Please install curl."
+    log_error "curl is required but not installed."
+    log_error "Install curl:"
+    log_error "  - Debian/Ubuntu: sudo apt-get install curl"
+    log_error "  - CentOS/RHEL: sudo yum install curl"
+    log_error "  - macOS: curl is pre-installed"
     exit 1
 fi
 
