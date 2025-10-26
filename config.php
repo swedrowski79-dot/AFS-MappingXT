@@ -148,7 +148,7 @@ return [
         
         // Database transfer paths
         'database' => [
-            'enabled' => filter_var(getenv('DATA_TRANSFER_ENABLE_DB'), FILTER_VALIDATE_BOOLEAN),
+            'enabled' => filter_var(getenv('DATA_TRANSFER_ENABLE_DB') ?: 'true', FILTER_VALIDATE_BOOLEAN),
             'source' => getenv('DB_TRANSFER_SOURCE') ?: __DIR__ . '/db/evo_delta.db',
             'target' => getenv('DB_TRANSFER_TARGET') ?: '/tmp/evo_delta.db',
         ],
