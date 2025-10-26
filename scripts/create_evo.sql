@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS Artikel_Bilder (
     XT_Bild_ID    INTEGER,
     Artikel_ID    INTEGER NOT NULL,
     Bild_ID       INTEGER NOT NULL,
+    Bildnummer    INTEGER,
     "update"      INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
     FOREIGN KEY (Artikel_ID) REFERENCES Artikel(ID) ON DELETE CASCADE,
     FOREIGN KEY (Bild_ID)    REFERENCES Bilder(ID)  ON DELETE CASCADE

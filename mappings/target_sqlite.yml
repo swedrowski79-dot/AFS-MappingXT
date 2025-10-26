@@ -281,6 +281,9 @@ relationships:
       Bild_ID:
         type: integer
         required: true
+      Bildnummer:
+        type: integer
+        nullable: true
       update:
         type: integer
         default: 0
