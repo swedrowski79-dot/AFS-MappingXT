@@ -21,6 +21,13 @@ if (!is_file($configPath)) {
 }
 $config = require $configPath;
 
+// Security check: If security is enabled, only allow CLI access from API context
+if (($config['security']['enabled'] ?? false) && !SecurityValidator::isCalledFromApi()) {
+    fwrite(STDERR, "FEHLER: Direkter Zugriff auf indexcli.php ist nicht erlaubt.\n");
+    fwrite(STDERR, "Der Sicherheitsmodus ist aktiviert. Zugriff ist nur über die API-Schnittstelle erlaubt.\n");
+    exit(1);
+}
+
 /**
  * Very small option parser: command [--key=value] [--flag]
  */
