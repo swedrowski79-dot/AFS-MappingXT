@@ -7,7 +7,7 @@
  * Nutzt TransformRegistry für Transformationen (trim, basename, rtf_to_html, etc.).
  *
  * Voraussetzungen:
- *  - Eine vorhandene MSSQL.php mit einer Klasse "MSSQL" (oder kompatibel),
+ *  - Eine vorhandene MSSQL_Connection.php mit einer Klasse "MSSQL_Connection" (oder kompatibel),
  *    die mindestens eine der Methoden "fetchAll($sql, $params = [])" oder
  *    "query($sql, $params = [])" bereitstellt und ein Array von Zeilen
  *    (assoziative Arrays) zurückliefert.
@@ -15,15 +15,15 @@
  *  - source_afs.yml Konfigurationsdatei in /mappings
  *
  * Beispielverwendung:
- *  require __DIR__ . '/../mssql/MSSQL.php';
- *  $db = new MSSQL($host, $database, $user, $pass);
+ *  require __DIR__ . '/../mssql/MSSQL_Connection.php';
+ *  $db = new MSSQL_Connection($host, $database, $user, $pass);
  *  $afs = new AFS_Get_Data($db);
  *  $artikel    = $afs->getArtikel();
  *  $gruppen    = $afs->getWarengruppen();
  *  $dokumente  = $afs->getDokumente();
  */
 
-require_once __DIR__ . '/../mssql/MSSQL.php';
+require_once __DIR__ . '/../mssql/MSSQL_Connection.php';
 
 class AFS_Get_Data
 {
@@ -37,7 +37,7 @@ class AFS_Get_Data
     private $transformRegistry;
 
     /**
-     * @param object $db Instanz der MSSQL-Datenbankklasse (kompatibel zu fetchAll/query)
+     * @param object $db Instanz der MSSQL_Connection-Datenbankklasse (kompatibel zu fetchAll/query)
      * @param string|null $configPath Optional path to YAML config file
      */
     public function __construct($db, ?string $configPath = null)

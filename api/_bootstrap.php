@@ -54,7 +54,7 @@ function api_ok($data = null): void
     api_json(['ok' => true, 'data' => $data ?? []]);
 }
 
-function createStatusTracker(array $config, string $job = 'categories'): AFS_Evo_StatusTracker
+function createStatusTracker(array $config, string $job = 'categories'): STATUS_Tracker
 {
     $statusDb = $config['paths']['status_db'] ?? (dirname(__DIR__) . '/db/status.db');
     if (!is_file($statusDb)) {
@@ -62,7 +62,7 @@ function createStatusTracker(array $config, string $job = 'categories'): AFS_Evo
     }
     $maxErrors = $config['status']['max_errors'] ?? 200;
     $logLevel = $config['logging']['log_level'] ?? 'warning';
-    return new AFS_Evo_StatusTracker($statusDb, $job, (int)$maxErrors, $logLevel);
+    return new STATUS_Tracker($statusDb, $job, (int)$maxErrors, $logLevel);
 }
 
 function createEvoPdo(array $config): PDO
@@ -101,14 +101,14 @@ function createStatusPdo(array $config): PDO
     return $pdo;
 }
 
-function createMssql(array $config): MSSQL
+function createMssql(array $config): MSSQL_Connection
 {
     $mssqlCfg = $config['mssql'] ?? [];
     $host = $mssqlCfg['host'] ?? 'localhost';
     $port = (int)($mssqlCfg['port'] ?? 1433);
     $server = $host . ',' . $port;
 
-    return new MSSQL(
+    return new MSSQL_Connection(
         $server,
         $mssqlCfg['username'] ?? '',
         $mssqlCfg['password'] ?? '',
@@ -121,7 +121,7 @@ function createMssql(array $config): MSSQL
     );
 }
 
-function createMappingLogger(array $config): ?AFS_MappingLogger
+function createMappingLogger(array $config): ?STATUS_MappingLogger
 {
     $loggingConfig = $config['logging'] ?? [];
     $enableFileLogging = $loggingConfig['enable_file_logging'] ?? true;
@@ -134,7 +134,7 @@ function createMappingLogger(array $config): ?AFS_MappingLogger
     $mappingVersion = $loggingConfig['mapping_version'] ?? '1.0.0';
     $logLevel = $loggingConfig['log_level'] ?? 'warning';
     
-    return new AFS_MappingLogger($logDir, $mappingVersion, $logLevel);
+    return new STATUS_MappingLogger($logDir, $mappingVersion, $logLevel);
 }
 
 function createSyncEnvironment(array $config, string $job = 'categories'): array
@@ -155,7 +155,7 @@ function createSyncEnvironment(array $config, string $job = 'categories'): array
     $dataSource = new AFS_Get_Data($mssql);
     $afs = new AFS($dataSource, $config);
     $logger = createMappingLogger($config);
-    $evo = new AFS_Evo($pdo, $afs, $tracker, $config, $logger);
+    $evo = new EVO($pdo, $afs, $tracker, $config, $logger);
 
     return [$tracker, $evo, $mssql];
 }

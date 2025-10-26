@@ -26,7 +26,7 @@ try {
     }
     api_error($e->getMessage());
 } finally {
-    if (isset($mssql) && $mssql instanceof MSSQL) {
+    if (isset($mssql) && $mssql instanceof MSSQL_Connection) {
         $mssql->close();
     }
 }

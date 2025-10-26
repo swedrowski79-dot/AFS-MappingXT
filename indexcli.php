@@ -105,16 +105,16 @@ $job = $args->getString('job') ?? 'categories';
 $maxErrorsCfg = $config['status']['max_errors'] ?? 200;
 $maxErrors = (int)($args->getString('max-errors', (string)$maxErrorsCfg));
 
-function createStatusTrackerCli(array $config, string $job, int $maxErrors): AFS_Evo_StatusTracker
+function createStatusTrackerCli(array $config, string $job, int $maxErrors): STATUS_Tracker
 {
     $statusDb = $config['paths']['status_db'] ?? (__DIR__ . '/db/status.db');
     if (!is_file($statusDb)) {
         throw new AFS_DatabaseException("status.db nicht gefunden: {$statusDb}");
     }
-    return new AFS_Evo_StatusTracker($statusDb, $job, $maxErrors);
+    return new STATUS_Tracker($statusDb, $job, $maxErrors);
 }
 
-function createMappingLoggerCli(array $config): ?AFS_MappingLogger
+function createMappingLoggerCli(array $config): ?STATUS_MappingLogger
 {
     $loggingConfig = $config['logging'] ?? [];
     $enableFileLogging = $loggingConfig['enable_file_logging'] ?? true;
@@ -126,11 +126,11 @@ function createMappingLoggerCli(array $config): ?AFS_MappingLogger
     $logDir = $config['paths']['log_dir'] ?? (__DIR__ . '/logs');
     $mappingVersion = $loggingConfig['mapping_version'] ?? '1.0.0';
     
-    return new AFS_MappingLogger($logDir, $mappingVersion);
+    return new STATUS_MappingLogger($logDir, $mappingVersion);
 }
 
 /**
- * @return array{tracker:AFS_Evo_StatusTracker,evo:AFS_Evo,mssql:MSSQL}
+ * @return array{tracker:STATUS_Tracker,evo:EVO,mssql:MSSQL_Connection}
  */
 function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): array
 {
@@ -154,7 +154,7 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
     $port = (int)($mssqlCfg['port'] ?? 1433);
     $server = $host . ',' . $port;
 
-    $mssql = new MSSQL(
+    $mssql = new MSSQL_Connection(
         $server,
         (string)($mssqlCfg['username'] ?? ''),
         (string)($mssqlCfg['password'] ?? ''),
@@ -175,7 +175,7 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
     $dataSource = new AFS_Get_Data($mssql);
     $afs = new AFS($dataSource, $config);
     $logger = createMappingLoggerCli($config);
-    $evo = new AFS_Evo($pdo, $afs, $tracker, $config, $logger);
+    $evo = new EVO($pdo, $afs, $tracker, $config, $logger);
 
     return [
         'tracker' => $tracker,
@@ -383,7 +383,7 @@ switch ($args->command) {
                 fwrite(STDERR, $e->getMessage() . "\n");
                 exit(1);
             }
-            if (isset($tracker) && $tracker instanceof AFS_Evo_StatusTracker) {
+            if (isset($tracker) && $tracker instanceof STATUS_Tracker) {
                 $tracker->logError($e->getMessage(), ['exception' => get_class($e)], 'cli');
                 $tracker->fail($e->getMessage(), 'cli');
             }
