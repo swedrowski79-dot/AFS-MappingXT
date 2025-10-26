@@ -58,50 +58,9 @@ function readEnvFile(string $envPath): array
 function getSettingCategories(): array
 {
     return [
-        'security' => [
-            'label' => 'Sicherheit',
-            'keys' => ['AFS_SECURITY_ENABLED'],
-        ],
-        'database' => [
-            'label' => 'MSSQL Datenbank',
-            'keys' => ['AFS_MSSQL_HOST', 'AFS_MSSQL_PORT', 'AFS_MSSQL_DB', 'AFS_MSSQL_USER', 'AFS_MSSQL_PASS'],
-        ],
-        'xt_database' => [
-            'label' => 'XT-Commerce MySQL',
-            'keys' => ['XT_MYSQL_HOST', 'XT_MYSQL_PORT', 'XT_MYSQL_DB', 'XT_MYSQL_USER', 'XT_MYSQL_PASS'],
-        ],
-        'php' => [
-            'label' => 'PHP Konfiguration',
-            'keys' => ['PHP_MEMORY_LIMIT', 'PHP_MAX_EXECUTION_TIME', 'TZ'],
-        ],
-        'opcache' => [
-            'label' => 'OPcache',
-            'keys' => ['OPCACHE_MEMORY_CONSUMPTION', 'OPCACHE_INTERNED_STRINGS_BUFFER', 
-                       'OPCACHE_MAX_ACCELERATED_FILES', 'OPCACHE_REVALIDATE_FREQ',
-                       'OPCACHE_VALIDATE_TIMESTAMPS', 'OPCACHE_HUGE_CODE_PAGES'],
-        ],
-        'jit' => [
-            'label' => 'JIT Kompilierung',
-            'keys' => ['OPCACHE_JIT_MODE', 'OPCACHE_JIT_BUFFER_SIZE'],
-        ],
-        'application' => [
-            'label' => 'Anwendung',
-            'keys' => ['AFS_MEDIA_SOURCE', 'AFS_METADATA_ARTICLES', 'AFS_METADATA_CATEGORIES',
-                       'AFS_MAX_ERRORS', 'AFS_LOG_ROTATION_DAYS', 'AFS_MAPPING_VERSION',
-                       'AFS_ENABLE_FILE_LOGGING', 'AFS_LOG_LEVEL', 'AFS_LOG_SAMPLE_SIZE'],
-        ],
-        'github' => [
-            'label' => 'GitHub Auto-Update',
-            'keys' => ['AFS_GITHUB_AUTO_UPDATE', 'AFS_GITHUB_BRANCH'],
-        ],
-        'sync' => [
-            'label' => 'Multi-Database Sync',
-            'keys' => ['SOURCE_MAPPING', 'TARGET_MAPPING', 'SOURCE_MAPPING_2', 'TARGET_MAPPING_2',
-                       'SOURCE_MAPPING_3', 'TARGET_MAPPING_3', 'ORDERS_DB_PATH', 'ORDERS_DELTA_DB_PATH',
-                       'SYNC_ENABLED_ACTIONS', 'SYNC_BIDIRECTIONAL'],
-        ],
         'data_transfer' => [
-            'label' => 'Data Transfer API',
+            'label' => '🔐 Data Transfer API (Remote Server Verbindung)',
+            'description' => 'API-Schlüssel und Konfiguration für die sichere Verbindung mit Remote-Servern',
             'keys' => ['DATA_TRANSFER_API_KEY', 'DB_TRANSFER_SOURCE', 'DB_TRANSFER_TARGET',
                        'IMAGES_TRANSFER_SOURCE', 'IMAGES_TRANSFER_TARGET',
                        'DOCUMENTS_TRANSFER_SOURCE', 'DOCUMENTS_TRANSFER_TARGET',
@@ -110,11 +69,64 @@ function getSettingCategories(): array
                        'DATA_TRANSFER_LOG_TRANSFERS'],
         ],
         'remote_servers' => [
-            'label' => 'Remote Server Monitoring',
+            'label' => '🌐 Remote Server Monitoring',
+            'description' => 'Überwachung und Verwaltung von entfernten Servern',
             'keys' => ['REMOTE_SERVERS_ENABLED', 'REMOTE_SERVERS', 'REMOTE_SERVER_TIMEOUT'],
         ],
+        'security' => [
+            'label' => '🔒 Sicherheit',
+            'description' => 'Sicherheitseinstellungen für die Anwendung',
+            'keys' => ['AFS_SECURITY_ENABLED'],
+        ],
+        'database' => [
+            'label' => '🗄️ MSSQL Datenbank',
+            'description' => 'Verbindungseinstellungen für die AFS-ERP MSSQL Datenbank',
+            'keys' => ['AFS_MSSQL_HOST', 'AFS_MSSQL_PORT', 'AFS_MSSQL_DB', 'AFS_MSSQL_USER', 'AFS_MSSQL_PASS'],
+        ],
+        'xt_database' => [
+            'label' => '🗄️ XT-Commerce MySQL',
+            'description' => 'Verbindungseinstellungen für die XT-Commerce MySQL Datenbank',
+            'keys' => ['XT_MYSQL_HOST', 'XT_MYSQL_PORT', 'XT_MYSQL_DB', 'XT_MYSQL_USER', 'XT_MYSQL_PASS'],
+        ],
+        'application' => [
+            'label' => '⚙️ Anwendung',
+            'description' => 'Allgemeine Anwendungseinstellungen',
+            'keys' => ['AFS_MEDIA_SOURCE', 'AFS_METADATA_ARTICLES', 'AFS_METADATA_CATEGORIES',
+                       'AFS_MAX_ERRORS', 'AFS_LOG_ROTATION_DAYS', 'AFS_MAPPING_VERSION',
+                       'AFS_ENABLE_FILE_LOGGING', 'AFS_LOG_LEVEL', 'AFS_LOG_SAMPLE_SIZE'],
+        ],
+        'github' => [
+            'label' => '🔄 GitHub Auto-Update',
+            'description' => 'Automatische Updates von GitHub',
+            'keys' => ['AFS_GITHUB_AUTO_UPDATE', 'AFS_GITHUB_BRANCH'],
+        ],
+        'sync' => [
+            'label' => '🔄 Multi-Database Sync',
+            'description' => 'Konfiguration für mehrere Datenbank-Synchronisationen',
+            'keys' => ['SOURCE_MAPPING', 'TARGET_MAPPING', 'SOURCE_MAPPING_2', 'TARGET_MAPPING_2',
+                       'SOURCE_MAPPING_3', 'TARGET_MAPPING_3', 'ORDERS_DB_PATH', 'ORDERS_DELTA_DB_PATH',
+                       'SYNC_ENABLED_ACTIONS', 'SYNC_BIDIRECTIONAL'],
+        ],
+        'php' => [
+            'label' => '🔧 PHP Konfiguration',
+            'description' => 'PHP Runtime Einstellungen',
+            'keys' => ['PHP_MEMORY_LIMIT', 'PHP_MAX_EXECUTION_TIME', 'TZ'],
+        ],
+        'opcache' => [
+            'label' => '⚡ OPcache',
+            'description' => 'PHP Bytecode Cache Einstellungen',
+            'keys' => ['OPCACHE_MEMORY_CONSUMPTION', 'OPCACHE_INTERNED_STRINGS_BUFFER', 
+                       'OPCACHE_MAX_ACCELERATED_FILES', 'OPCACHE_REVALIDATE_FREQ',
+                       'OPCACHE_VALIDATE_TIMESTAMPS', 'OPCACHE_HUGE_CODE_PAGES'],
+        ],
+        'jit' => [
+            'label' => '⚡ JIT Kompilierung',
+            'description' => 'Just-In-Time Compiler Einstellungen',
+            'keys' => ['OPCACHE_JIT_MODE', 'OPCACHE_JIT_BUFFER_SIZE'],
+        ],
         'docker' => [
-            'label' => 'Docker/Web Server',
+            'label' => '🐳 Docker/Web Server',
+            'description' => 'Docker und Web Server Ports',
             'keys' => ['HTTP_PORT', 'ADMINER_PORT'],
         ],
     ];
