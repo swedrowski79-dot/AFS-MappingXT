@@ -215,6 +215,9 @@ try {
         $url = $server['url'] . '/api/initial_setup.php';
         
         // Call initial_setup.php on remote server to create .env with the API key
+        // SECURITY NOTE: The remote server's initial_setup.php should implement
+        // its own access controls to prevent unauthorized .env creation.
+        // This is only called when explicitly requested by the user.
         $response = makeRemoteRequest($url, '', 'POST', [
             'settings' => [
                 'DATA_TRANSFER_API_KEY' => $initialApiKey,

@@ -28,6 +28,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/_bootstrap.php';
 
+// Configuration constants
+const BACKUP_RETENTION_COUNT = 5;
+
 /**
  * Parse REMOTE_SERVERS from env string
  */
@@ -238,6 +241,18 @@ try {
             api_error('Fehler beim Schreiben der .env Datei', 500);
         }
         
+        // Clean up old backups (keep last BACKUP_RETENTION_COUNT)
+        $backups = glob($root . '/.env.backup.*');
+        if (count($backups) > BACKUP_RETENTION_COUNT) {
+            usort($backups, function($a, $b) {
+                return filemtime($a) - filemtime($b);
+            });
+            $toDelete = array_slice($backups, 0, count($backups) - BACKUP_RETENTION_COUNT);
+            foreach ($toDelete as $oldBackup) {
+                @unlink($oldBackup);
+            }
+        }
+        
         api_ok([
             'message' => $message,
             'servers' => $servers,
@@ -292,6 +307,18 @@ try {
         
         if (file_put_contents($envPath, $newContent) === false) {
             api_error('Fehler beim Schreiben der .env Datei', 500);
+        }
+        
+        // Clean up old backups (keep last BACKUP_RETENTION_COUNT)
+        $backups = glob($root . '/.env.backup.*');
+        if (count($backups) > BACKUP_RETENTION_COUNT) {
+            usort($backups, function($a, $b) {
+                return filemtime($a) - filemtime($b);
+            });
+            $toDelete = array_slice($backups, 0, count($backups) - BACKUP_RETENTION_COUNT);
+            foreach ($toDelete as $oldBackup) {
+                @unlink($oldBackup);
+            }
         }
         
         api_ok([

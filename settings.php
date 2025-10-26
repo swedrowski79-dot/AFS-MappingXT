@@ -736,7 +736,11 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           
           // Load from remote server if selected
           if (currentServerIndex >= 0) {
-            response = await fetchJson(`settings_remote.php?server_index=${currentServerIndex}`);
+            // Validate server index
+            if (!Number.isInteger(currentServerIndex) || currentServerIndex >= remoteServers.length) {
+              throw new Error('Ungültiger Server-Index');
+            }
+            response = await fetchJson(`settings_remote.php?server_index=${encodeURIComponent(currentServerIndex)}`);
           } else {
             // Load from local server
             response = await fetchJson('settings_read.php');
@@ -874,6 +878,10 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           
           // Save to remote server if selected
           if (currentServerIndex >= 0) {
+            // Validate server index
+            if (!Number.isInteger(currentServerIndex) || currentServerIndex >= remoteServers.length) {
+              throw new Error('Ungültiger Server-Index');
+            }
             response = await fetchJson('settings_remote.php', {
               method: 'POST',
               body: JSON.stringify({ 
