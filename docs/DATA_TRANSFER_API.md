@@ -9,9 +9,34 @@ Die Data Transfer API ermöglicht die sichere Übertragung von Delta-Datenbanken
 - **Delta-Datenbank-Transfer**: Kopiert die Delta-Datenbank (`evo_delta.db`) von einem Server zum anderen
 - **Bilder-Transfer**: Synchronisiert das Bilder-Verzeichnis zwischen Servern
 - **Dokumente-Transfer**: Synchronisiert das Dokumente-Verzeichnis zwischen Servern
+- **Upload-Tracking**: Verfolgt den Upload-Status jedes Bildes und Dokuments mit dem `uploaded`-Feld
+- **Einzelfile-Upload**: Überträgt einzelne Bilder oder Dokumente basierend auf ihrer ID
+- **Ausstehende Dateien**: Listet und überträgt nur Dateien mit `uploaded = 0`
 - **API-Key-Authentifizierung**: Sichere Authentifizierung über konfigurierbare API-Keys
 - **Logging**: Optional strukturiertes Logging aller Transfers
 - **Fehlerbehandlung**: Detaillierte Fehlerprotokolle bei fehlgeschlagenen Transfers
+
+## Upload-Tracking Feature
+
+Das Upload-Tracking-Feature ermöglicht es, den Übertragungsstatus jedes einzelnen Bildes und Dokuments zu verfolgen:
+
+### Funktionsweise
+
+1. **Initialer Status**: Wenn ein neues Bild oder Dokument in die Datenbank importiert wird, wird das `uploaded`-Feld automatisch auf `0` gesetzt und das `update`-Feld auf `1`.
+
+2. **Transfer**: Bei der Übertragung mit den `pending_*` oder `single_*` Transfer-Typen werden nur Dateien mit `uploaded = 0` übertragen.
+
+3. **Markierung**: Nach erfolgreicher Übertragung wird das `uploaded`-Feld automatisch auf `1` gesetzt.
+
+4. **Erneute Übertragung**: Wenn sich eine Datei ändert (neue md5-Prüfsumme), werden sowohl `update` als auch `uploaded` automatisch auf `0` zurückgesetzt, sodass die Datei erneut übertragen wird.
+
+### Vorteile
+
+- **Inkrementelle Übertragung**: Nur neue oder geänderte Dateien werden übertragen
+- **Einzelfile-Übertragung**: Große Bildsammlungen können Datei für Datei übertragen werden
+- **Wiederaufnahme**: Unterbrochene Übertragungen können fortgesetzt werden
+- **Übersicht**: Jederzeit einsehbar, welche Dateien noch übertragen werden müssen
+- **Effizienz**: Reduziert Bandbreite und Übertragungszeit
 
 ## Konfiguration
 
@@ -92,9 +117,29 @@ curl -X POST \
 | Parameter | Typ | Erforderlich | Beschreibung | Werte |
 |-----------|-----|--------------|--------------|-------|
 | `api_key` | string | Ja* | API-Key für Authentifizierung | Konfigurierter API-Key |
-| `transfer_type` | string | Nein | Typ des Transfers | `database`, `images`, `documents`, `all` (Standard: `all`) |
+| `transfer_type` | string | Nein | Typ des Transfers | `database`, `images`, `documents`, `all`, `pending_images`, `pending_documents`, `pending_all`, `single_image`, `single_document`, `list_pending_images`, `list_pending_documents` (Standard: `all`) |
+| `image_id` | int | Ja** | ID des zu übertragenden Bildes | Positive Ganzzahl |
+| `document_id` | int | Ja** | ID des zu übertragenden Dokuments | Positive Ganzzahl |
 
-*nur wenn nicht im Header übergeben
+*nur wenn nicht im Header übergeben  
+**nur erforderlich für `single_image` bzw. `single_document`
+
+### Transfer-Typen
+
+#### Klassische Transfer-Typen
+- `database`: Überträgt die Delta-Datenbank
+- `images`: Überträgt alle Bilder im Verzeichnis
+- `documents`: Überträgt alle Dokumente im Verzeichnis
+- `all`: Überträgt Datenbank, Bilder und Dokumente
+
+#### Neue Upload-Tracking Transfer-Typen
+- `pending_images`: Überträgt nur Bilder mit `uploaded = 0` und markiert sie als `uploaded = 1`
+- `pending_documents`: Überträgt nur Dokumente mit `uploaded = 0` und markiert sie als `uploaded = 1`
+- `pending_all`: Überträgt alle ausstehenden Bilder und Dokumente
+- `single_image`: Überträgt ein einzelnes Bild anhand der ID und markiert es als `uploaded = 1`
+- `single_document`: Überträgt ein einzelnes Dokument anhand der ID und markiert es als `uploaded = 1`
+- `list_pending_images`: Listet alle Bilder mit `uploaded = 0` (ohne Transfer)
+- `list_pending_documents`: Listet alle Dokumente mit `uploaded = 0` (ohne Transfer)
 
 ### Response
 
@@ -186,6 +231,101 @@ curl -X POST \
   -H "X-API-Key: abc123def456..." \
   -d "transfer_type=images" \
   https://server1.example.com/api/data_transfer.php
+```
+
+### Nur ausstehende Bilder transferieren (uploaded = 0)
+
+```bash
+curl -X POST \
+  -H "X-API-Key: abc123def456..." \
+  -d "transfer_type=pending_images" \
+  https://server1.example.com/api/data_transfer.php
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "transfer_type": "pending_images",
+  "results": {
+    "pending_images": {
+      "success": true,
+      "total": 25,
+      "transferred": 25,
+      "failed": 0,
+      "skipped": 0,
+      "files": ["image1.jpg", "image2.jpg", "..."],
+      "errors": [],
+      "duration": 1.234,
+      "timestamp": "2025-10-26 14:30:45"
+    }
+  },
+  "total_duration": 1.234,
+  "timestamp": "2025-10-26 14:30:45"
+}
+```
+
+### Einzelnes Bild übertragen
+
+```bash
+curl -X POST \
+  -H "X-API-Key: abc123def456..." \
+  -d "transfer_type=single_image" \
+  -d "image_id=123" \
+  https://server1.example.com/api/data_transfer.php
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "transfer_type": "single_image",
+  "results": {
+    "single_image": {
+      "success": true,
+      "image_id": 123,
+      "filename": "product_123.jpg",
+      "size": 245760,
+      "duration": 0.034,
+      "timestamp": "2025-10-26 14:30:45"
+    }
+  },
+  "total_duration": 0.034,
+  "timestamp": "2025-10-26 14:30:45"
+}
+```
+
+### Ausstehende Bilder auflisten
+
+```bash
+curl -X POST \
+  -H "X-API-Key: abc123def456..." \
+  -d "transfer_type=list_pending_images" \
+  https://server1.example.com/api/data_transfer.php
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "transfer_type": "list_pending_images",
+  "results": {
+    "pending_images": [
+      {
+        "id": 123,
+        "filename": "product_123.jpg",
+        "md5": "abc123def456..."
+      },
+      {
+        "id": 124,
+        "filename": "product_124.jpg",
+        "md5": "def456abc789..."
+      }
+    ]
+  },
+  "total_duration": 0.001,
+  "timestamp": "2025-10-26 14:30:45"
+}
 ```
 
 ### Mit PHP
@@ -346,7 +486,7 @@ Die Hauptlogik ist in der Klasse `API_Transfer` implementiert:
 
 ```php
 // Grundlegende Verwendung
-$transfer = new API_Transfer($config, $logger);
+$transfer = new API_Transfer($config, $logger, $db);
 
 // API-Key validieren
 if (!$transfer->validateApiKey($apiKey)) {
@@ -364,6 +504,152 @@ $result = $transfer->transferDocuments();
 
 // Alles transferieren
 $results = $transfer->transferAll();
+
+// Ausstehende Bilder auflisten
+$pendingImages = $transfer->getPendingImages();
+
+// Ausstehende Dokumente auflisten
+$pendingDocuments = $transfer->getPendingDocuments();
+
+// Einzelnes Bild übertragen
+$result = $transfer->transferSingleImage($imageId);
+
+// Einzelnes Dokument übertragen
+$result = $transfer->transferSingleDocument($documentId);
+
+// Alle ausstehenden Bilder übertragen
+$result = $transfer->transferPendingImages();
+
+// Alle ausstehenden Dokumente übertragen
+$result = $transfer->transferPendingDocuments();
+
+// Bild als hochgeladen markieren
+$success = $transfer->markImageAsUploaded($imageId);
+
+// Dokument als hochgeladen markieren
+$success = $transfer->markDocumentAsUploaded($documentId);
 ```
 
 Die Klasse befindet sich in `classes/file/API_Transfer.php`.
+
+### Neue Methoden für Upload-Tracking
+
+#### getPendingImages(): array
+Gibt alle Bilder zurück, die noch nicht hochgeladen wurden (`uploaded = 0`).
+
+**Rückgabe:**
+```php
+[
+    [
+        'id' => 123,
+        'filename' => 'product_123.jpg',
+        'md5' => 'abc123...'
+    ],
+    // ...
+]
+```
+
+#### getPendingDocuments(): array
+Gibt alle Dokumente zurück, die noch nicht hochgeladen wurden (`uploaded = 0`).
+
+**Rückgabe:**
+```php
+[
+    [
+        'id' => 456,
+        'title' => 'Produktdatenblatt',
+        'filename' => 'produktdatenblatt.pdf',
+        'md5' => 'def456...'
+    ],
+    // ...
+]
+```
+
+#### transferSingleImage(int $imageId): array
+Überträgt ein einzelnes Bild und markiert es als hochgeladen.
+
+**Parameter:**
+- `$imageId`: Die ID des Bildes in der Datenbank
+
+**Rückgabe:**
+```php
+[
+    'success' => true,
+    'image_id' => 123,
+    'filename' => 'product_123.jpg',
+    'size' => 245760,
+    'duration' => 0.034,
+    'timestamp' => '2025-10-26 14:30:45'
+]
+```
+
+#### transferSingleDocument(int $documentId): array
+Überträgt ein einzelnes Dokument und markiert es als hochgeladen.
+
+**Parameter:**
+- `$documentId`: Die ID des Dokuments in der Datenbank
+
+**Rückgabe:**
+```php
+[
+    'success' => true,
+    'document_id' => 456,
+    'title' => 'Produktdatenblatt',
+    'filename' => 'produktdatenblatt.pdf',
+    'size' => 512000,
+    'duration' => 0.056,
+    'timestamp' => '2025-10-26 14:30:45'
+]
+```
+
+#### transferPendingImages(): array
+Überträgt alle ausstehenden Bilder (`uploaded = 0`) und markiert sie als hochgeladen.
+
+**Rückgabe:**
+```php
+[
+    'success' => true,
+    'total' => 25,
+    'transferred' => 25,
+    'failed' => 0,
+    'skipped' => 0,
+    'files' => ['image1.jpg', 'image2.jpg', ...],
+    'errors' => [],
+    'duration' => 1.234,
+    'timestamp' => '2025-10-26 14:30:45'
+]
+```
+
+#### transferPendingDocuments(): array
+Überträgt alle ausstehenden Dokumente (`uploaded = 0`) und markiert sie als hochgeladen.
+
+**Rückgabe:**
+```php
+[
+    'success' => true,
+    'total' => 10,
+    'transferred' => 10,
+    'failed' => 0,
+    'skipped' => 0,
+    'files' => ['doc1.pdf', 'doc2.pdf', ...],
+    'errors' => [],
+    'duration' => 0.567,
+    'timestamp' => '2025-10-26 14:30:45'
+]
+```
+
+#### markImageAsUploaded(int $imageId): bool
+Markiert ein Bild als hochgeladen (`uploaded = 1`).
+
+**Parameter:**
+- `$imageId`: Die ID des Bildes
+
+**Rückgabe:** `true` bei Erfolg, `false` wenn keine Zeile aktualisiert wurde
+
+#### markDocumentAsUploaded(int $documentId): bool
+Markiert ein Dokument als hochgeladen (`uploaded = 1`).
+
+**Parameter:**
+- `$documentId`: Die ID des Dokuments
+
+**Rückgabe:** `true` bei Erfolg, `false` wenn keine Zeile aktualisiert wurde
