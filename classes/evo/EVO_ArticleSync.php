@@ -306,21 +306,24 @@ class EVO_ArticleSync extends EVO_Base
         $existingMap = array_fill_keys($existingImageIds, true);
 
         $desired = [];
-        foreach ($this->collectArticleImages($row) as $image) {
-            $bildId = $this->imageSync->resolveBildId($bildMap, $image);
+        foreach ($this->collectArticleImages($row) as $imageInfo) {
+            $imageName = $imageInfo['name'];
+            $imageNummer = $imageInfo['nummer'];
+            $bildId = $this->imageSync->resolveBildId($bildMap, $imageName);
             if ($bildId !== null) {
-                $desired[(int)$bildId] = true;
+                $desired[(int)$bildId] = $imageNummer;
             }
         }
 
         $added = 0;
-        foreach (array_keys($desired) as $bildId) {
+        foreach ($desired as $bildId => $bildnummer) {
             if (!isset($existingMap[$bildId])) {
                 $insertImage->execute([
                     ':xt_artikel_id' => null,
                     ':xt_bild_id' => null,
                     ':artikel_id' => $artikelId,
                     ':bild_id' => $bildId,
+                    ':bildnummer' => $bildnummer,
                     ':update' => 1,
                 ]);
                 $added++;
@@ -668,7 +671,7 @@ class EVO_ArticleSync extends EVO_Base
             }
             $lower = strtolower($base);
             if (!isset($unique[$lower])) {
-                $unique[$lower] = $base;
+                $unique[$lower] = ['name' => $base, 'nummer' => $i];
             }
         }
         return array_values($unique);
