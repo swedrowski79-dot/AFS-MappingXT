@@ -36,15 +36,32 @@ try {
     // Get transfer type
     $transferType = $_POST['transfer_type'] ?? 'all';
     
-    if (!in_array($transferType, ['database', 'images', 'documents', 'all'], true)) {
-        api_error('Ungültiger Transfer-Typ. Erlaubt: database, images, documents, all', 400);
+    $validTypes = [
+        'database', 'images', 'documents', 'all',
+        'pending_images', 'pending_documents', 'pending_all',
+        'single_image', 'single_document',
+        'list_pending_images', 'list_pending_documents'
+    ];
+    
+    if (!in_array($transferType, $validTypes, true)) {
+        api_error('Ungültiger Transfer-Typ. Erlaubt: ' . implode(', ', $validTypes), 400);
     }
     
     // Create logger
     $logger = createMappingLogger($config);
     
+    // Create database connection for pending file operations
+    $db = null;
+    if (in_array($transferType, ['pending_images', 'pending_documents', 'pending_all', 'single_image', 'single_document', 'list_pending_images', 'list_pending_documents'], true)) {
+        $dbPath = $config['paths']['data_db'] ?? '';
+        if (empty($dbPath) || !file_exists($dbPath)) {
+            api_error('Datenbank nicht gefunden', 500);
+        }
+        $db = new SQLite_Connection($dbPath);
+    }
+    
     // Create transfer handler
-    $transfer = new API_Transfer($config, $logger);
+    $transfer = new API_Transfer($config, $logger, $db);
     
     // Validate API key
     if (!$transfer->validateApiKey($apiKey)) {
@@ -59,6 +76,20 @@ try {
         'images' => ['images' => $transfer->transferImages()],
         'documents' => ['documents' => $transfer->transferDocuments()],
         'all' => $transfer->transferAll(),
+        'pending_images' => ['pending_images' => $transfer->transferPendingImages()],
+        'pending_documents' => ['pending_documents' => $transfer->transferPendingDocuments()],
+        'pending_all' => [
+            'pending_images' => $transfer->transferPendingImages(),
+            'pending_documents' => $transfer->transferPendingDocuments(),
+        ],
+        'single_image' => [
+            'single_image' => $transfer->transferSingleImage((int)($_POST['image_id'] ?? 0))
+        ],
+        'single_document' => [
+            'single_document' => $transfer->transferSingleDocument((int)($_POST['document_id'] ?? 0))
+        ],
+        'list_pending_images' => ['pending_images' => $transfer->getPendingImages()],
+        'list_pending_documents' => ['pending_documents' => $transfer->getPendingDocuments()],
         default => throw new InvalidArgumentException('Ungültiger Transfer-Typ'),
     };
     
