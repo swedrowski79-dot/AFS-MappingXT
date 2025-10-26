@@ -130,6 +130,7 @@ docker-compose up -d
    - `PHP_MEMORY_LIMIT`, `PHP_MAX_EXECUTION_TIME`: PHP-Konfiguration
    - `AFS_MEDIA_SOURCE`: Quellverzeichnis für Medien
    - `TZ`: Zeitzone
+   - `AFS_GITHUB_AUTO_UPDATE`: Automatische Updates von GitHub (true/false)
    - Weitere Optionen siehe [docs/CONFIGURATION_MANAGEMENT.md](docs/CONFIGURATION_MANAGEMENT.md)
 
 3. **Docker-Container starten:**
@@ -140,6 +141,25 @@ docker-compose up -d
 Alle Konfigurationswerte haben sinnvolle Defaults und können zentral über Umgebungsvariablen gesteuert werden.
 
 **Ausführliche Dokumentation:** [docs/CONFIGURATION_MANAGEMENT.md](docs/CONFIGURATION_MANAGEMENT.md)
+
+### GitHub Auto-Update
+
+Das System kann automatisch nach Updates auf GitHub suchen und diese beim Start der Synchronisation (CLI oder Web) anwenden:
+
+**Aktivierung:**
+```bash
+# In .env-Datei:
+AFS_GITHUB_AUTO_UPDATE=true
+```
+
+**Eigenschaften:**
+- Prüft vor jedem Sync-Start auf Updates
+- Führt automatisch `git pull` aus, wenn Updates verfügbar sind
+- Schützt die `.env`-Datei (wird durch `.gitignore` nicht überschrieben)
+- Kann mit `--skip-update` (CLI) übersprungen werden
+- Manueller Update-Check: `php indexcli.php update`
+
+**Wichtig:** Die Umgebungskonfiguration (`.env`) wird durch Updates **nicht** überschrieben, da sie in `.gitignore` ausgeschlossen ist.
 
 ---
 
@@ -161,9 +181,11 @@ Während ein Sync läuft, ist der Start-Button gesperrt. Der Status springt nach
 ### CLI-Werkzeuge
 `indexcli.php` unterstützt:
 - `php indexcli.php run [--copy-images=1 --image-source=/pfad ...]`
+  - `--skip-update`: Überspringt die automatische Update-Prüfung
 - `php indexcli.php status`
 - `php indexcli.php log [--level=error --limit=200]`
 - `php indexcli.php clear-errors`
+- `php indexcli.php update`: Manuell nach GitHub-Updates suchen und installieren
 
 Die CLI verweigert `run`, wenn bereits ein Sync aktiv ist (busy-Schutz analog zur API).
 
@@ -385,6 +407,7 @@ classes/
 | `AFS_TargetMappingConfig` | `afs/` | YAML-Konfiguration für Target-Datenbank-Mapping (nutzt `AFS_ConfigCache` und `AFS_YamlParser`) |
 | `AFS_Evo_StatusTracker` | `evo/` | Managt `sync_status`/`sync_log` in SQLite, Fortschrittsbalken & Logs für UI |
 | `AFS_MappingLogger` | `afs/` | **NEU:** Strukturiertes JSON-Logging in tägliche Dateien mit Mapping-Version, Änderungen und Dauer |
+| `AFS_GitHubUpdater` | `afs/` | **NEU:** Automatische Updates von GitHub – prüft auf neue Commits und führt `git pull` aus |
 | `AFS_Evo_Reset` | `evo/` | Utility zum Leeren aller EVO-Tabellen |
 | `AFS_Evo_DeltaExporter` | `evo/` | Exportiert Datensätze mit `update = 1` in `evo_delta.db` und setzt Flags zurück |
 | `AFS_MetadataLoader` | `afs/` | Liest Metadaten (Titel/Beschreibung) aus der Dateistruktur und reichert Artikel/Kategorien an |
