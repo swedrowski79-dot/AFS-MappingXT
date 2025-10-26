@@ -47,6 +47,8 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 
 **Neu:** **Server-to-Server Data Transfer API** – Sichere API zum Transferieren von Delta-Datenbanken, Bildern und Dokumenten zwischen verschiedenen Servern. Mit API-Key-Authentifizierung und flexibler Konfiguration über Umgebungsvariablen. Details siehe [DATA_TRANSFER_API.md](docs/DATA_TRANSFER_API.md).
 
+**Neu:** **Remote Server Monitoring** – Überwachen Sie den Synchronisationsstatus von mehreren Servern zentral in der Web-Oberfläche. Ideal für Multi-Server-Setups mit Master/Slave-Konfigurationen. Konfigurieren Sie einfach die URLs der Remote-Server und sehen Sie deren Status in Echtzeit. Details siehe [REMOTE_SERVER_MONITORING.md](docs/REMOTE_SERVER_MONITORING.md).
+
 ---
 
 ## Technische Fakten
