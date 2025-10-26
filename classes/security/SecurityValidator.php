@@ -43,7 +43,7 @@ class SecurityValidator
     }
 
     /**
-     * Validate access to entry point
+     * Validate access to entry point (web/HTTP mode)
      * 
      * @param array $config Configuration array
      * @param string $entryPoint Name of the entry point (for error messages)
@@ -82,6 +82,28 @@ class SecurityValidator
             echo '</body>';
             echo '</html>';
             exit;
+        }
+    }
+
+    /**
+     * Validate access to entry point (CLI mode)
+     * 
+     * @param array $config Configuration array
+     * @param string $entryPoint Name of the entry point (for error messages)
+     * @return void Exits with code 1 if access is denied
+     */
+    public static function validateCliAccess(array $config, string $entryPoint): void
+    {
+        if (!self::isSecurityEnabled($config)) {
+            // Security is disabled, allow access
+            return;
+        }
+
+        if (!self::isCalledFromApi()) {
+            // Security is enabled and call doesn't come from API - deny access
+            fwrite(STDERR, "FEHLER: Direkter Zugriff auf {$entryPoint} ist nicht erlaubt.\n");
+            fwrite(STDERR, "Der Sicherheitsmodus ist aktiviert. Zugriff ist nur über die API-Schnittstelle erlaubt.\n");
+            exit(1);
         }
     }
 }

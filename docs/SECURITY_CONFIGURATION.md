@@ -74,10 +74,10 @@ The security system uses PHP's `debug_backtrace()` to analyze the call stack and
 
 ### When to Enable Security Mode
 
-- **Production Environments**: Prevent unauthorized direct access to management interfaces
-- **API-Only Deployments**: Ensure all interactions go through controlled API endpoints
-- **Multi-Server Setups**: Restrict access to internal application files
-- **Compliance Requirements**: Meet security policies requiring API-based access control
+- **Production Environments**: Prevent unauthorized direct access to management interfaces. This ensures users cannot bypass API authentication/authorization mechanisms by directly accessing the application entry points (index.php/indexcli.php), which could expose sensitive operations or data.
+- **API-Only Deployments**: Ensure all interactions go through controlled API endpoints where authentication, rate limiting, and other security measures can be consistently applied
+- **Multi-Server Setups**: Restrict access to internal application files, preventing unauthorized servers or services from executing entry points directly
+- **Compliance Requirements**: Meet security policies requiring API-based access control and auditable access patterns
 
 ### When to Keep Security Disabled
 
@@ -187,7 +187,8 @@ Located in `classes/security/SecurityValidator.php`
 
 - `isSecurityEnabled(array $config): bool` - Check if security is enabled
 - `isCalledFromApi(): bool` - Detect if call originates from API directory
-- `validateAccess(array $config, string $entryPoint): void` - Main validation method
+- `validateAccess(array $config, string $entryPoint): void` - Web/HTTP validation with HTML error page
+- `validateCliAccess(array $config, string $entryPoint): void` - CLI validation with STDERR error output
 
 ### Integration Points
 
@@ -197,14 +198,10 @@ Located in `classes/security/SecurityValidator.php`
    SecurityValidator::validateAccess($config, 'index.php');
    ```
 
-2. **indexcli.php** (Line 23-28):
+2. **indexcli.php** (Line 23-25):
    ```php
    // Security check: If security is enabled, only allow CLI access from API context
-   if (($config['security']['enabled'] ?? false) && !SecurityValidator::isCalledFromApi()) {
-       fwrite(STDERR, "FEHLER: Direkter Zugriff auf indexcli.php ist nicht erlaubt.\n");
-       fwrite(STDERR, "Der Sicherheitsmodus ist aktiviert. Zugriff ist nur über die API-Schnittstelle erlaubt.\n");
-       exit(1);
-   }
+   SecurityValidator::validateCliAccess($config, 'indexcli.php');
    ```
 
 3. **config.php** (Line 84-86):
@@ -237,16 +234,19 @@ The default behavior is **security disabled**, so existing installations continu
 
 ### What This Feature Protects Against
 
-- ✅ Unauthorized direct access to web interface
-- ✅ Bypassing API authentication/authorization
-- ✅ Direct file system access to entry points
+- ✅ Unauthorized direct access to web interface (bypassing authentication/authorization at API level)
+- ✅ Direct execution of management scripts without proper authorization
+- ✅ Uncontrolled access patterns that bypass centralized security measures
 
 ### What This Feature Does NOT Protect Against
 
-- ❌ API endpoint vulnerabilities
-- ❌ SQL injection or other code vulnerabilities
-- ❌ Network-level attacks
-- ❌ Server misconfiguration
+The following security concerns are handled by other system components and are outside the scope of this feature:
+
+- ❌ **API endpoint vulnerabilities**: API endpoints still require their own authentication, input validation, and authorization
+- ❌ **SQL injection or other code vulnerabilities**: These require secure coding practices throughout the application
+- ❌ **Network-level attacks**: Such as DDoS, man-in-the-middle, or packet sniffing - these require network security measures
+- ❌ **Server misconfiguration**: Proper web server, PHP, and operating system configuration is still required
+- ❌ **Dependency vulnerabilities**: Regular updates and security patches for PHP and dependencies are needed
 
 ### Best Practices
 
