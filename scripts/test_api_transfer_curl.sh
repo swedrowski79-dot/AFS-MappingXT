@@ -33,7 +33,7 @@ echo "Response:"
 echo "$response" | python3 -m json.tool 2>/dev/null || echo "$response"
 
 # Check if response indicates success
-if echo "$response" | grep -q '"ok"\s*:\s*true'; then
+if echo "$response" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
     echo ""
     echo "✓ Transfer successful"
     exit 0
