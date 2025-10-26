@@ -473,6 +473,9 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           
           // Generate a secure API key for initial setup
           const apiKeyResponse = await fetchJson('generate_api_key.php', { method: 'POST' });
+          if (!apiKeyResponse.data || !apiKeyResponse.data.api_key) {
+            throw new Error('API-Key konnte nicht generiert werden');
+          }
           const apiKey = apiKeyResponse.data.api_key;
           
           // Create .env file using initial_setup endpoint
@@ -500,6 +503,9 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         try {
           showLoading(true);
           const response = await fetchJson('generate_api_key.php', { method: 'POST' });
+          if (!response.data || !response.data.api_key) {
+            throw new Error('API-Key konnte nicht generiert werden');
+          }
           const apiKey = response.data.api_key;
           
           // Update the input field
@@ -511,10 +517,10 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
             // Show success message
             showStatus('Neuer API-Key generiert. Bitte speichern Sie die Änderungen.', 'success');
             
-            // Switch back to password type after 5 seconds
+            // Switch back to password type after 3 seconds
             setTimeout(() => {
               input.type = 'password';
-            }, 5000);
+            }, 3000);
           }
         } catch (error) {
           showStatus('Fehler beim Generieren des API-Keys: ' + error.message, 'error');
