@@ -4,6 +4,7 @@
 
     const API_BASE = config.apiBase;
     const DEBUG_TABLES = config.debugTables;
+    const REMOTE_SERVERS_ENABLED = config.remoteServersEnabled;
 
     const stateEl = document.getElementById('status-state');
     const stageEl = document.getElementById('status-stage');
@@ -30,11 +31,13 @@
     const healthEvo = document.getElementById('health-evo');
     const healthStatus = document.getElementById('health-status');
     const healthMssql = document.getElementById('health-mssql');
+    const remoteServersList = document.getElementById('remote-servers-list');
 
     btnStart.dataset.busy = '0';
 
     let pollingTimer = null;
     let healthTimer = null;
+    let remoteStatusTimer = null;
 
     function formatDate(value) {
       if (!value) return '–';
@@ -258,6 +261,104 @@
       renderHealth(payload.data?.health ?? {});
     }
 
+    async function refreshRemoteStatus() {
+      if (!REMOTE_SERVERS_ENABLED || !remoteServersList) {
+        return;
+      }
+
+      try {
+        const payload = await fetchJson('remote_status.php');
+        renderRemoteStatus(payload.servers ?? []);
+      } catch (err) {
+        console.error('Fehler beim Abrufen des Remote-Status:', err);
+      }
+    }
+
+    function renderRemoteStatus(servers) {
+      if (!remoteServersList) {
+        return;
+      }
+
+      remoteServersList.innerHTML = '';
+
+      if (servers.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.textContent = 'Keine Remote-Server konfiguriert';
+        emptyDiv.style.color = 'var(--muted)';
+        emptyDiv.style.fontSize = '0.9rem';
+        remoteServersList.appendChild(emptyDiv);
+        return;
+      }
+
+      servers.forEach(server => {
+        const div = document.createElement('div');
+        div.className = 'health-item';
+        
+        let status = 'error';
+        let stateText = 'Fehler';
+        
+        if (server.status === 'ok' && server.data) {
+          const state = server.data.state || 'unknown';
+          if (state === 'running') {
+            status = 'warning';
+            stateText = 'Läuft...';
+          } else if (state === 'ready' || state === 'done') {
+            status = 'ok';
+            stateText = 'Bereit';
+          } else if (state === 'error') {
+            status = 'error';
+            stateText = 'Fehler';
+          } else {
+            status = 'warning';
+            stateText = state.charAt(0).toUpperCase() + state.slice(1);
+          }
+        } else if (server.error) {
+          stateText = server.error;
+        }
+        
+        div.dataset.status = status;
+
+        const contentDiv = document.createElement('div');
+        const strong = document.createElement('strong');
+        strong.textContent = server.name;
+        contentDiv.appendChild(strong);
+
+        const small = document.createElement('small');
+        small.textContent = server.url;
+        contentDiv.appendChild(small);
+
+        // Add additional info if available
+        if (server.status === 'ok' && server.data) {
+          const infoDiv = document.createElement('div');
+          infoDiv.style.fontSize = '0.75rem';
+          infoDiv.style.color = 'var(--muted)';
+          infoDiv.style.marginTop = '4px';
+          
+          const parts = [];
+          if (server.data.message) {
+            parts.push(server.data.message);
+          }
+          if (server.data.total > 0) {
+            const percent = Math.round((server.data.processed / server.data.total) * 100);
+            parts.push(`${server.data.processed}/${server.data.total} (${percent}%)`);
+          }
+          if (parts.length > 0) {
+            infoDiv.textContent = parts.join(' • ');
+            contentDiv.appendChild(infoDiv);
+          }
+        }
+
+        div.appendChild(contentDiv);
+
+        const stateSpan = document.createElement('span');
+        stateSpan.className = 'state';
+        stateSpan.textContent = stateText;
+        div.appendChild(stateSpan);
+
+        remoteServersList.appendChild(div);
+      });
+    }
+
     function startPolling() {
       if (pollingTimer) {
         clearInterval(pollingTimer);
@@ -272,6 +373,16 @@
       healthTimer = setInterval(() => {
         refreshHealth().catch(() => {});
       }, 30000);
+
+      // Add remote status polling if enabled
+      if (REMOTE_SERVERS_ENABLED) {
+        if (remoteStatusTimer) {
+          clearInterval(remoteStatusTimer);
+        }
+        remoteStatusTimer = setInterval(() => {
+          refreshRemoteStatus().catch(() => {});
+        }, 10000); // Poll remote servers every 10 seconds
+      }
     }
 
     btnStart.addEventListener('click', async () => {
@@ -454,6 +565,9 @@
     // Initialize app
     (async () => {
       await Promise.all([refreshStatus(), refreshLog(), refreshHealth()]);
+      if (REMOTE_SERVERS_ENABLED) {
+        await refreshRemoteStatus();
+      }
       startPolling();
     })();
 

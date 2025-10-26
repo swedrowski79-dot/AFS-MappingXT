@@ -2659,3 +2659,6 @@
 172.18.0.1 - - [26/Oct/2025:22:20:42 +0100] "GET /api/sync_health.php HTTP/1.1" 200 1245 "http://127.0.0.1:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
 172.18.0.1 - - [26/Oct/2025:22:20:43 +0100] "GET /api/sync_errors.php?limit=100&level=all HTTP/1.1" 200 3626 "http://127.0.0.1:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
 172.18.0.1 - - [26/Oct/2025:22:20:43 +0100] "GET /api/sync_status.php HTTP/1.1" 200 1221 "http://127.0.0.1:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
+127.0.0.1 - - [26/Oct/2025:22:21:11 +0100] "GET / HTTP/1.1" 200 32946 "-" "curl/7.88.1"
+127.0.0.1 - - [26/Oct/2025:22:21:41 +0100] "GET / HTTP/1.1" 200 32946 "-" "curl/7.88.1"
+127.0.0.1 - - [26/Oct/2025:22:22:12 +0100] "GET / HTTP/1.1" 200 32946 "-" "curl/7.88.1"

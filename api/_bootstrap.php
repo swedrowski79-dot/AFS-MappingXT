@@ -160,6 +160,66 @@ function createSyncEnvironment(array $config, string $job = 'categories'): array
     return [$tracker, $evo, $mssql];
 }
 
+/**
+ * Check for GitHub updates and notify main server if updated
+ * This function is called automatically for all API requests (except initial_setup and update_notification)
+ * 
+ * @param array $config Configuration array
+ * @return array|null Update result or null if no update performed
+ */
+function performAutoUpdateCheck(array $config): ?array
+{
+    // Skip auto-update for specific endpoints
+    $scriptName = basename($_SERVER['SCRIPT_NAME'] ?? '');
+    $skipEndpoints = ['initial_setup.php', 'update_notification.php', 'github_update.php'];
+    
+    if (in_array($scriptName, $skipEndpoints, true)) {
+        return null;
+    }
+    
+    $githubConfig = $config['github'] ?? [];
+    $autoUpdate = $githubConfig['auto_update'] ?? false;
+    
+    // If auto-update is disabled, skip
+    if (!$autoUpdate) {
+        return null;
+    }
+    
+    $branch = $githubConfig['branch'] ?? '';
+    $repoPath = $config['paths']['root'] ?? dirname(__DIR__);
+    
+    try {
+        $updater = new AFS_GitHubUpdater($repoPath, $autoUpdate, $branch);
+        $result = $updater->checkAndUpdate();
+        
+        // If an update was performed, notify the main server
+        if ($result['updated'] ?? false) {
+            $logger = createMappingLogger($config);
+            $notifier = new AFS_UpdateNotifier($config, $logger);
+            
+            $notificationResult = $notifier->notifyUpdate($result['info'] ?? []);
+            $result['notification'] = $notificationResult;
+        }
+        
+        return $result;
+    } catch (\Throwable $e) {
+        // Don't fail API calls on update errors, just log
+        error_log('Auto-update check failed: ' . $e->getMessage());
+        return [
+            'checked' => true,
+            'updated' => false,
+            'error' => $e->getMessage(),
+        ];
+    }
+}
+
+// Perform automatic update check for all API requests
+// This ensures the interface is always up-to-date before processing API calls
+$autoUpdateResult = performAutoUpdateCheck($config);
+
+// Store update result in a global variable so endpoints can access it
+$GLOBALS['auto_update_result'] = $autoUpdateResult;
+
 set_exception_handler(static function (Throwable $e): void {
     api_error($e->getMessage());
 });

@@ -175,5 +175,33 @@ return [
         'max_file_size' => (int)(getenv('DATA_TRANSFER_MAX_FILE_SIZE') ?: 104857600), // 100MB
         'log_transfers' => filter_var(getenv('DATA_TRANSFER_LOG_TRANSFERS') ?: 'true', FILTER_VALIDATE_BOOLEAN),
     ],
+
+    // ============================================================================
+    // Remote Server Configuration
+    // Configure remote/slave servers to monitor their status
+    // ============================================================================
+    'remote_servers' => [
+        // Enable remote server monitoring
+        'enabled' => filter_var(getenv('REMOTE_SERVERS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN),
+        
+        // List of remote servers to monitor (comma-separated in env)
+        // Format: name|url|api_key (e.g., "Server1|https://server1.example.com|key123")
+        'servers' => array_filter(
+            array_map(function($serverConfig) {
+                $parts = array_map('trim', explode('|', $serverConfig));
+                if (count($parts) >= 2) {
+                    return [
+                        'name' => $parts[0],
+                        'url' => rtrim($parts[1], '/'),
+                        'api_key' => $parts[2] ?? '',
+                    ];
+                }
+                return null;
+            }, array_filter(array_map('trim', explode(',', getenv('REMOTE_SERVERS') ?: ''))))
+        ),
+        
+        // Timeout for remote server requests (seconds)
+        'timeout' => (int)(getenv('REMOTE_SERVER_TIMEOUT') ?: 5),
+    ],
 ];
 

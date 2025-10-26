@@ -47,6 +47,8 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 
 **Neu:** **Server-to-Server Data Transfer API** – Sichere API zum Transferieren von Delta-Datenbanken, Bildern und Dokumenten zwischen verschiedenen Servern. Mit API-Key-Authentifizierung und flexibler Konfiguration über Umgebungsvariablen. Details siehe [DATA_TRANSFER_API.md](docs/DATA_TRANSFER_API.md).
 
+**Neu:** **Remote Server Monitoring** – Überwachen Sie den Synchronisationsstatus von mehreren Servern zentral in der Web-Oberfläche. Ideal für Multi-Server-Setups mit Master/Slave-Konfigurationen. Konfigurieren Sie einfach die URLs der Remote-Server und sehen Sie deren Status in Echtzeit. Details siehe [REMOTE_SERVER_MONITORING.md](docs/REMOTE_SERVER_MONITORING.md).
+
 ---
 
 ## Technische Fakten
@@ -148,9 +150,38 @@ Alle Konfigurationswerte haben sinnvolle Defaults und können zentral über Umge
 
 **Ausführliche Dokumentation:** [docs/CONFIGURATION_MANAGEMENT.md](docs/CONFIGURATION_MANAGEMENT.md)
 
+### Remote Setup und Automatische Updates
+
+Die Schnittstelle unterstützt Ferninstallation und automatische Updates:
+
+**Funktionen:**
+- **Initiale Ferneinrichtung**: `.env`-Datei kann ohne API-Key erstellt werden (nur beim ersten Mal)
+- **Automatische Updates**: Updates werden vor jedem API-Aufruf geprüft und durchgeführt
+- **Update-Benachrichtigung**: Hauptserver wird über Updates informiert
+- **Zentrale Überwachung**: Hauptserver kann Status aller Remote-Server überwachen
+
+**Schnellstart:**
+```bash
+# 1. API-Key generieren
+API_KEY=$(openssl rand -hex 32)
+
+# 2. Remote-Installation via API (keine Authentifizierung erforderlich)
+curl -X POST http://remote-server:8080/api/initial_setup.php \
+  -H "Content-Type: application/json" \
+  -d "{\"settings\": {
+    \"DATA_TRANSFER_API_KEY\": \"$API_KEY\",
+    \"AFS_GITHUB_AUTO_UPDATE\": \"true\",
+    \"REMOTE_SERVERS\": \"MainServer|https://main.example.com|main_api_key\"
+  }}"
+
+# 3. Fertig! Server aktualisiert sich automatisch
+```
+
+**Detaillierte Dokumentation:** [docs/REMOTE_SETUP_AND_AUTO_UPDATE.md](docs/REMOTE_SETUP_AND_AUTO_UPDATE.md)
+
 ### GitHub Auto-Update
 
-Das System kann automatisch nach Updates auf GitHub suchen und diese beim Start der Synchronisation (CLI oder Web) anwenden:
+Das System kann automatisch nach Updates auf GitHub suchen und diese bei jedem API-Aufruf anwenden:
 
 **Aktivierung:**
 ```bash
@@ -159,8 +190,9 @@ AFS_GITHUB_AUTO_UPDATE=true
 ```
 
 **Eigenschaften:**
-- Prüft vor jedem Sync-Start auf Updates
+- Prüft vor jedem API-Call auf Updates (außer `initial_setup.php`, `update_notification.php`, `github_update.php`)
 - Führt automatisch `git pull` aus, wenn Updates verfügbar sind
+- Benachrichtigt Hauptserver über durchgeführte Updates
 - Schützt die `.env`-Datei (wird durch `.gitignore` nicht überschrieben)
 - Kann mit `--skip-update` (CLI) übersprungen werden
 - Manueller Update-Check: `php indexcli.php update`

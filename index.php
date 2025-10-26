@@ -104,7 +104,10 @@ $debugTables = [
         <h1><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></h1>
         <p>Überblick &amp; Steuerung der AFS-Daten-Synchronisation</p>
       </div>
-      <div class="tag">API-Basis · <code><?= htmlspecialchars($apiBase, ENT_QUOTES, 'UTF-8') ?></code></div>
+      <div class="tag">
+        <a href="<?= htmlspecialchars($baseUrl, ENT_QUOTES, 'UTF-8') ?>settings.php" style="color: inherit; text-decoration: none; margin-right: 1rem;">⚙️ Einstellungen</a>
+        API-Basis · <code><?= htmlspecialchars($apiBase, ENT_QUOTES, 'UTF-8') ?></code>
+      </div>
     </header>
 
     <div class="grid">
@@ -148,6 +151,22 @@ $debugTables = [
           </div>
         </div>
       </section>
+
+<?php
+// Display remote servers section only if enabled
+$remoteConfig = $config['remote_servers'] ?? [];
+$remoteEnabled = $remoteConfig['enabled'] ?? false;
+$remoteServers = $remoteConfig['servers'] ?? [];
+
+if ($remoteEnabled && !empty($remoteServers)):
+?>
+      <section class="card remote-servers">
+        <h2>Remote Server Status</h2>
+        <div class="health-list" id="remote-servers-list">
+          <!-- Remote server status will be populated by JavaScript -->
+        </div>
+      </section>
+<?php endif; ?>
 
       <section class="card controls">
         <h2>Aktionen</h2>
@@ -211,7 +230,8 @@ $debugTables = [
     // Application configuration
     window.APP_CONFIG = {
       apiBase: <?= json_encode($apiBase, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
-      debugTables: <?= json_encode($debugTables, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+      debugTables: <?= json_encode($debugTables, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+      remoteServersEnabled: <?= json_encode($remoteEnabled && !empty($remoteServers), JSON_UNESCAPED_UNICODE) ?>
     };
   </script>
   <script>
