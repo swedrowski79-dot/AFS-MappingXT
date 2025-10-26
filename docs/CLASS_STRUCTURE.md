@@ -113,7 +113,7 @@ classes/
 The new structure enables flexible YAML-based configurations:
 
 ```yaml
-# Example: AFS → EVO
+# Example: AFS → EVO (initial sync)
 source:
   type: mssql
   classes: afs/
