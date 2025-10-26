@@ -20,11 +20,13 @@ class API_Transfer
     private array $config;
     private ?STATUS_MappingLogger $logger;
     private array $transferResults = [];
+    private ?SQLite_Connection $db = null;
 
-    public function __construct(array $config, ?STATUS_MappingLogger $logger = null)
+    public function __construct(array $config, ?STATUS_MappingLogger $logger = null, ?SQLite_Connection $db = null)
     {
         $this->config = $config['data_transfer'] ?? [];
         $this->logger = $logger;
+        $this->db = $db;
         
         // Validate configuration
         if (empty($this->config['api_key'])) {
@@ -329,5 +331,417 @@ class API_Transfer
             $logData,
             []
         );
+    }
+
+    /**
+     * Get list of images that need to be uploaded (uploaded = 0)
+     * 
+     * @return array List of images with ID and Bildname
+     */
+    public function getPendingImages(): array
+    {
+        if ($this->db === null) {
+            throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
+        }
+
+        $sql = 'SELECT ID, Bildname, md5 FROM Bilder WHERE uploaded = 0 ORDER BY ID';
+        $result = [];
+        
+        $stmt = $this->db->query($sql);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $result[] = [
+                'id' => (int)$row['ID'],
+                'filename' => (string)$row['Bildname'],
+                'md5' => $row['md5'] ?? null,
+            ];
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Get list of documents that need to be uploaded (uploaded = 0)
+     * 
+     * @return array List of documents with ID, Titel, and Dateiname
+     */
+    public function getPendingDocuments(): array
+    {
+        if ($this->db === null) {
+            throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
+        }
+
+        $sql = 'SELECT ID, Titel, Dateiname, md5 FROM Dokumente WHERE uploaded = 0 ORDER BY ID';
+        $result = [];
+        
+        $stmt = $this->db->query($sql);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $result[] = [
+                'id' => (int)$row['ID'],
+                'title' => (string)$row['Titel'],
+                'filename' => $row['Dateiname'] ?? null,
+                'md5' => $row['md5'] ?? null,
+            ];
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Mark an image as uploaded
+     * 
+     * @param int $imageId The ID of the image
+     * @return bool True if successful
+     */
+    public function markImageAsUploaded(int $imageId): bool
+    {
+        if ($this->db === null) {
+            throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
+        }
+
+        $sql = 'UPDATE Bilder SET uploaded = 1 WHERE ID = ?';
+        $rowsAffected = $this->db->execute($sql, [$imageId]);
+        
+        return $rowsAffected > 0;
+    }
+
+    /**
+     * Mark a document as uploaded
+     * 
+     * @param int $documentId The ID of the document
+     * @return bool True if successful
+     */
+    public function markDocumentAsUploaded(int $documentId): bool
+    {
+        if ($this->db === null) {
+            throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
+        }
+
+        $sql = 'UPDATE Dokumente SET uploaded = 1 WHERE ID = ?';
+        $rowsAffected = $this->db->execute($sql, [$documentId]);
+        
+        return $rowsAffected > 0;
+    }
+
+    /**
+     * Transfer a single image file
+     * 
+     * @param int $imageId The ID of the image to transfer
+     * @return array Transfer result
+     */
+    public function transferSingleImage(int $imageId): array
+    {
+        if ($this->db === null) {
+            throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
+        }
+
+        $imagesConfig = $this->config['images'] ?? [];
+        
+        if (!($imagesConfig['enabled'] ?? false)) {
+            return [
+                'success' => false,
+                'message' => 'Bilder-Transfer ist deaktiviert',
+                'skipped' => true,
+            ];
+        }
+
+        $source = $imagesConfig['source'] ?? '';
+        $target = $imagesConfig['target'] ?? '';
+
+        if (empty($source) || empty($target)) {
+            throw new AFS_ConfigurationException('Bilder-Quell- oder Zielpfad nicht konfiguriert');
+        }
+
+        // Get image info from database
+        $sql = 'SELECT ID, Bildname, md5 FROM Bilder WHERE ID = ? AND uploaded = 0';
+        $image = $this->db->fetchOne($sql, [$imageId]);
+
+        if (!$image) {
+            return [
+                'success' => false,
+                'error' => 'Bild nicht gefunden oder bereits hochgeladen',
+                'image_id' => $imageId,
+            ];
+        }
+
+        $filename = (string)$image['Bildname'];
+        $sourcePath = $source . DIRECTORY_SEPARATOR . $filename;
+        $targetPath = $target . DIRECTORY_SEPARATOR . $filename;
+
+        if (!file_exists($sourcePath)) {
+            return [
+                'success' => false,
+                'error' => 'Quelldatei nicht gefunden',
+                'image_id' => $imageId,
+                'filename' => $filename,
+            ];
+        }
+
+        // Ensure target directory exists
+        $targetDir = dirname($targetPath);
+        if (!is_dir($targetDir)) {
+            if (!mkdir($targetDir, 0755, true)) {
+                throw new AFS_FileException("Zielverzeichnis konnte nicht erstellt werden: {$targetDir}");
+            }
+        }
+
+        // Check file size
+        $fileSize = filesize($sourcePath);
+        $maxSize = $this->config['max_file_size'] ?? 104857600;
+        
+        if ($fileSize > $maxSize) {
+            return [
+                'success' => false,
+                'error' => 'Datei ist zu groß',
+                'image_id' => $imageId,
+                'filename' => $filename,
+                'size' => $fileSize,
+                'max_size' => $maxSize,
+            ];
+        }
+
+        // Copy file
+        $startTime = microtime(true);
+        $success = copy($sourcePath, $targetPath);
+        $duration = microtime(true) - $startTime;
+
+        if (!$success) {
+            return [
+                'success' => false,
+                'error' => 'Datei konnte nicht kopiert werden',
+                'image_id' => $imageId,
+                'filename' => $filename,
+            ];
+        }
+
+        // Mark as uploaded
+        $this->markImageAsUploaded($imageId);
+
+        $result = [
+            'success' => true,
+            'image_id' => $imageId,
+            'filename' => $filename,
+            'size' => $fileSize,
+            'duration' => round($duration, 3),
+            'timestamp' => date('Y-m-d H:i:s'),
+        ];
+
+        $this->logTransfer('image_single', $result);
+
+        return $result;
+    }
+
+    /**
+     * Transfer a single document file
+     * 
+     * @param int $documentId The ID of the document to transfer
+     * @return array Transfer result
+     */
+    public function transferSingleDocument(int $documentId): array
+    {
+        if ($this->db === null) {
+            throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
+        }
+
+        $documentsConfig = $this->config['documents'] ?? [];
+        
+        if (!($documentsConfig['enabled'] ?? false)) {
+            return [
+                'success' => false,
+                'message' => 'Dokumente-Transfer ist deaktiviert',
+                'skipped' => true,
+            ];
+        }
+
+        $source = $documentsConfig['source'] ?? '';
+        $target = $documentsConfig['target'] ?? '';
+
+        if (empty($source) || empty($target)) {
+            throw new AFS_ConfigurationException('Dokumente-Quell- oder Zielpfad nicht konfiguriert');
+        }
+
+        // Get document info from database
+        $sql = 'SELECT ID, Titel, Dateiname, md5 FROM Dokumente WHERE ID = ? AND uploaded = 0';
+        $document = $this->db->fetchOne($sql, [$documentId]);
+
+        if (!$document) {
+            return [
+                'success' => false,
+                'error' => 'Dokument nicht gefunden oder bereits hochgeladen',
+                'document_id' => $documentId,
+            ];
+        }
+
+        $filename = $document['Dateiname'] ?? $document['Titel'];
+        if (empty($filename)) {
+            return [
+                'success' => false,
+                'error' => 'Dateiname nicht gefunden',
+                'document_id' => $documentId,
+            ];
+        }
+
+        // Ensure PDF extension
+        if (!str_contains($filename, '.')) {
+            $filename .= '.pdf';
+        }
+
+        $sourcePath = $source . DIRECTORY_SEPARATOR . $filename;
+        $targetPath = $target . DIRECTORY_SEPARATOR . $filename;
+
+        if (!file_exists($sourcePath)) {
+            return [
+                'success' => false,
+                'error' => 'Quelldatei nicht gefunden',
+                'document_id' => $documentId,
+                'filename' => $filename,
+            ];
+        }
+
+        // Ensure target directory exists
+        $targetDir = dirname($targetPath);
+        if (!is_dir($targetDir)) {
+            if (!mkdir($targetDir, 0755, true)) {
+                throw new AFS_FileException("Zielverzeichnis konnte nicht erstellt werden: {$targetDir}");
+            }
+        }
+
+        // Check file size
+        $fileSize = filesize($sourcePath);
+        $maxSize = $this->config['max_file_size'] ?? 104857600;
+        
+        if ($fileSize > $maxSize) {
+            return [
+                'success' => false,
+                'error' => 'Datei ist zu groß',
+                'document_id' => $documentId,
+                'filename' => $filename,
+                'size' => $fileSize,
+                'max_size' => $maxSize,
+            ];
+        }
+
+        // Copy file
+        $startTime = microtime(true);
+        $success = copy($sourcePath, $targetPath);
+        $duration = microtime(true) - $startTime;
+
+        if (!$success) {
+            return [
+                'success' => false,
+                'error' => 'Datei konnte nicht kopiert werden',
+                'document_id' => $documentId,
+                'filename' => $filename,
+            ];
+        }
+
+        // Mark as uploaded
+        $this->markDocumentAsUploaded($documentId);
+
+        $result = [
+            'success' => true,
+            'document_id' => $documentId,
+            'title' => (string)$document['Titel'],
+            'filename' => $filename,
+            'size' => $fileSize,
+            'duration' => round($duration, 3),
+            'timestamp' => date('Y-m-d H:i:s'),
+        ];
+
+        $this->logTransfer('document_single', $result);
+
+        return $result;
+    }
+
+    /**
+     * Transfer all pending images (uploaded = 0) individually
+     * 
+     * @return array Transfer results with success/failed counts
+     */
+    public function transferPendingImages(): array
+    {
+        $startTime = microtime(true);
+        $pendingImages = $this->getPendingImages();
+        
+        $results = [
+            'success' => true,
+            'total' => count($pendingImages),
+            'transferred' => 0,
+            'failed' => 0,
+            'skipped' => 0,
+            'files' => [],
+            'errors' => [],
+        ];
+
+        foreach ($pendingImages as $image) {
+            $result = $this->transferSingleImage($image['id']);
+            
+            if ($result['success']) {
+                $results['transferred']++;
+                $results['files'][] = $image['filename'];
+            } elseif ($result['skipped'] ?? false) {
+                $results['skipped']++;
+            } else {
+                $results['failed']++;
+                $results['errors'][] = [
+                    'id' => $image['id'],
+                    'filename' => $image['filename'],
+                    'error' => $result['error'] ?? 'Unbekannter Fehler',
+                ];
+            }
+        }
+
+        $results['duration'] = round(microtime(true) - $startTime, 3);
+        $results['timestamp'] = date('Y-m-d H:i:s');
+
+        $this->logTransfer('images_pending', $results);
+
+        return $results;
+    }
+
+    /**
+     * Transfer all pending documents (uploaded = 0) individually
+     * 
+     * @return array Transfer results with success/failed counts
+     */
+    public function transferPendingDocuments(): array
+    {
+        $startTime = microtime(true);
+        $pendingDocuments = $this->getPendingDocuments();
+        
+        $results = [
+            'success' => true,
+            'total' => count($pendingDocuments),
+            'transferred' => 0,
+            'failed' => 0,
+            'skipped' => 0,
+            'files' => [],
+            'errors' => [],
+        ];
+
+        foreach ($pendingDocuments as $document) {
+            $result = $this->transferSingleDocument($document['id']);
+            
+            if ($result['success']) {
+                $results['transferred']++;
+                $results['files'][] = $document['filename'] ?? $document['title'];
+            } elseif ($result['skipped'] ?? false) {
+                $results['skipped']++;
+            } else {
+                $results['failed']++;
+                $results['errors'][] = [
+                    'id' => $document['id'],
+                    'title' => $document['title'],
+                    'filename' => $document['filename'],
+                    'error' => $result['error'] ?? 'Unbekannter Fehler',
+                ];
+            }
+        }
+
+        $results['duration'] = round(microtime(true) - $startTime, 3);
+        $results['timestamp'] = date('Y-m-d H:i:s');
+
+        $this->logTransfer('documents_pending', $results);
+
+        return $results;
     }
 }
