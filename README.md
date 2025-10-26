@@ -11,6 +11,7 @@
 - [Bedienung](#bedienung)
   - [Web-Oberfläche](#web-oberfläche)
   - [CLI-Werkzeuge](#cli-werkzeuge)
+- [Data Transfer API](#data-transfer-api)
 - [Logging](#logging)
   - [JSON-Log-Format](#json-log-format)
   - [Log-Rotation](#log-rotation)
@@ -43,6 +44,8 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 **Neu:** **Multi-Database Support** – Das System unterstützt jetzt mehrere Datenbank-Synchronisationspaare gleichzeitig. Konfigurieren Sie flexible Datenflüsse zwischen AFS (MSSQL), EVO (SQLite) und XT-Commerce (MySQL). Details siehe [MULTI_DATABASE_SYNC.md](docs/MULTI_DATABASE_SYNC.md).
 
 **Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mappings/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
+
+**Neu:** **Server-to-Server Data Transfer API** – Sichere API zum Transferieren von Delta-Datenbanken, Bildern und Dokumenten zwischen verschiedenen Servern. Mit API-Key-Authentifizierung und flexibler Konfiguration über Umgebungsvariablen. Details siehe [DATA_TRANSFER_API.md](docs/DATA_TRANSFER_API.md).
 
 ---
 
@@ -197,6 +200,66 @@ Weitere Skripte:
 - `scripts/clear_evo.php`: leert alle Tabellen in `evo.db`
 - `scripts/setup.php`: initialisiert beide SQLite-Datenbanken
 - `scripts/migrate_update_columns.php`: ergänzt fehlende `update`-Spalten in bestehenden Installationen
+
+---
+
+## Data Transfer API
+
+Die **Data Transfer API** ermöglicht die sichere Übertragung von Delta-Datenbanken, Bildern und Dokumenten zwischen verschiedenen Servern.
+
+### Kernfunktionen
+
+- **API-Key-Authentifizierung**: Sichere Authentifizierung über konfigurierbare API-Keys
+- **Delta-Datenbank-Transfer**: Kopiert `evo_delta.db` zwischen Servern
+- **Bilder-Transfer**: Synchronisiert Bilder-Verzeichnisse rekursiv
+- **Dokumente-Transfer**: Synchronisiert Dokumente-Verzeichnisse rekursiv
+- **Flexibles Logging**: Optional strukturiertes JSON-Logging aller Transfers
+- **Fehlerbehandlung**: Detaillierte Fehlerprotokolle und Status-Rückgaben
+
+### Quick Start
+
+1. **API-Key generieren**:
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. **In `.env` konfigurieren**:
+   ```bash
+   DATA_TRANSFER_API_KEY=dein_generierter_api_key
+   DB_TRANSFER_SOURCE=/pfad/zur/quelle/db/evo_delta.db
+   DB_TRANSFER_TARGET=/pfad/zum/ziel/db/evo_delta.db
+   ```
+
+3. **API aufrufen**:
+   ```bash
+   curl -X POST \
+     -H "X-API-Key: dein_generierter_api_key" \
+     -d "transfer_type=all" \
+     https://your-server.com/api/data_transfer.php
+   ```
+
+### Transfer-Typen
+
+- `database`: Nur Delta-Datenbank transferieren
+- `images`: Nur Bilder-Verzeichnis synchronisieren
+- `documents`: Nur Dokumente-Verzeichnis synchronisieren
+- `all`: Alle drei Typen transferieren (Standard)
+
+### Dokumentation
+
+Vollständige Dokumentation siehe [DATA_TRANSFER_API.md](docs/DATA_TRANSFER_API.md):
+- Detaillierte API-Spezifikation
+- Request/Response-Beispiele
+- Konfigurationsoptionen
+- Sicherheits-Best-Practices
+- Integration in Workflows
+- Troubleshooting
+
+### Test-Scripts
+
+- `scripts/test_api_transfer.php`: Unit-Tests für API_Transfer-Klasse
+- `scripts/test_api_transfer_integration.php`: Integrationstests mit echten Dateitransfers
+- `scripts/test_api_transfer_curl.sh`: Curl-basierter API-Endpunkt-Test
 
 ---
 
