@@ -33,7 +33,7 @@ class AFS_Get_Data
     /** @var AFS_MappingConfig */
     private $config;
 
-    /** @var TransformRegistry */
+    /** @var \TransformRegistry */
     private $transformRegistry;
 
     /**
