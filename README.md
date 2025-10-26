@@ -389,8 +389,8 @@ classes/
 | `AFS_Evo_DeltaExporter` | `evo/` | Exportiert Datensätze mit `update = 1` in `evo_delta.db` und setzt Flags zurück |
 | `AFS_MetadataLoader` | `afs/` | Liest Metadaten (Titel/Beschreibung) aus der Dateistruktur und reichert Artikel/Kategorien an |
 | `AFS_SyncBusyException` | `afs/` | Spezielle Exception bei parallelen Sync-Versuchen |
-| `SourceMapper` | `mapping/` | Maps source data to normalized format |
-| `TargetMapper` | `mapping/` | Maps normalized data to target format |
+| `SourceMapper` | `mapping/` | Bildet Quelldaten auf normalisiertes Format ab |
+| `TargetMapper` | `mapping/` | Bildet normalisierte Daten auf Zielformat ab |
 
 Hilfsklassen wie `AFS_Evo_Base` stellen gemeinsame Utilities (Artikelreferenz, Logging, Normalisierung) bereit.
 
