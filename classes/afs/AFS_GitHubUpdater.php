@@ -125,7 +125,7 @@ class AFS_GitHubUpdater
     /**
      * Check for updates and automatically update if enabled
      * 
-     * @return array{checked: bool, updated: bool, info: array}
+     * @return array{checked: bool, updated: bool, info: array, message?: string, result?: array}
      */
     public function checkAndUpdate(): array
     {
