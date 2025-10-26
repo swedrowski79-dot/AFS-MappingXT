@@ -93,7 +93,7 @@ Implementierung einer sicheren REST-API zum Transferieren von Delta-Datenbanken,
 - ✅ Statistiken (Anzahl Dateien, Größe, Dauer)
 
 ### Qualität
-- ✅ Vollständige Unit-Tests (8 Tests, alle bestanden)
+- ✅ Vollständige Unit-Tests (9 Tests, alle bestanden)
 - ✅ Integrationstests (5 Tests, alle bestanden)
 - ✅ PHP-Syntax-Validierung (alle Dateien)
 - ✅ Umfassende Dokumentation (Deutsch)
@@ -184,13 +184,13 @@ Potenzielle Erweiterungen:
 
 ```
 Neue Dateien (7):
-  classes/file/API_Transfer.php              (356 Zeilen)
-  classes/afs/AFS_FileException.php          (16 Zeilen)
-  api/data_transfer.php                      (92 Zeilen)
-  scripts/test_api_transfer.php              (150 Zeilen)
-  scripts/test_api_transfer_integration.php  (330 Zeilen)
-  scripts/test_api_transfer_curl.sh          (43 Zeilen)
-  docs/DATA_TRANSFER_API.md                  (445 Zeilen)
+  classes/file/API_Transfer.php              (334 Zeilen)
+  classes/afs/AFS_FileException.php          (18 Zeilen)
+  api/data_transfer.php                      (98 Zeilen)
+  scripts/test_api_transfer.php              (133 Zeilen)
+  scripts/test_api_transfer_integration.php  (313 Zeilen)
+  scripts/test_api_transfer_curl.sh          (45 Zeilen)
+  docs/DATA_TRANSFER_API.md                  (370 Zeilen)
 
 Geänderte Dateien (3):
   .env.example                               (+30 Zeilen)
@@ -198,7 +198,7 @@ Geänderte Dateien (3):
   README.md                                  (+58 Zeilen)
 
 Gesamt:
-  Neue Zeilen: ~1560
+  Neue Zeilen: ~1439
   Alle Tests: ✅ Bestanden
 ```
 
