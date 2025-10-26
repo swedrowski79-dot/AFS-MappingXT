@@ -9,7 +9,7 @@ The File classes provide:
 - Support for file-based data sources
 
 ## Current Implementation
-- Metadata loading from filesystem directories (meta_title, meta_description)
+- Metadata loading from file system directories (meta_title, meta_description)
 - Article metadata organized by article number
 - Category metadata organized by category name
 
