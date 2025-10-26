@@ -161,6 +161,8 @@ AFS_GITHUB_AUTO_UPDATE=true
 
 **Wichtig:** Die Umgebungskonfiguration (`.env`) wird durch Updates **nicht** überschrieben, da sie in `.gitignore` ausgeschlossen ist.
 
+**Detaillierte Dokumentation:** [docs/GITHUB_AUTO_UPDATE.md](docs/GITHUB_AUTO_UPDATE.md)
+
 ---
 
 ## Bedienung
