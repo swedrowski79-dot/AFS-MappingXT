@@ -86,5 +86,56 @@ return [
         'auto_update' => filter_var(getenv('AFS_GITHUB_AUTO_UPDATE'), FILTER_VALIDATE_BOOLEAN),  // Automatically update from GitHub
         'branch' => getenv('AFS_GITHUB_BRANCH') ?: '',  // Branch to update from (empty = current branch)
     ],
+
+    // ============================================================================
+    // Multi-Database Sync Configuration
+    // Support for multiple source-target mapping pairs
+    // ============================================================================
+    'sync_mappings' => [
+        // Primary sync: AFS → EVO
+        'primary' => [
+            'enabled' => true,
+            'source' => getenv('SOURCE_MAPPING') ?: __DIR__ . '/mappings/source_afs.yml',
+            'target' => getenv('TARGET_MAPPING') ?: __DIR__ . '/mappings/target_sqlite.yml',
+            'action' => 'sync_afs_to_evo',
+        ],
+        // Secondary sync: XT Orders → EVO Orders
+        'secondary' => [
+            'enabled' => str_contains(getenv('SYNC_ENABLED_ACTIONS') ?: '', 'sync_xt_orders_to_evo'),
+            'source' => getenv('SOURCE_MAPPING_2') ?: __DIR__ . '/mappings/xt-order.yaml',
+            'target' => getenv('TARGET_MAPPING_2') ?: __DIR__ . '/mappings/orders-evo.yaml',
+            'action' => 'sync_xt_orders_to_evo',
+        ],
+        // Tertiary sync: EVO Articles → XT Articles
+        'tertiary' => [
+            'enabled' => str_contains(getenv('SYNC_ENABLED_ACTIONS') ?: '', 'sync_evo_to_xt'),
+            'source' => getenv('SOURCE_MAPPING_3') ?: __DIR__ . '/mappings/evo-artikel.yaml',
+            'target' => getenv('TARGET_MAPPING_3') ?: __DIR__ . '/mappings/xt-artikel.yaml',
+            'action' => 'sync_evo_to_xt',
+        ],
+    ],
+
+    // XT-Commerce MySQL connection settings
+    'xt_mysql' => [
+        'host'     => getenv('XT_MYSQL_HOST') ?: 'localhost',
+        'port'     => (int)(getenv('XT_MYSQL_PORT') ?: 3306),
+        'database' => getenv('XT_MYSQL_DB')   ?: 'xtcommerce',
+        'username' => getenv('XT_MYSQL_USER') ?: 'xt_user',
+        'password' => getenv('XT_MYSQL_PASS') ?: 'xt_password',
+    ],
+
+    // Additional database paths
+    'additional_databases' => [
+        'orders_evo' => getenv('ORDERS_DB_PATH') ?: __DIR__ . '/db/orders_evo.db',
+        'orders_evo_delta' => getenv('ORDERS_DELTA_DB_PATH') ?: __DIR__ . '/db/orders_evo_delta.db',
+    ],
+
+    // Sync options
+    'sync_options' => [
+        'bidirectional' => filter_var(getenv('SYNC_BIDIRECTIONAL'), FILTER_VALIDATE_BOOLEAN),
+        'enabled_actions' => array_filter(
+            array_map('trim', explode(',', getenv('SYNC_ENABLED_ACTIONS') ?: 'sync_afs_to_evo'))
+        ),
+    ],
 ];
 

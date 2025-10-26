@@ -1,0 +1,105 @@
+# xt-order.yaml
+# Configuration for XT-Commerce order database as source
+
+source:
+  type: mysql
+  name: XT-Commerce Orders
+  description: XT-Commerce order database as source system
+
+connection:
+  host: ${XT_MYSQL_HOST}
+  port: ${XT_MYSQL_PORT}
+  database: ${XT_MYSQL_DB}
+  username: ${XT_MYSQL_USER}
+  password: ${XT_MYSQL_PASS}
+
+# Entity mappings from XT-Commerce source
+entities:
+  # Orders (Bestellungen)
+  Orders:
+    table: orders
+    where: "status_id > 0"
+    fields:
+      orders_id:
+        source: orders_id
+        type: integer
+      customers_id:
+        source: customers_id
+        type: integer
+      orders_status:
+        source: orders_status
+        type: integer
+      date_purchased:
+        source: date_purchased
+        type: datetime
+      last_modified:
+        source: last_modified
+        type: datetime
+      currency:
+        source: currency
+        type: string
+      currency_value:
+        source: currency_value
+        type: float
+      orders_total:
+        source: orders_total
+        type: float
+      payment_method:
+        source: payment_method
+        type: string
+      shipping_method:
+        source: shipping_method
+        type: string
+      customers_name:
+        source: customers_name
+        type: string
+      customers_company:
+        source: customers_company
+        type: string
+      customers_street_address:
+        source: customers_street_address
+        type: string
+      customers_postcode:
+        source: customers_postcode
+        type: string
+      customers_city:
+        source: customers_city
+        type: string
+      customers_country:
+        source: customers_country
+        type: string
+      customers_telephone:
+        source: customers_telephone
+        type: string
+      customers_email_address:
+        source: customers_email_address
+        type: string
+
+  # Order Products (Bestellpositionen)
+  OrderProducts:
+    table: orders_products
+    fields:
+      orders_products_id:
+        source: orders_products_id
+        type: integer
+      orders_id:
+        source: orders_id
+        type: integer
+      products_id:
+        source: products_id
+        type: integer
+      products_model:
+        source: products_model
+        type: string
+      products_name:
+        source: products_name
+        type: string
+      products_price:
+        source: products_price
+        type: float
+      products_quantity:
+        source: products_quantity
+        type: integer
+      products_tax:
+        source: products_tax
+        type: float

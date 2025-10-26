@@ -40,6 +40,8 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 
 **Neu:** Einheitliches JSON-Logging für alle Mapping- und Delta-Operationen – jeder Lauf wird mit Mapping-Version, Datensatzanzahl, Änderungen und Dauer protokolliert. Details siehe [Logging](#logging).
 
+**Neu:** **Multi-Database Support** – Das System unterstützt jetzt mehrere Datenbank-Synchronisationspaare gleichzeitig. Konfigurieren Sie flexible Datenflüsse zwischen AFS (MSSQL), EVO (SQLite) und XT-Commerce (MySQL). Details siehe [MULTI_DATABASE_SYNC.md](docs/MULTI_DATABASE_SYNC.md).
+
 **Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mappings/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
 
 ---
@@ -384,8 +386,10 @@ classes/
 ├── mapping/       # Generische Mapping- und Transformationsklassen
 ├── mssql/         # MSSQL-Datenbankoperationen
 ├── evo/           # EVO-Zwischendatenbank (SQLite)
-├── sqlite/        # SQLite-spezifische Operationen (Platzhalter)
+├── sqlite/        # SQLite-spezifische Operationen
 ├── mysql/         # MySQL-Datenbankoperationen (Platzhalter)
+├── xt/            # XT-Commerce-spezifische Klassen (Platzhalter)
+├── status/        # Status- und Logging-Klassen
 └── file/          # Dateibasierte Datenstrukturen (Platzhalter)
 ```
 
@@ -395,34 +399,36 @@ classes/
 |--------|-------------|-------|
 | `AFS` | `afs/` | Aggregiert Rohdaten (Artikel, Warengruppen, Dokumente, Bilder, Attribute) aus einer Quelle |
 | `AFS_Get_Data` | `afs/` | Liest MSSQL-Tabellen, normalisiert & säubert Werte |
-| `MSSQL` | `mssql/` | SQLSRV-Wrapper mit Komfortmethoden (`select`, `count`, `scalar`, Quoting) |
-| `AFS_Evo` | `evo/` | Orchestriert alle Sync-Schritte, koordiniert Status-Tracker und Logger |
-| `AFS_Evo_ImageSync` | `evo/` | Importiert Bilder in SQLite, kopiert Dateien, meldet fehlende Bilder |
-| `AFS_Evo_DocumentSync` | `evo/` | Importiert Dokumente, kopiert PDFs anhand des Titels, Analysephase |
-| `AFS_Evo_AttributeSync` | `evo/` | Überträgt Attribute für Artikel |
-| `AFS_Evo_CategorySync` | `evo/` | Synchronisiert Warengruppen (inkl. Parent-Verknüpfungen) |
-| `AFS_Evo_ArticleSync` | `evo/` | Hauptlogik: Artikel schreiben, Medien & Attribute verknüpfen |
+| `MSSQL_Connection` | `mssql/` | SQLSRV-Wrapper mit Komfortmethoden (`select`, `count`, `scalar`, Quoting) |
+| `SQLite_Connection` | `sqlite/` | **NEU:** PDO-basierter SQLite-Wrapper mit Transaktionen, Performance-Optimierungen |
+| `EVO` | `evo/` | Orchestriert alle Sync-Schritte, koordiniert Status-Tracker und Logger |
+| `EVO_ImageSync` | `evo/` | Importiert Bilder in SQLite, kopiert Dateien, meldet fehlende Bilder |
+| `EVO_DocumentSync` | `evo/` | Importiert Dokumente, kopiert PDFs anhand des Titels, Analysephase |
+| `EVO_AttributeSync` | `evo/` | Überträgt Attribute für Artikel |
+| `EVO_CategorySync` | `evo/` | Synchronisiert Warengruppen (inkl. Parent-Verknüpfungen) |
+| `EVO_ArticleSync` | `evo/` | Hauptlogik: Artikel schreiben, Medien & Attribute verknüpfen |
 | `AFS_HashManager` | `afs/` | **NEU:** Effiziente Änderungserkennung via SHA-256 Hashes (siehe [HashManager.md](docs/HashManager.md)) |
 | `AFS_ConfigCache` | `afs/` | **NEU:** In-Memory-Cache für YAML-Konfigurationsdateien – beschleunigt wiederholte Config-Loads um 3-5x |
 | `AFS_YamlParser` | `afs/` | **NEU:** Native PHP YAML-Parser – keine externe Extension erforderlich |
 | `AFS_MappingConfig` | `afs/` | YAML-Konfiguration für Source-Datenbank-Mapping (nutzt `AFS_ConfigCache` und `AFS_YamlParser`) |
 | `AFS_TargetMappingConfig` | `afs/` | YAML-Konfiguration für Target-Datenbank-Mapping (nutzt `AFS_ConfigCache` und `AFS_YamlParser`) |
-| `AFS_Evo_StatusTracker` | `evo/` | Managt `sync_status`/`sync_log` in SQLite, Fortschrittsbalken & Logs für UI |
-| `AFS_MappingLogger` | `afs/` | **NEU:** Strukturiertes JSON-Logging in tägliche Dateien mit Mapping-Version, Änderungen und Dauer |
+| `STATUS_Tracker` | `status/` | Managt `sync_status`/`sync_log` in SQLite, Fortschrittsbalken & Logs für UI (nutzt `SQLite_Connection`) |
+| `STATUS_MappingLogger` | `status/` | **NEU:** Strukturiertes JSON-Logging in tägliche Dateien mit Mapping-Version, Änderungen und Dauer |
 | `AFS_GitHubUpdater` | `afs/` | **NEU:** Automatische Updates von GitHub – prüft auf neue Commits und führt `git pull` aus |
-| `AFS_Evo_Reset` | `evo/` | Utility zum Leeren aller EVO-Tabellen |
-| `AFS_Evo_DeltaExporter` | `evo/` | Exportiert Datensätze mit `update = 1` in `evo_delta.db` und setzt Flags zurück |
+| `EVO_Reset` | `evo/` | Utility zum Leeren aller EVO-Tabellen |
+| `EVO_DeltaExporter` | `evo/` | Exportiert Datensätze mit `update = 1` in `evo_delta.db` und setzt Flags zurück |
 | `AFS_MetadataLoader` | `afs/` | Liest Metadaten (Titel/Beschreibung) aus der Dateistruktur und reichert Artikel/Kategorien an |
 | `AFS_SyncBusyException` | `afs/` | Spezielle Exception bei parallelen Sync-Versuchen |
 | `SourceMapper` | `mapping/` | Bildet Quelldaten auf normalisiertes Format ab |
 | `TargetMapper` | `mapping/` | Bildet normalisierte Daten auf Zielformat ab |
 
-Hilfsklassen wie `AFS_Evo_Base` stellen gemeinsame Utilities (Artikelreferenz, Logging, Normalisierung) bereit.
+Hilfsklassen wie `EVO_Base` stellen gemeinsame Utilities (Artikelreferenz, Logging, Normalisierung) bereit.
 
 **Vorteile der neuen Struktur:**
-- Klare Trennung nach Datenbank-Typ (MSSQL, SQLite/EVO, MySQL, File)
+- Klare Trennung nach Datenbank-Typ (MSSQL, SQLite/EVO, MySQL, XT-Commerce)
 - Ermöglicht flexible YAML-basierte Konfigurationen (z.B. Source: AFS → Target: EVO, oder umgekehrt)
-- Vorbereitet für zukünftige Erweiterungen (MySQL, weitere SQLite-DBs, File-basierte Quellen)
+- **Multi-Database Support:** Mehrere Sync-Paare parallel konfigurierbar (siehe [MULTI_DATABASE_SYNC.md](docs/MULTI_DATABASE_SYNC.md))
+- Vorbereitet für zukünftige Erweiterungen (MySQL, weitere SQLite-DBs, File-basierte Quellen, XT-Commerce)
 
 ---
 
