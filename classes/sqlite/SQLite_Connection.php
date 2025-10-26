@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 class SQLite_Connection
 {
-    private PDO $pdo;
+    private ?PDO $pdo = null;
     private string $databasePath;
     private int $queryTimeout;
 
@@ -45,6 +45,9 @@ class SQLite_Connection
      */
     public function getPdo(): PDO
     {
+        if ($this->pdo === null) {
+            throw new AFS_DatabaseException('Database connection is closed');
+        }
         return $this->pdo;
     }
 
@@ -53,6 +56,9 @@ class SQLite_Connection
      */
     public function query(string $sql, array $params = []): PDOStatement
     {
+        if ($this->pdo === null) {
+            throw new AFS_DatabaseException('Database connection is closed');
+        }
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
@@ -105,6 +111,9 @@ class SQLite_Connection
      */
     public function lastInsertId(): int
     {
+        if ($this->pdo === null) {
+            throw new AFS_DatabaseException('Database connection is closed');
+        }
         return (int)$this->pdo->lastInsertId();
     }
 
@@ -113,6 +122,9 @@ class SQLite_Connection
      */
     public function beginTransaction(): bool
     {
+        if ($this->pdo === null) {
+            throw new AFS_DatabaseException('Database connection is closed');
+        }
         return $this->pdo->beginTransaction();
     }
 
@@ -121,6 +133,9 @@ class SQLite_Connection
      */
     public function commit(): bool
     {
+        if ($this->pdo === null) {
+            throw new AFS_DatabaseException('Database connection is closed');
+        }
         return $this->pdo->commit();
     }
 
@@ -129,6 +144,9 @@ class SQLite_Connection
      */
     public function rollback(): bool
     {
+        if ($this->pdo === null) {
+            throw new AFS_DatabaseException('Database connection is closed');
+        }
         return $this->pdo->rollBack();
     }
 
@@ -137,6 +155,9 @@ class SQLite_Connection
      */
     public function inTransaction(): bool
     {
+        if ($this->pdo === null) {
+            return false;
+        }
         return $this->pdo->inTransaction();
     }
 
@@ -153,6 +174,9 @@ class SQLite_Connection
      */
     public function quote(string $value): string
     {
+        if ($this->pdo === null) {
+            throw new AFS_DatabaseException('Database connection is closed');
+        }
         return $this->pdo->quote($value);
     }
 
