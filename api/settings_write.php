@@ -7,6 +7,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     api_error('Methode nicht erlaubt', 405);
 }
 
+// Configuration constants
+const BOOLEAN_SETTINGS = [
+    'AFS_SECURITY_ENABLED', 'AFS_GITHUB_AUTO_UPDATE', 'AFS_ENABLE_FILE_LOGGING',
+    'SYNC_BIDIRECTIONAL', 'DATA_TRANSFER_ENABLE_DB', 'DATA_TRANSFER_ENABLE_IMAGES',
+    'DATA_TRANSFER_ENABLE_DOCUMENTS', 'DATA_TRANSFER_LOG_TRANSFERS',
+    'REMOTE_SERVERS_ENABLED', 'OPCACHE_VALIDATE_TIMESTAMPS', 'OPCACHE_HUGE_CODE_PAGES'
+];
+
+const NUMERIC_SETTINGS = [
+    'AFS_MAX_ERRORS', 'AFS_LOG_ROTATION_DAYS', 'AFS_LOG_SAMPLE_SIZE',
+    'DATA_TRANSFER_MAX_FILE_SIZE', 'REMOTE_SERVER_TIMEOUT',
+    'OPCACHE_MEMORY_CONSUMPTION', 'OPCACHE_INTERNED_STRINGS_BUFFER',
+    'OPCACHE_MAX_ACCELERATED_FILES', 'OPCACHE_REVALIDATE_FREQ'
+];
+
+const BACKUP_RETENTION_COUNT = 5;
+
 /**
  * Read the entire .env file content
  */
@@ -69,18 +86,12 @@ function validateSetting(string $key, string $value): bool
     }
     
     // Boolean values
-    if (in_array($key, ['AFS_SECURITY_ENABLED', 'AFS_GITHUB_AUTO_UPDATE', 'AFS_ENABLE_FILE_LOGGING',
-                        'SYNC_BIDIRECTIONAL', 'DATA_TRANSFER_ENABLE_DB', 'DATA_TRANSFER_ENABLE_IMAGES',
-                        'DATA_TRANSFER_ENABLE_DOCUMENTS', 'DATA_TRANSFER_LOG_TRANSFERS',
-                        'REMOTE_SERVERS_ENABLED', 'OPCACHE_VALIDATE_TIMESTAMPS', 'OPCACHE_HUGE_CODE_PAGES'])) {
+    if (in_array($key, BOOLEAN_SETTINGS)) {
         return in_array(strtolower($value), ['true', 'false', '0', '1', 'yes', 'no', '']);
     }
     
     // Numeric values
-    if (in_array($key, ['AFS_MAX_ERRORS', 'AFS_LOG_ROTATION_DAYS', 'AFS_LOG_SAMPLE_SIZE',
-                        'DATA_TRANSFER_MAX_FILE_SIZE', 'REMOTE_SERVER_TIMEOUT',
-                        'OPCACHE_MEMORY_CONSUMPTION', 'OPCACHE_INTERNED_STRINGS_BUFFER',
-                        'OPCACHE_MAX_ACCELERATED_FILES', 'OPCACHE_REVALIDATE_FREQ'])) {
+    if (in_array($key, NUMERIC_SETTINGS)) {
         return ctype_digit($value) || $value === '';
     }
     
@@ -94,11 +105,11 @@ function validateSetting(string $key, string $value): bool
         return in_array($value, ['disable', 'tracing', 'function', '']) || ctype_digit($value);
     }
     
-    // Paths - basic validation
+    // Paths - allow broader character set for compatibility
     if (str_contains($key, '_PATH') || str_contains($key, '_SOURCE') || str_contains($key, '_TARGET') || 
         str_contains($key, '_DIR') || str_contains($key, 'MAPPING')) {
-        // Allow empty or valid path-like strings
-        return $value === '' || preg_match('#^[a-zA-Z0-9_./\-]+$#', $value);
+        // Allow empty or any printable characters except control characters
+        return $value === '' || preg_match('/^[\x20-\x7E]+$/', $value);
     }
     
     // Default: allow any non-empty string or empty
@@ -174,13 +185,13 @@ try {
         api_error('Fehler beim Schreiben der .env Datei', 500);
     }
     
-    // Clean up old backups (keep last 5)
+    // Clean up old backups (keep last BACKUP_RETENTION_COUNT)
     $backups = glob($root . '/.env.backup.*');
-    if (count($backups) > 5) {
+    if (count($backups) > BACKUP_RETENTION_COUNT) {
         usort($backups, function($a, $b) {
             return filemtime($a) - filemtime($b);
         });
-        $toDelete = array_slice($backups, 0, count($backups) - 5);
+        $toDelete = array_slice($backups, 0, count($backups) - BACKUP_RETENTION_COUNT);
         foreach ($toDelete as $oldBackup) {
             @unlink($oldBackup);
         }

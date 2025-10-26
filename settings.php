@@ -294,7 +294,10 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
 
           for (const key of categoryData.keys) {
             const value = settings[key] || '';
-            const isPassword = key.includes('PASS') || key.includes('KEY');
+            // More specific password field detection
+            const isPassword = key.endsWith('_PASS') || key.endsWith('_PASSWORD') || 
+                              key === 'DATA_TRANSFER_API_KEY' || key === 'AFS_MSSQL_PASS' || 
+                              key === 'XT_MYSQL_PASS';
             const inputType = isPassword ? 'password' : 'text';
 
             html += `<div class="setting-row">`;
