@@ -22,13 +22,13 @@ Das Upload-Tracking-Feature ermöglicht es, den Übertragungsstatus jedes einzel
 
 ### Funktionsweise
 
-1. **Initialer Status**: Wenn ein neues Bild oder Dokument in die Datenbank importiert wird, wird das `uploaded`-Feld automatisch auf `0` gesetzt und das `update`-Feld auf `1`.
+1. **Initialer Status**: Wenn ein neues Bild oder Dokument in die Datenbank importiert wird, wird das `uploaded`-Feld automatisch auf `0` gesetzt und das `update`-Feld auf `1`. Dies geschieht in den Sync-Klassen `EVO_ImageSync` und `EVO_DocumentSync` während des Import-Prozesses.
 
 2. **Transfer**: Bei der Übertragung mit den `pending_*` oder `single_*` Transfer-Typen werden nur Dateien mit `uploaded = 0` übertragen.
 
-3. **Markierung**: Nach erfolgreicher Übertragung wird das `uploaded`-Feld automatisch auf `1` gesetzt.
+3. **Markierung**: Nach erfolgreicher Übertragung wird das `uploaded`-Feld automatisch durch die `API_Transfer`-Klasse auf `1` gesetzt.
 
-4. **Erneute Übertragung**: Wenn sich eine Datei ändert (neue md5-Prüfsumme), werden sowohl `update` als auch `uploaded` automatisch auf `0` zurückgesetzt, sodass die Datei erneut übertragen wird.
+4. **Erneute Übertragung**: Wenn sich eine Datei ändert (neue md5-Prüfsumme), werden sowohl `update` als auch `uploaded` automatisch durch `EVO_ImageSync` und `EVO_DocumentSync` auf `0` zurückgesetzt (siehe UPSERT-Statements mit `WHERE` Klausel für md5-Vergleich), sodass die Datei erneut übertragen wird.
 
 ### Vorteile
 
@@ -117,7 +117,7 @@ curl -X POST \
 | Parameter | Typ | Erforderlich | Beschreibung | Werte |
 |-----------|-----|--------------|--------------|-------|
 | `api_key` | string | Ja* | API-Key für Authentifizierung | Konfigurierter API-Key |
-| `transfer_type` | string | Nein | Typ des Transfers | `database`, `images`, `documents`, `all`, `pending_images`, `pending_documents`, `pending_all`, `single_image`, `single_document`, `list_pending_images`, `list_pending_documents` (Standard: `all`) |
+| `transfer_type` | string | Nein | Typ des Transfers | Siehe "Transfer-Typen" unten |
 | `image_id` | int | Ja** | ID des zu übertragenden Bildes | Positive Ganzzahl |
 | `document_id` | int | Ja** | ID des zu übertragenden Dokuments | Positive Ganzzahl |
 
@@ -130,7 +130,7 @@ curl -X POST \
 - `database`: Überträgt die Delta-Datenbank
 - `images`: Überträgt alle Bilder im Verzeichnis
 - `documents`: Überträgt alle Dokumente im Verzeichnis
-- `all`: Überträgt Datenbank, Bilder und Dokumente
+- `all`: Überträgt Datenbank, Bilder und Dokumente (Standard)
 
 #### Neue Upload-Tracking Transfer-Typen
 - `pending_images`: Überträgt nur Bilder mit `uploaded = 0` und markiert sie als `uploaded = 1`
@@ -484,8 +484,36 @@ Konfigurieren Sie mehrere Server mit unterschiedlichen Source/Target-Pfaden für
 
 Die Hauptlogik ist in der Klasse `API_Transfer` implementiert:
 
+### Konstruktor
+
+**Wichtig: Breaking Change in v2.0**
+
+Der Konstruktor wurde erweitert, um Upload-Tracking zu unterstützen:
+
 ```php
-// Grundlegende Verwendung
+// Alte Version (v1.x)
+$transfer = new API_Transfer($config, $logger);
+
+// Neue Version (v2.0+) - mit optionalem Datenbank-Parameter für Upload-Tracking
+$transfer = new API_Transfer($config, $logger, $db);
+```
+
+**Parameter:**
+- `$config` (array): Konfigurationsarray mit `data_transfer` Einstellungen
+- `$logger` (STATUS_MappingLogger|null): Optional - Logger-Instanz für Transfer-Logging
+- `$db` (SQLite_Connection|null): Optional - Datenbankverbindung für Upload-Tracking Features
+
+**Hinweis:** Der `$db`-Parameter ist optional. Wenn nicht angegeben, funktionieren die klassischen Transfer-Methoden (`transferDatabase()`, `transferImages()`, `transferDocuments()`) weiterhin. Die neuen Upload-Tracking-Methoden benötigen jedoch eine Datenbankverbindung.
+
+### Grundlegende Verwendung
+
+```php
+// Ohne Upload-Tracking (klassischer Modus)
+$transfer = new API_Transfer($config, $logger);
+
+// Mit Upload-Tracking
+$dbPath = $config['paths']['data_db'];
+$db = new SQLite_Connection($dbPath);
 $transfer = new API_Transfer($config, $logger, $db);
 
 // API-Key validieren
@@ -493,40 +521,20 @@ if (!$transfer->validateApiKey($apiKey)) {
     die('Ungültiger API-Key');
 }
 
-// Datenbank transferieren
+// Klassische Transfer-Methoden (ohne Datenbank)
 $result = $transfer->transferDatabase();
-
-// Bilder transferieren
 $result = $transfer->transferImages();
-
-// Dokumente transferieren
 $result = $transfer->transferDocuments();
-
-// Alles transferieren
 $results = $transfer->transferAll();
 
-// Ausstehende Bilder auflisten
+// Neue Upload-Tracking-Methoden (benötigen Datenbank)
 $pendingImages = $transfer->getPendingImages();
-
-// Ausstehende Dokumente auflisten
 $pendingDocuments = $transfer->getPendingDocuments();
-
-// Einzelnes Bild übertragen
 $result = $transfer->transferSingleImage($imageId);
-
-// Einzelnes Dokument übertragen
 $result = $transfer->transferSingleDocument($documentId);
-
-// Alle ausstehenden Bilder übertragen
 $result = $transfer->transferPendingImages();
-
-// Alle ausstehenden Dokumente übertragen
 $result = $transfer->transferPendingDocuments();
-
-// Bild als hochgeladen markieren
 $success = $transfer->markImageAsUploaded($imageId);
-
-// Dokument als hochgeladen markieren
 $success = $transfer->markDocumentAsUploaded($documentId);
 ```
 
@@ -543,7 +551,7 @@ Gibt alle Bilder zurück, die noch nicht hochgeladen wurden (`uploaded = 0`).
     [
         'id' => 123,
         'filename' => 'product_123.jpg',
-        'md5' => 'abc123...'
+        'md5' => 'd41d8cd98f00b204e9800998ecf8427e'  // MD5-Hash
     ],
     // ...
 ]
@@ -559,7 +567,7 @@ Gibt alle Dokumente zurück, die noch nicht hochgeladen wurden (`uploaded = 0`).
         'id' => 456,
         'title' => 'Produktdatenblatt',
         'filename' => 'produktdatenblatt.pdf',
-        'md5' => 'def456...'
+        'md5' => 'a3c7b24cf8943a3e51d2e3d8f9b234ae'  // MD5-Hash
     ],
     // ...
 ]
