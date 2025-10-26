@@ -21,6 +21,9 @@ if (!is_file($configPath)) {
 }
 $config = require $configPath;
 
+// Security check: If security is enabled, only allow CLI access from API context
+SecurityValidator::validateCliAccess($config, 'indexcli.php');
+
 /**
  * Very small option parser: command [--key=value] [--flag]
  */

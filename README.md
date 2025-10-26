@@ -75,8 +75,9 @@ Die Anwendung implementiert moderne Sicherheits-Best-Practices:
 - **Dateischutz**: Konfigurationsdateien, Datenbanken und sensible Verzeichnisse sind geschützt
 - **PHP-Sicherheit**: Sichere Session-Einstellungen, deaktivierte PHP-Version-Ausgabe
 - **CORS-Kontrolle**: Konfigurierbare Cross-Origin-Zugriffe für API-Endpunkte
+- **Zugangskontrolle**: Konfigurierbarer Sicherheitsmodus für Einschränkung des direkten Zugriffs auf index.php und indexcli.php
 
-Ausführliche Dokumentation siehe [docs/SECURITY.md](docs/SECURITY.md)
+Ausführliche Dokumentation siehe [docs/SECURITY.md](docs/SECURITY.md) und [docs/SECURITY_CONFIGURATION.md](docs/SECURITY_CONFIGURATION.md)
 
 ---
 

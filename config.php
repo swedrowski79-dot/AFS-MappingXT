@@ -82,6 +82,10 @@ return [
         'title'         => 'AFS-Schnittstelle',
     ],
 
+    'security' => [
+        'enabled' => filter_var(getenv('AFS_SECURITY_ENABLED'), FILTER_VALIDATE_BOOLEAN),  // Enable security checks
+    ],
+
     'github' => [
         'auto_update' => filter_var(getenv('AFS_GITHUB_AUTO_UPDATE'), FILTER_VALIDATE_BOOLEAN),  // Automatically update from GitHub
         'branch' => getenv('AFS_GITHUB_BRANCH') ?: '',  // Branch to update from (empty = current branch)

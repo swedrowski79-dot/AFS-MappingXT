@@ -32,6 +32,9 @@ if (!is_file($configPath) || !is_file($autoloadPath)) {
 $config = require $configPath;
 require $autoloadPath;
 
+// Security check: If security is enabled, only allow access from API
+SecurityValidator::validateAccess($config, 'index.php');
+
 $paths = $config['paths'] ?? [];
 $evoPath = $paths['data_db'] ?? (__DIR__ . '/db/evo.db');
 $statusPath = $paths['status_db'] ?? (__DIR__ . '/db/status.db');
