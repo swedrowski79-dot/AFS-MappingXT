@@ -15,7 +15,7 @@
  *  - source_afs.yml Konfigurationsdatei in /mappings
  *
  * Beispielverwendung:
- *  require __DIR__ . '/MSSQL.php';
+ *  require __DIR__ . '/../mssql/MSSQL.php';
  *  $db = new MSSQL($host, $database, $user, $pass);
  *  $afs = new AFS_Get_Data($db);
  *  $artikel    = $afs->getArtikel();
@@ -23,7 +23,7 @@
  *  $dokumente  = $afs->getDokumente();
  */
 
-require_once __DIR__ . '/MSSQL.php';
+require_once __DIR__ . '/../mssql/MSSQL.php';
 
 class AFS_Get_Data
 {
@@ -33,7 +33,7 @@ class AFS_Get_Data
     /** @var AFS_MappingConfig */
     private $config;
 
-    /** @var \Mapping\TransformRegistry */
+    /** @var \TransformRegistry */
     private $transformRegistry;
 
     /**
@@ -49,12 +49,12 @@ class AFS_Get_Data
 
         // Load configuration
         if ($configPath === null) {
-            $configPath = __DIR__ . '/../mappings/source_afs.yml';
+            $configPath = __DIR__ . '/../../mappings/source_afs.yml';
         }
         $this->config = new AFS_MappingConfig($configPath);
 
         // Initialize transform registry
-        $this->transformRegistry = new \Mapping\TransformRegistry();
+        $this->transformRegistry = new TransformRegistry();
     }
 
     /**
