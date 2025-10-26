@@ -3,6 +3,7 @@
 class STATUS_Tracker
 {
     private PDO $db;
+    private ?SQLite_Connection $sqliteConn = null;
     private string $job;
     private int $maxErrors;
     private string $minLevel;
@@ -19,9 +20,15 @@ class STATUS_Tracker
         $this->maxErrors = max(1, $maxErrors);
         $this->minLevel = strtolower($minLevel);
 
-        $this->db = new PDO('sqlite:' . $statusDbPath);
-        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        // Use SQLite_Connection if available, fallback to PDO for backwards compatibility
+        if (class_exists('SQLite_Connection')) {
+            $this->sqliteConn = new SQLite_Connection($statusDbPath);
+            $this->db = $this->sqliteConn->getPdo();
+        } else {
+            $this->db = new PDO('sqlite:' . $statusDbPath);
+            $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        }
 
         $this->ensureJobRow();
     }
