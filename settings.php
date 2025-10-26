@@ -78,10 +78,17 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       color: var(--primary);
     }
     
+    .category-description {
+      font-size: 0.85rem;
+      color: rgba(226, 232, 240, 0.7);
+      font-weight: 400;
+      margin-top: 0.25rem;
+    }
+    
     .setting-row {
       display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 1rem;
+      grid-template-columns: 1fr 2fr auto;
+      gap: 0.5rem;
       margin-bottom: 1rem;
       align-items: center;
     }
@@ -187,6 +194,63 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    
+    .btn-generate {
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: rgb(96, 165, 250);
+      padding: 0.4rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    
+    .btn-generate:hover {
+      background: rgba(59, 130, 246, 0.3);
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+    
+    .btn-generate:active {
+      transform: scale(0.98);
+    }
+    
+    .no-env-message {
+      background: rgba(234, 179, 8, 0.1);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+      color: rgb(250, 204, 21);
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+    
+    .no-env-message h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+    }
+    
+    .no-env-message p {
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+    
+    .btn-create-env {
+      background: rgba(34, 197, 94, 0.2);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: rgb(74, 222, 128);
+      padding: 0.6rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+    }
+    
+    .btn-create-env:hover {
+      background: rgba(34, 197, 94, 0.3);
+      border-color: rgba(34, 197, 94, 0.5);
+    }
   </style>
 </head>
 <body>
@@ -290,7 +354,12 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
 
         for (const [categoryKey, categoryData] of Object.entries(categoriesData)) {
           html += `<div class="category-section">`;
-          html += `<div class="category-header">${escapeHtml(categoryData.label)}</div>`;
+          html += `<div class="category-header">`;
+          html += escapeHtml(categoryData.label);
+          if (categoryData.description) {
+            html += `<div class="category-description">${escapeHtml(categoryData.description)}</div>`;
+          }
+          html += `</div>`;
 
           for (const key of categoryData.keys) {
             const value = settings[key] || '';
@@ -299,12 +368,21 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
                               key === 'DATA_TRANSFER_API_KEY' || key === 'AFS_MSSQL_PASS' || 
                               key === 'XT_MYSQL_PASS';
             const inputType = isPassword ? 'password' : 'text';
+            const isApiKey = key === 'DATA_TRANSFER_API_KEY';
 
             html += `<div class="setting-row">`;
             html += `<label class="setting-label" for="setting-${key}">${escapeHtml(key)}</label>`;
             html += `<input type="${inputType}" id="setting-${key}" class="setting-input" 
                             data-key="${escapeHtml(key)}" value="${escapeHtml(value)}" 
                             placeholder="(leer)">`;
+            
+            // Add generate button for API key field
+            if (isApiKey) {
+              html += `<button class="btn-generate" data-target="setting-${key}" title="Neuen API-Key generieren">🔑 Generieren</button>`;
+            } else {
+              html += `<div></div>`; // Empty div for grid layout
+            }
+            
             html += `</div>`;
           }
 
@@ -312,6 +390,16 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         }
 
         settingsContainer.innerHTML = html;
+        
+        // Attach event listeners to generate buttons
+        const generateButtons = settingsContainer.querySelectorAll('.btn-generate');
+        generateButtons.forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const targetId = btn.dataset.target;
+            await generateApiKey(targetId);
+          });
+        });
       }
 
       function escapeHtml(text) {
@@ -344,7 +432,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           const data = response.data;
 
           if (!data.env_file_exists) {
-            showStatus('Warnung: .env Datei wurde nicht gefunden', 'error');
+            showNoEnvMessage();
             return;
           }
 
@@ -356,6 +444,80 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         } catch (error) {
           showStatus('Fehler beim Laden der Einstellungen: ' + error.message, 'error');
           settingsContainer.innerHTML = '<p style="color: var(--error);">Fehler beim Laden der Einstellungen.</p>';
+        } finally {
+          showLoading(false);
+        }
+      }
+      
+      function showNoEnvMessage() {
+        settingsContainer.innerHTML = `
+          <div class="no-env-message">
+            <h3>⚠️ Keine .env Datei gefunden</h3>
+            <p>Die Konfigurationsdatei <code>.env</code> wurde nicht gefunden. Sie müssen diese Datei erstellen, um die Anwendung zu konfigurieren.</p>
+            <p>Die Datei wird auf Basis von <code>.env.example</code> erstellt und enthält alle notwendigen Einstellungen.</p>
+            <button class="btn-create-env" id="btn-create-env">📝 .env Datei erstellen</button>
+          </div>
+        `;
+        
+        const btnCreateEnv = document.getElementById('btn-create-env');
+        if (btnCreateEnv) {
+          btnCreateEnv.addEventListener('click', async () => {
+            await createEnvFile();
+          });
+        }
+      }
+      
+      async function createEnvFile() {
+        try {
+          showLoading(true);
+          
+          // Generate a secure API key for initial setup
+          const apiKeyResponse = await fetchJson('generate_api_key.php', { method: 'POST' });
+          const apiKey = apiKeyResponse.data.api_key;
+          
+          // Create .env file using initial_setup endpoint
+          const response = await fetchJson('initial_setup.php', {
+            method: 'POST',
+            body: JSON.stringify({
+              settings: {
+                DATA_TRANSFER_API_KEY: apiKey
+              }
+            })
+          });
+          
+          showStatus('.env Datei erfolgreich erstellt. API-Key wurde generiert.', 'success');
+          
+          // Reload settings to show the new configuration
+          await loadSettings();
+        } catch (error) {
+          showStatus('Fehler beim Erstellen der .env Datei: ' + error.message, 'error');
+        } finally {
+          showLoading(false);
+        }
+      }
+      
+      async function generateApiKey(targetInputId) {
+        try {
+          showLoading(true);
+          const response = await fetchJson('generate_api_key.php', { method: 'POST' });
+          const apiKey = response.data.api_key;
+          
+          // Update the input field
+          const input = document.getElementById(targetInputId);
+          if (input) {
+            input.value = apiKey;
+            input.type = 'text'; // Temporarily show the generated key
+            
+            // Show success message
+            showStatus('Neuer API-Key generiert. Bitte speichern Sie die Änderungen.', 'success');
+            
+            // Switch back to password type after 5 seconds
+            setTimeout(() => {
+              input.type = 'password';
+            }, 5000);
+          }
+        } catch (error) {
+          showStatus('Fehler beim Generieren des API-Keys: ' + error.message, 'error');
         } finally {
           showLoading(false);
         }
