@@ -149,6 +149,22 @@ $debugTables = [
         </div>
       </section>
 
+<?php
+// Display remote servers section only if enabled
+$remoteConfig = $config['remote_servers'] ?? [];
+$remoteEnabled = $remoteConfig['enabled'] ?? false;
+$remoteServers = $remoteConfig['servers'] ?? [];
+
+if ($remoteEnabled && !empty($remoteServers)):
+?>
+      <section class="card remote-servers">
+        <h2>Remote Server Status</h2>
+        <div class="health-list" id="remote-servers-list">
+          <!-- Remote server status will be populated by JavaScript -->
+        </div>
+      </section>
+<?php endif; ?>
+
       <section class="card controls">
         <h2>Aktionen</h2>
         <button id="btn-start">🔁 Synchronisation starten</button>
@@ -211,7 +227,8 @@ $debugTables = [
     // Application configuration
     window.APP_CONFIG = {
       apiBase: <?= json_encode($apiBase, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
-      debugTables: <?= json_encode($debugTables, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+      debugTables: <?= json_encode($debugTables, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+      remoteServersEnabled: <?= json_encode($remoteEnabled && !empty($remoteServers), JSON_UNESCAPED_UNICODE) ?>
     };
   </script>
   <script>
