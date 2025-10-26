@@ -1,6 +1,6 @@
 <?php
 
-class AFS_Evo_AttributeSync extends AFS_Evo_Base
+class EVO_AttributeSync extends EVO_Base
 {
     public function import(): array
     {

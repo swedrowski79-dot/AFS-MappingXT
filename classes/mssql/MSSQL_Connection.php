@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-class MSSQL
+class MSSQL_Connection
 {
     private string $serverName;
     private array  $connectionOptions;

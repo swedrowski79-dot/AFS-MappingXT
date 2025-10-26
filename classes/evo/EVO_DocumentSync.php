@@ -1,6 +1,6 @@
 <?php
 
-class AFS_Evo_DocumentSync extends AFS_Evo_Base
+class EVO_DocumentSync extends EVO_Base
 {
     public function import(): array
     {

@@ -1,6 +1,6 @@
 <?php
 
-class AFS_Evo_CategorySync extends AFS_Evo_Base
+class EVO_CategorySync extends EVO_Base
 {
     public function import(): array
     {

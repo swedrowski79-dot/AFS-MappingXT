@@ -1,6 +1,6 @@
 <?php
 
-class AFS_Evo_ImageSync extends AFS_Evo_Base
+class EVO_ImageSync extends EVO_Base
 {
     public function import(): array
     {

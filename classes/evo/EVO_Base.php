@@ -1,6 +1,6 @@
 <?php
 
-abstract class AFS_Evo_Base
+abstract class EVO_Base
 {
     // Constants for performance tuning
     protected const CHUNK_SIZE_FOR_ID_MAP = 500;
@@ -9,11 +9,11 @@ abstract class AFS_Evo_Base
     
     protected PDO $db;
     protected AFS $afs;
-    protected ?AFS_Evo_StatusTracker $status;
+    protected ?STATUS_Tracker $status;
     /** @var array<string,string|null> Cache for file signatures to avoid redundant computations */
     private array $signatureCache = [];
 
-    public function __construct(PDO $db, AFS $afs, ?AFS_Evo_StatusTracker $status = null)
+    public function __construct(PDO $db, AFS $afs, ?STATUS_Tracker $status = null)
     {
         $this->db  = $db;
         $this->afs = $afs;
@@ -161,7 +161,7 @@ abstract class AFS_Evo_Base
         return $ts === false ? null : $ts;
     }
 
-    protected function tracker(): ?AFS_Evo_StatusTracker
+    protected function tracker(): ?STATUS_Tracker
     {
         return $this->status;
     }

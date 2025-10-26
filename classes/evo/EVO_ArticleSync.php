@@ -2,16 +2,16 @@
 
 use PDOStatement;
 
-class AFS_Evo_ArticleSync extends AFS_Evo_Base
+class EVO_ArticleSync extends EVO_Base
 {
     // Constants for better code readability
     private const MAX_IMAGES_PER_ARTICLE = 10;
     private const MAX_ATTRIBUTES_PER_ARTICLE = 4;
     
-    private AFS_Evo_ImageSync $imageSync;
-    private AFS_Evo_DocumentSync $documentSync;
-    private AFS_Evo_AttributeSync $attributeSync;
-    private AFS_Evo_CategorySync $categorySync;
+    private EVO_ImageSync $imageSync;
+    private EVO_DocumentSync $documentSync;
+    private EVO_AttributeSync $attributeSync;
+    private EVO_CategorySync $categorySync;
     private AFS_TargetMappingConfig $targetMapping;
     private AFS_SqlBuilder $sqlBuilder;
     private AFS_HashManager $hashManager;
@@ -21,11 +21,11 @@ class AFS_Evo_ArticleSync extends AFS_Evo_Base
     public function __construct(
         PDO $db,
         AFS $afs,
-        AFS_Evo_ImageSync $imageSync,
-        AFS_Evo_DocumentSync $documentSync,
-        AFS_Evo_AttributeSync $attributeSync,
-        AFS_Evo_CategorySync $categorySync,
-        ?AFS_Evo_StatusTracker $status = null,
+        EVO_ImageSync $imageSync,
+        EVO_DocumentSync $documentSync,
+        EVO_AttributeSync $attributeSync,
+        EVO_CategorySync $categorySync,
+        ?STATUS_Tracker $status = null,
         ?AFS_TargetMappingConfig $targetMapping = null
     ) {
         parent::__construct($db, $afs, $status);

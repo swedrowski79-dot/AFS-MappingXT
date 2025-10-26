@@ -88,7 +88,7 @@ function checkMssqlHealth(array $cfg): array
         $host = $cfg['host'] ?? 'localhost';
         $port = (int)($cfg['port'] ?? 1433);
         $server = $host . ',' . $port;
-        $mssql = new MSSQL(
+        $mssql = new MSSQL_Connection(
             $server,
             (string)($cfg['username'] ?? ''),
             (string)($cfg['password'] ?? ''),

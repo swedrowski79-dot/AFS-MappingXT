@@ -1,6 +1,6 @@
 <?php
 
-class AFS_Evo_StatusTracker
+class STATUS_Tracker
 {
     private PDO $db;
     private string $job;

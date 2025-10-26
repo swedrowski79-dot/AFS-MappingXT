@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 /**
- * AFS_MappingLogger - Unified JSON Logger for Mapping and Delta Operations
+ * STATUS_MappingLogger - Unified JSON Logger for Mapping and Delta Operations
  * 
  * Provides consistent, structured logging to daily log files in JSON format.
  * Logs include mapping version, record counts, changes, duration, and context.
  */
-class AFS_MappingLogger
+class STATUS_MappingLogger
 {
     private string $logDir;
     private string $mappingVersion;

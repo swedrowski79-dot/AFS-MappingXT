@@ -1,15 +1,15 @@
 <?php
 
-class AFS_Evo
+class EVO
 {
     private PDO $db;
-    private AFS_Evo_ImageSync $images;
-    private AFS_Evo_DocumentSync $documents;
-    private AFS_Evo_AttributeSync $attributes;
-    private AFS_Evo_CategorySync $categories;
-    private AFS_Evo_ArticleSync $articles;
-    private ?AFS_Evo_StatusTracker $status;
-    private ?AFS_MappingLogger $logger;
+    private EVO_ImageSync $images;
+    private EVO_DocumentSync $documents;
+    private EVO_AttributeSync $attributes;
+    private EVO_CategorySync $categories;
+    private EVO_ArticleSync $articles;
+    private ?STATUS_Tracker $status;
+    private ?STATUS_MappingLogger $logger;
     private AFS $afs;
     /** @var array<string,mixed> */
     private array $config;
@@ -17,18 +17,18 @@ class AFS_Evo
     /**
      * @param array<string,mixed> $config
      */
-    public function __construct(PDO $db, AFS $afs, ?AFS_Evo_StatusTracker $status = null, array $config = [], ?AFS_MappingLogger $logger = null)
+    public function __construct(PDO $db, AFS $afs, ?STATUS_Tracker $status = null, array $config = [], ?STATUS_MappingLogger $logger = null)
     {
         $this->db        = $db;
         $this->status     = $status;
         $this->logger     = $logger;
         $this->afs        = $afs;
         $this->config     = $config;
-        $this->images     = new AFS_Evo_ImageSync($db, $afs, $status);
-        $this->documents  = new AFS_Evo_DocumentSync($db, $afs, $status);
-        $this->attributes = new AFS_Evo_AttributeSync($db, $afs, $status);
-        $this->categories = new AFS_Evo_CategorySync($db, $afs, $status);
-        $this->articles   = new AFS_Evo_ArticleSync($db, $afs, $this->images, $this->documents, $this->attributes, $this->categories, $status);
+        $this->images     = new EVO_ImageSync($db, $afs, $status);
+        $this->documents  = new EVO_DocumentSync($db, $afs, $status);
+        $this->attributes = new EVO_AttributeSync($db, $afs, $status);
+        $this->categories = new EVO_CategorySync($db, $afs, $status);
+        $this->articles   = new EVO_ArticleSync($db, $afs, $this->images, $this->documents, $this->attributes, $this->categories, $status);
     }
 
     public function importBilder(): array
@@ -224,7 +224,7 @@ class AFS_Evo
                     'total' => 0,
                 ]);
 
-                $deltaExporter = new AFS_Evo_DeltaExporter($this->db, $deltaPath, $this->status, $this->logger);
+                $deltaExporter = new EVO_DeltaExporter($this->db, $deltaPath, $this->status, $this->logger);
                 $deltaSummary = $deltaExporter->export();
                 $summary['delta'] = $deltaSummary;
 

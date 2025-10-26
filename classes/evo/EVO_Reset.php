@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-class AFS_Evo_Reset
+class EVO_Reset
 {
     /**
      * Leert alle relevanten Tabellen in der EVO-SQLite-Datenbank.

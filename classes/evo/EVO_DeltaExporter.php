@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-class AFS_Evo_DeltaExporter
+class EVO_DeltaExporter
 {
     private PDO $db;
     private string $targetPath;
-    private ?AFS_Evo_StatusTracker $status;
-    private ?AFS_MappingLogger $logger;
+    private ?STATUS_Tracker $status;
+    private ?STATUS_MappingLogger $logger;
 
-    public function __construct(PDO $db, string $targetPath, ?AFS_Evo_StatusTracker $status = null, ?AFS_MappingLogger $logger = null)
+    public function __construct(PDO $db, string $targetPath, ?STATUS_Tracker $status = null, ?STATUS_MappingLogger $logger = null)
     {
         $this->db = $db;
         $this->targetPath = $targetPath;
