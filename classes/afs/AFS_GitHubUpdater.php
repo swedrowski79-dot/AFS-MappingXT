@@ -156,6 +156,7 @@ class AFS_GitHubUpdater
             'updated' => $updateResult['success'],
             'info' => $updateInfo,
             'result' => $updateResult,
+            'message' => $updateResult['message'] ?? null,
         ];
     }
     
