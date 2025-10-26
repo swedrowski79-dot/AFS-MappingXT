@@ -90,7 +90,7 @@ class SQLite_Connection
     /**
      * Fetch a single scalar value (first column of first row)
      */
-    public function scalar(string $sql, array $params = [])
+    public function scalar(string $sql, array $params = []): mixed
     {
         $stmt = $this->query($sql, $params);
         $value = $stmt->fetchColumn();

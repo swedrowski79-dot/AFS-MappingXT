@@ -10,7 +10,7 @@ echo "Testing SQLite_Connection class...\n\n";
 
 try {
     // Create a test database in /tmp
-    $testDbPath = '/tmp/test_sqlite_connection.db';
+    $testDbPath = sys_get_temp_dir() . '/test_sqlite_connection.db';
     
     // Remove old test database if exists
     if (file_exists($testDbPath)) {
