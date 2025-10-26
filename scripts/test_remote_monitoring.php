@@ -44,7 +44,7 @@ echo "Test 2: Environment Variable Parsing\n";
 echo str_repeat('-', 50) . "\n";
 
 // Simulate environment variable
-$testEnv = "TestServer1|https://example.com/afs|key123,TestServer2|https://example2.com|key456";
+$testEnv = "TestServer1|https://example.com|key123,TestServer2|https://example2.com|key456";
 echo "Test Input: {$testEnv}\n\n";
 
 $parsed = array_filter(
@@ -137,7 +137,7 @@ $localApiUrl = $baseUrl . '/api/remote_status.php';
 
 echo "Testing local API: {$localApiUrl}\n";
 
-// Only test if we can reach localhost
+// First check if server is reachable with HEAD request
 $ch = curl_init($localApiUrl);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
@@ -153,6 +153,32 @@ curl_close($ch);
 if ($httpCode > 0) {
     echo "HTTP Response Code: {$httpCode}\n";
     echo "Server is reachable\n";
+    
+    // If reachable, try a full GET request to validate response structure
+    echo "\nAttempting full GET request...\n";
+    $ch = curl_init($localApiUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 2,
+        CURLOPT_CONNECTTIMEOUT => 2,
+    ]);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode === 200 && $response) {
+        $data = json_decode($response, true);
+        if (json_last_error() === JSON_ERROR_NONE && isset($data['ok'])) {
+            echo "✓ Valid JSON response received\n";
+            echo "  - enabled: " . ($data['enabled'] ? 'true' : 'false') . "\n";
+            echo "  - servers count: " . count($data['servers'] ?? []) . "\n";
+        } else {
+            echo "✗ Invalid JSON response\n";
+        }
+    } else {
+        echo "Response code: {$httpCode}\n";
+    }
 } else {
     echo "Server is not reachable (this is normal if not running)\n";
     echo "To test: Start the server with 'docker-compose up' or 'php -S localhost:8080'\n";
