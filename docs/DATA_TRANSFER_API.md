@@ -12,6 +12,7 @@ Die Data Transfer API ermöglicht die sichere Übertragung von Delta-Datenbanken
 - **Upload-Tracking**: Verfolgt den Upload-Status jedes Bildes und Dokuments mit dem `uploaded`-Feld
 - **Einzelfile-Upload**: Überträgt einzelne Bilder oder Dokumente basierend auf ihrer ID
 - **Ausstehende Dateien**: Listet und überträgt nur Dateien mit `uploaded = 0`
+- **Automatische Ausschlüsse**: Das `logs` Verzeichnis und dessen Inhalt werden automatisch von Bild- und Dokument-Transfers ausgeschlossen
 - **API-Key-Authentifizierung**: Sichere Authentifizierung über konfigurierbare API-Keys
 - **Logging**: Optional strukturiertes Logging aller Transfers
 - **Fehlerbehandlung**: Detaillierte Fehlerprotokolle bei fehlgeschlagenen Transfers
@@ -80,8 +81,14 @@ DATA_TRANSFER_LOG_TRANSFERS=true
    - Verwenden Sie absolute Pfade für Source und Target
    - Stellen Sie sicher, dass der Web-Server Lese-/Schreibrechte hat
    - Quellverzeichnisse müssen existieren, Zielverzeichnisse werden automatisch erstellt
+   - **Wichtig**: Die Pfade werden server-spezifisch konfiguriert. Jeder Server verwendet seine eigenen konfigurierten Pfade für Source und Target
 
-3. **Dateigröße**:
+3. **Automatische Ausschlüsse**:
+   - Das `logs` Verzeichnis und alle darin enthaltenen Unterordner und Dateien werden automatisch von Bild- und Dokument-Transfers ausgeschlossen
+   - Dies verhindert, dass Log-Dateien versehentlich in Medienverzeichnisse übertragen werden
+   - Die Ausschluss-Prüfung erfolgt case-insensitive (z.B. `logs`, `Logs`, `LOGS` werden alle ausgeschlossen)
+
+4. **Dateigröße**:
    - Standardmäßig max. 100MB pro Datei
    - Größere Dateien werden übersprungen (mit Fehlerprotokoll)
 
@@ -183,6 +190,8 @@ curl -X POST \
   "timestamp": "2025-10-26 14:30:48"
 }
 ```
+
+**Hinweis**: Die Response kann auch ein `skipped` Feld enthalten, das die Anzahl der übersprungenen Dateien und Verzeichnisse angibt (z.B. das `logs` Verzeichnis und dessen Inhalt).
 
 #### Fehler-Response
 
