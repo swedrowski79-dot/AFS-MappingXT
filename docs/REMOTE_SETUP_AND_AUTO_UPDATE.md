@@ -119,8 +119,8 @@ AFS_GITHUB_AUTO_UPDATE=true
 # Branch für Updates (leer = aktueller Branch)
 AFS_GITHUB_BRANCH=main
 
-# Hauptserver für Benachrichtigungen (Format: Name|URL|API_Key)
-REMOTE_SERVERS=MainServer|https://main-server.example.com|main_api_key
+# Hauptserver für Benachrichtigungen (Format: Name|URL|API_Key|Database)
+REMOTE_SERVERS=MainServer|https://main-server.example.com|main_api_key|evo.db
 ```
 
 #### Ausgeschlossene Endpoints
@@ -270,7 +270,7 @@ curl -X POST http://localhost:8080/api/initial_setup.php \
       \"AFS_MSSQL_USER\": \"sa\",
       \"AFS_MSSQL_PASS\": \"your_password\",
       \"AFS_GITHUB_AUTO_UPDATE\": \"true\",
-      \"REMOTE_SERVERS\": \"MainServer|https://main.example.com|main_api_key\"
+      \"REMOTE_SERVERS\": \"MainServer|https://main.example.com|main_api_key|evo.db\"
     }
   }"
 ```
@@ -303,7 +303,7 @@ Remote-Server müssen den Hauptserver in `REMOTE_SERVERS` konfigurieren:
 AFS_GITHUB_AUTO_UPDATE=true
 
 # Hauptserver konfigurieren (erster Eintrag ist der Hauptserver)
-REMOTE_SERVERS=MainServer|https://main-server.example.com|main_server_api_key
+REMOTE_SERVERS=MainServer|https://main-server.example.com|main_server_api_key|evo.db
 
 # Eigener API-Key
 DATA_TRANSFER_API_KEY=remote_server_api_key_here

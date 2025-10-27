@@ -57,11 +57,13 @@ try {
         $name = $server['name'] ?? 'Unknown';
         $url = $server['url'] ?? '';
         $apiKey = $server['api_key'] ?? '';
+        $database = $server['database'] ?? '';
         
         if (empty($url)) {
             $results[] = [
                 'name' => $name,
                 'url' => $url,
+                'database' => $database,
                 'status' => 'error',
                 'error' => 'URL nicht konfiguriert',
             ];
@@ -98,6 +100,7 @@ try {
                 $results[] = [
                     'name' => $name,
                     'url' => $url,
+                    'database' => $database,
                     'status' => 'error',
                     'error' => $error ?: 'Verbindungsfehler',
                 ];
@@ -108,6 +111,7 @@ try {
                 $results[] = [
                     'name' => $name,
                     'url' => $url,
+                    'database' => $database,
                     'status' => 'error',
                     'error' => "HTTP {$httpCode}",
                 ];
@@ -120,6 +124,7 @@ try {
                 $results[] = [
                     'name' => $name,
                     'url' => $url,
+                    'database' => $database,
                     'status' => 'error',
                     'error' => 'Ungültige JSON-Antwort',
                 ];
@@ -130,6 +135,7 @@ try {
                 $results[] = [
                     'name' => $name,
                     'url' => $url,
+                    'database' => $database,
                     'status' => 'error',
                     'error' => $data['error'] ?? 'Unbekannter Fehler',
                 ];
@@ -142,6 +148,7 @@ try {
             $results[] = [
                 'name' => $name,
                 'url' => $url,
+                'database' => $database,
                 'status' => 'ok',
                 'data' => [
                     'state' => $remoteStatus['state'] ?? 'unknown',
@@ -159,6 +166,7 @@ try {
             $results[] = [
                 'name' => $name,
                 'url' => $url,
+                'database' => $database,
                 'status' => 'error',
                 'error' => $e->getMessage(),
             ];

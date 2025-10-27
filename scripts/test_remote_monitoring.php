@@ -34,6 +34,9 @@ if (!empty($servers)) {
         if (!empty($server['api_key'])) {
             echo "     API Key: " . substr($server['api_key'], 0, 8) . "...\n";
         }
+        if (!empty($server['database'])) {
+            echo "     Database: {$server['database']}\n";
+        }
     }
 }
 
@@ -44,7 +47,7 @@ echo "Test 2: Environment Variable Parsing\n";
 echo str_repeat('-', 50) . "\n";
 
 // Simulate environment variable
-$testEnv = "TestServer1|https://example.com|key123,TestServer2|https://example2.com|key456";
+$testEnv = "TestServer1|https://example.com|key123|evo.db,TestServer2|https://example2.com||orders_evo.db";
 echo "Test Input: {$testEnv}\n\n";
 
 $parsed = array_filter(
@@ -55,6 +58,7 @@ $parsed = array_filter(
                 'name' => $parts[0],
                 'url' => rtrim($parts[1], '/'),
                 'api_key' => $parts[2] ?? '',
+                'database' => $parts[3] ?? '',
             ];
         }
         return null;
@@ -66,6 +70,7 @@ foreach ($parsed as $i => $server) {
     echo "  " . ($i + 1) . ". Name: {$server['name']}\n";
     echo "     URL: {$server['url']}\n";
     echo "     API Key: " . (!empty($server['api_key']) ? 'SET' : 'NOT SET') . "\n";
+    echo "     Database: " . (!empty($server['database']) ? $server['database'] : 'NOT SET') . "\n";
 }
 
 echo "\n✓ Environment parsing works correctly\n\n";

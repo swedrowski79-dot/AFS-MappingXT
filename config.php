@@ -185,7 +185,7 @@ return [
         'enabled' => filter_var(getenv('REMOTE_SERVERS_ENABLED') ?: 'false', FILTER_VALIDATE_BOOLEAN),
         
         // List of remote servers to monitor (comma-separated in env)
-        // Format: name|url|api_key (e.g., "Server1|https://server1.example.com|key123")
+        // Format: name|url|api_key|database (last two segments optional)
         'servers' => array_filter(
             array_map(function($serverConfig) {
                 $parts = array_map('trim', explode('|', $serverConfig));
@@ -194,6 +194,7 @@ return [
                         'name' => $parts[0],
                         'url' => rtrim($parts[1], '/'),
                         'api_key' => $parts[2] ?? '',
+                        'database' => $parts[3] ?? '',
                     ];
                 }
                 return null;

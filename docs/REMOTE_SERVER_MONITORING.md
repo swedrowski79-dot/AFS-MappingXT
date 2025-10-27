@@ -28,8 +28,8 @@ Bearbeiten Sie die `.env`-Datei:
 REMOTE_SERVERS_ENABLED=true
 
 # Remote-Server konfigurieren (komma-getrennt)
-# Format: Name|URL|API_Key (API_Key ist optional)
-REMOTE_SERVERS=Produktion|https://prod.example.com,Test|https://test.example.com|abc123
+# Format: Name|URL|API_Key|Database (API_Key und Database sind optional)
+REMOTE_SERVERS=Produktion|https://prod.example.com|sk_prod_123|evo.db,Test|https://test.example.com||orders_evo.db
 
 # Timeout für Remote-Anfragen (in Sekunden)
 REMOTE_SERVER_TIMEOUT=5
@@ -59,19 +59,19 @@ Server1|https://server1.com|key1,Server2|https://server2.com|key2,Server3|https:
 #### Mehrere Server ohne API-Key
 ```bash
 REMOTE_SERVERS_ENABLED=true
-REMOTE_SERVERS=Hauptserver|https://main.example.com,Backup-Server|https://backup.example.com
+REMOTE_SERVERS=Hauptserver|https://main.example.com||evo.db,Backup-Server|https://backup.example.com||orders.db
 ```
 
 #### Mit API-Key-Authentifizierung
 ```bash
 REMOTE_SERVERS_ENABLED=true
-REMOTE_SERVERS=Prod|https://prod.example.com|sk_prod_abc123,Stage|https://stage.example.com|sk_stage_xyz789
+REMOTE_SERVERS=Prod|https://prod.example.com|sk_prod_abc123|evo.db,Stage|https://stage.example.com|sk_stage_xyz789|stage.db
 ```
 
 #### Einzelner Server
 ```bash
 REMOTE_SERVERS_ENABLED=true
-REMOTE_SERVERS=Slave-Server|https://slave.example.com
+REMOTE_SERVERS=Slave-Server|https://slave.example.com||slave.db
 ```
 
 ## API-Endpunkt
@@ -98,6 +98,7 @@ Keine zusätzlichen Parameter erforderlich.
     {
       "name": "Produktion",
       "url": "https://prod.example.com",
+      "database": "evo.db",
       "status": "ok",
       "data": {
         "state": "ready",
@@ -113,6 +114,7 @@ Keine zusätzlichen Parameter erforderlich.
     {
       "name": "Test",
       "url": "https://test.example.com",
+      "database": "orders.db",
       "status": "error",
       "error": "Verbindungsfehler"
     }
@@ -155,12 +157,13 @@ Für jeden konfigurierten Server wird angezeigt:
 
 1. **Server-Name**: Der in der Konfiguration angegebene Name
 2. **Server-URL**: Die vollständige URL des Servers
-3. **Status-Indikator**: 
+3. **Datenbank-Zuordnung**: Der optional hinterlegte Datenbankname für eine schnelle Zuordnung
+4. **Status-Indikator**: 
    - Grün (OK): Server läuft normal oder ist bereit
    - Orange (Warning): Server führt gerade eine Synchronisation aus
    - Rot (Error): Server hat einen Fehler oder ist nicht erreichbar
-4. **Status-Text**: Aktueller Status (z.B. "Bereit", "Läuft...", "Fehler")
-5. **Zusatzinformationen** (wenn verfügbar):
+5. **Status-Text**: Aktueller Status (z.B. "Bereit", "Läuft...", "Fehler")
+6. **Zusatzinformationen** (wenn verfügbar):
    - Aktuelle Statusmeldung
    - Fortschritt (z.B. "850/1000 (85%)")
 

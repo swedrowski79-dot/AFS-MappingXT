@@ -143,6 +143,12 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       color: rgb(96, 165, 250);
     }
     
+    .current-server-meta {
+      margin-left: 0.75rem;
+      font-size: 0.8rem;
+      color: rgba(226, 232, 240, 0.6);
+    }
+    
     .modal-overlay {
       display: none;
       position: fixed;
@@ -532,6 +538,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           <div id="current-server-info" style="font-size: 0.85rem; color: rgba(226, 232, 240, 0.7);">
             Aktuell: <span id="current-server-name">Lokaler Server</span>
             <span id="current-server-badge" class="server-badge local">LOKAL</span>
+            <span id="current-server-database" class="current-server-meta"></span>
           </div>
         </div>
         
@@ -583,6 +590,14 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           <input type="password" id="server-api-key" class="form-input" placeholder="Leer lassen für automatische Einrichtung">
           <small style="color: rgba(226, 232, 240, 0.6); font-size: 0.8rem;">
             Falls der Remote-Server noch keine .env hat, wird automatisch eine mit dem lokalen API-Key erstellt.
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="server-database">Datenbank-Bezeichnung (optional)</label>
+          <input type="text" id="server-database" class="form-input" placeholder="z.B. evo.db">
+          <small style="color: rgba(226, 232, 240, 0.6); font-size: 0.8rem;">
+            Wird in der Übersicht angezeigt, um die Zuordnung Server → Datenbank zu verdeutlichen.
           </small>
         </div>
         
@@ -928,9 +943,11 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       const serverNameInput = document.getElementById('server-name');
       const serverUrlInput = document.getElementById('server-url');
       const serverApiKeyInput = document.getElementById('server-api-key');
+      const serverDbInput = document.getElementById('server-database');
       const formTitle = document.getElementById('form-title');
       const currentServerName = document.getElementById('current-server-name');
       const currentServerBadge = document.getElementById('current-server-badge');
+      const currentServerDatabase = document.getElementById('current-server-database');
       
       let remoteServers = [];
       let editingServerIndex = -1;
@@ -958,7 +975,8 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         remoteServers.forEach((server, index) => {
           const option = document.createElement('option');
           option.value = 'remote-' + index;
-          option.textContent = server.name;
+          const label = server.database ? `${server.name} (${server.database})` : server.name;
+          option.textContent = label;
           serverSelect.appendChild(option);
         });
         
@@ -974,11 +992,19 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           currentServerName.textContent = 'Lokaler Server';
           currentServerBadge.textContent = 'LOKAL';
           currentServerBadge.className = 'server-badge local';
+          if (currentServerDatabase) {
+            currentServerDatabase.textContent = '';
+          }
         } else {
           const server = remoteServers[currentServerIndex];
           currentServerName.textContent = server ? server.name : 'Unbekannt';
           currentServerBadge.textContent = 'REMOTE';
           currentServerBadge.className = 'server-badge remote';
+          if (currentServerDatabase) {
+            currentServerDatabase.textContent = server && server.database
+              ? `Datenbank: ${server.database}`
+              : '';
+          }
         }
       }
       
@@ -996,6 +1022,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
               <div class="server-list-item-info">
                 <div class="server-list-item-name">${escapeHtml(server.name)}</div>
                 <div class="server-list-item-url">${escapeHtml(server.url)}</div>
+                ${server.database ? `<div style="font-size:0.8rem;margin-top:0.25rem;color:rgba(226,232,240,0.6);">Datenbank: ${escapeHtml(server.database)}</div>` : ''}
               </div>
               <div class="server-list-item-actions">
                 <button class="btn-small btn-edit" data-index="${index}">✏️ Bearbeiten</button>
@@ -1035,11 +1062,13 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           serverNameInput.value = server.name;
           serverUrlInput.value = server.url;
           serverApiKeyInput.value = server.api_key || '';
+          serverDbInput.value = server.database || '';
         } else {
           formTitle.textContent = 'Server hinzufügen';
           serverNameInput.value = '';
           serverUrlInput.value = '';
           serverApiKeyInput.value = '';
+          serverDbInput.value = '';
         }
       }
       
@@ -1047,6 +1076,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         serverForm.style.display = 'none';
         btnAddServer.style.display = 'block';
         editingServerIndex = -1;
+        serverDbInput.value = '';
       }
       
       // Edit server
@@ -1092,6 +1122,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         const name = serverNameInput.value.trim();
         const url = serverUrlInput.value.trim();
         const apiKey = serverApiKeyInput.value.trim();
+        const database = serverDbInput.value.trim();
         
         if (!name || !url) {
           showStatus('Name und URL sind erforderlich', 'error');
@@ -1104,7 +1135,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           const action = editingServerIndex >= 0 ? 'update' : 'add';
           const payload = {
             action,
-            server: { name, url, api_key: apiKey }
+            server: { name, url, api_key: apiKey, database }
           };
           
           if (action === 'update') {

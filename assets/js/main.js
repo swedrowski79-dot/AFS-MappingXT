@@ -326,6 +326,15 @@
         const small = document.createElement('small');
         small.textContent = server.url;
         contentDiv.appendChild(small);
+        
+        if (server.database) {
+          const dbInfo = document.createElement('div');
+          dbInfo.style.fontSize = '0.75rem';
+          dbInfo.style.color = 'rgba(226, 232, 240, 0.6)';
+          dbInfo.style.marginTop = '2px';
+          dbInfo.textContent = `Datenbank: ${server.database}`;
+          contentDiv.appendChild(dbInfo);
+        }
 
         // Add additional info if available
         if (server.status === 'ok' && server.data) {

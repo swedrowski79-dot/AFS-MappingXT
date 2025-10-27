@@ -45,6 +45,7 @@ function parseRemoteServers(string $envValue): array
                 'name' => $parts[0],
                 'url' => rtrim($parts[1], '/'),
                 'api_key' => $parts[2] ?? '',
+                'database' => $parts[3] ?? '',
             ];
         }
     }

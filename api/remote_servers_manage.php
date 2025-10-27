@@ -15,7 +15,8 @@ declare(strict_types=1);
  *   "server": {
  *     "name": "Server Name",
  *     "url": "https://server.example.com",
- *     "api_key": "optional_api_key"
+ *     "api_key": "optional_api_key",
+ *     "database": "optional_database_label"
  *   },
  *   "index": 0  // for update action
  * }
@@ -50,6 +51,7 @@ function parseRemoteServers(string $envValue): array
                 'name' => $parts[0],
                 'url' => rtrim($parts[1], '/'),
                 'api_key' => $parts[2] ?? '',
+                'database' => $parts[3] ?? '',
             ];
         }
     }
@@ -65,9 +67,16 @@ function formatRemoteServers(array $servers): string
     $configs = [];
     foreach ($servers as $server) {
         $config = $server['name'] . '|' . $server['url'];
-        if (!empty($server['api_key'])) {
-            $config .= '|' . $server['api_key'];
+        $apiKey = $server['api_key'] ?? '';
+        $database = $server['database'] ?? '';
+        
+        if ($apiKey !== '' || $database !== '') {
+            $config .= '|' . $apiKey;
+            if ($database !== '') {
+                $config .= '|' . $database;
+            }
         }
+        
         $configs[] = $config;
     }
     return implode(',', $configs);
@@ -195,6 +204,7 @@ try {
             'name' => trim($serverData['name']),
             'url' => rtrim(trim($serverData['url']), '/'),
             'api_key' => trim($serverData['api_key'] ?? ''),
+            'database' => trim($serverData['database'] ?? ''),
         ];
         
         // Validate URL format
