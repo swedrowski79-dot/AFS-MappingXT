@@ -170,6 +170,19 @@ header p {
   font-size: 0.95rem;
 }
 
+.health-subtitle {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.85);
+  letter-spacing: 0.01em;
+}
+
+.health-subtitle:first-of-type {
+  margin-top: 0.5rem;
+}
+
 .health-item {
   display: flex;
   justify-content: space-between;

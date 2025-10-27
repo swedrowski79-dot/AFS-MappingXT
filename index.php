@@ -85,6 +85,10 @@ $debugTables = [
         'sync_log',
     ],
 ];
+
+$remoteConfig = $config['remote_servers'] ?? [];
+$remoteEnabled = $remoteConfig['enabled'] ?? false;
+$remoteServers = $remoteConfig['servers'] ?? [];
 ?>
 <!doctype html>
 <html lang="de">
@@ -127,6 +131,7 @@ $debugTables = [
 
       <section class="card health">
         <h2>Verbindungen</h2>
+        <h3 class="health-subtitle">Lokaler Server</h3>
         <div class="health-list">
           <div class="health-item" id="health-evo" data-status="<?= $checks['evo']['ok'] ? 'ok' : 'error' ?>">
             <div>
@@ -150,23 +155,27 @@ $debugTables = [
             <span class="state">?</span>
           </div>
         </div>
-      </section>
-
-<?php
-// Display remote servers section only if enabled
-$remoteConfig = $config['remote_servers'] ?? [];
-$remoteEnabled = $remoteConfig['enabled'] ?? false;
-$remoteServers = $remoteConfig['servers'] ?? [];
-
-if ($remoteEnabled && !empty($remoteServers)):
-?>
-      <section class="card remote-servers">
-        <h2>Remote Server Status</h2>
+        <h3 class="health-subtitle">Remote Server</h3>
         <div class="health-list" id="remote-servers-list">
-          <!-- Remote server status will be populated by JavaScript -->
+<?php if (!$remoteEnabled): ?>
+          <div class="health-item" data-status="warning">
+            <div>
+              <strong>Remote-Monitoring deaktiviert</strong>
+              <small>In den Einstellungen aktivieren, um Remote-Server zu überwachen.</small>
+            </div>
+            <span class="state">Hinweis</span>
+          </div>
+<?php elseif (empty($remoteServers)): ?>
+          <div class="health-item" data-status="warning">
+            <div>
+              <strong>Keine Remote-Server konfiguriert</strong>
+              <small>In den Einstellungen hinzufügen, um den Status zu überwachen.</small>
+            </div>
+            <span class="state">Hinweis</span>
+          </div>
+<?php endif; ?>
         </div>
       </section>
-<?php endif; ?>
 
       <section class="card controls">
         <h2>Aktionen</h2>
@@ -231,7 +240,7 @@ if ($remoteEnabled && !empty($remoteServers)):
     window.APP_CONFIG = {
       apiBase: <?= json_encode($apiBase, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
       debugTables: <?= json_encode($debugTables, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
-      remoteServersEnabled: <?= json_encode($remoteEnabled && !empty($remoteServers), JSON_UNESCAPED_UNICODE) ?>
+      remoteServersEnabled: <?= json_encode($remoteEnabled, JSON_UNESCAPED_UNICODE) ?>
     };
   </script>
   <script>
