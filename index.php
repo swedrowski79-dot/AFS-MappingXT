@@ -175,6 +175,16 @@ $remoteServers = $remoteConfig['servers'] ?? [];
           </div>
 <?php endif; ?>
         </div>
+        <h3 class="health-subtitle">Datenbanken</h3>
+        <div class="health-list" id="database-status-list">
+          <div class="health-item" data-status="warning">
+            <div>
+              <strong>Datenbankstatus</strong>
+              <small>Wird geladen...</small>
+            </div>
+            <span class="state">...</span>
+          </div>
+        </div>
       </section>
 
       <section class="card controls">

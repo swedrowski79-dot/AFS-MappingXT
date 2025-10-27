@@ -32,12 +32,14 @@
     const healthStatus = document.getElementById('health-status');
     const healthMssql = document.getElementById('health-mssql');
     const remoteServersList = document.getElementById('remote-servers-list');
+    const databaseStatusList = document.getElementById('database-status-list');
 
     btnStart.dataset.busy = '0';
 
     let pollingTimer = null;
     let healthTimer = null;
     let remoteStatusTimer = null;
+    let databaseRoleMap = {};
 
     function formatDate(value) {
       if (!value) return '–';
@@ -368,6 +370,111 @@
       });
     }
 
+    function renderDatabaseStatus(connections) {
+      if (!databaseStatusList) {
+        return;
+      }
+
+      databaseStatusList.innerHTML = '';
+
+      if (!connections.length) {
+        const empty = document.createElement('div');
+        empty.className = 'health-item';
+        empty.dataset.status = 'warning';
+        const infoDiv = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = 'Keine Verbindungen konfiguriert';
+        const small = document.createElement('small');
+        small.textContent = 'In den Einstellungen anlegen, um den Status zu überwachen.';
+        infoDiv.appendChild(title);
+        infoDiv.appendChild(small);
+        const state = document.createElement('span');
+        state.className = 'state';
+        state.textContent = 'Hinweis';
+        empty.appendChild(infoDiv);
+        empty.appendChild(state);
+        databaseStatusList.appendChild(empty);
+        return;
+      }
+
+      connections.forEach(connection => {
+        const div = document.createElement('div');
+        const status = connection.status || {};
+        const statusClass = status.ok === true ? 'ok' : (status.ok === false ? 'error' : 'warning');
+        div.className = 'health-item';
+        div.dataset.status = statusClass;
+
+        const contentDiv = document.createElement('div');
+        const strong = document.createElement('strong');
+        strong.textContent = connection.title || connection.id;
+        contentDiv.appendChild(strong);
+
+        const typeInfo = document.createElement('small');
+        typeInfo.textContent = connection.type_label || connection.type || 'Unbekannt';
+        contentDiv.appendChild(typeInfo);
+
+        const extra = document.createElement('div');
+        extra.style.fontSize = '0.75rem';
+        extra.style.color = 'rgba(226, 232, 240, 0.6)';
+        extra.style.marginTop = '4px';
+        const lines = [];
+
+        if (connection.type === 'sqlite' && connection.settings?.path) {
+          lines.push(connection.settings.path);
+        } else if (connection.type === 'file' && connection.settings?.path) {
+          lines.push(connection.settings.path);
+        } else if (['mssql', 'mysql'].includes(connection.type) && connection.settings) {
+          const host = connection.settings.host || '';
+          const port = connection.settings.port || '';
+          const database = connection.settings.database || '';
+          if (host) {
+            lines.push(`${host}${port ? ':' + port : ''}`);
+          }
+          if (database) {
+            lines.push(database);
+          }
+        }
+
+        const roles = Array.isArray(connection.roles) ? connection.roles : [];
+        if (roles.length) {
+          const labels = roles.map(role => (databaseRoleMap[role]?.label) || role);
+          lines.push(`Rollen: ${labels.join(', ')}`);
+        }
+
+        if (status.message) {
+          lines.push(status.message);
+        }
+
+        if (lines.length) {
+          extra.textContent = lines.join(' • ');
+          contentDiv.appendChild(extra);
+        }
+
+        div.appendChild(contentDiv);
+
+        const stateSpan = document.createElement('span');
+        stateSpan.className = 'state';
+        stateSpan.textContent = status.ok === true ? 'Online' : (status.ok === false ? 'Offline' : 'Unbekannt');
+        div.appendChild(stateSpan);
+
+        databaseStatusList.appendChild(div);
+      });
+    }
+
+    async function refreshDatabaseStatus() {
+      if (!databaseStatusList) {
+        return;
+      }
+      try {
+        const payload = await fetchJson('databases_manage.php');
+        const data = payload.data || {};
+        databaseRoleMap = data.roles || {};
+        renderDatabaseStatus(data.connections || []);
+      } catch (err) {
+        console.error('Fehler beim Abrufen der Datenbank-Informationen:', err);
+      }
+    }
+
     function startPolling() {
       if (pollingTimer) {
         clearInterval(pollingTimer);
@@ -381,6 +488,7 @@
       }
       healthTimer = setInterval(() => {
         refreshHealth().catch(() => {});
+        refreshDatabaseStatus().catch(() => {});
       }, 30000);
 
       // Add remote status polling if enabled
@@ -401,7 +509,7 @@
 
       try {
         await fetchJson('sync_start.php', { method: 'POST' });
-        await Promise.all([refreshStatus(), refreshLog()]);
+        await Promise.all([refreshStatus(), refreshLog(), refreshDatabaseStatus()]);
       } catch (err) {
         setState('error', err.message);
         await refreshLog();
@@ -412,7 +520,7 @@
     });
 
     btnRefresh.addEventListener('click', async () => {
-      await Promise.all([refreshStatus(), refreshLog(), refreshHealth()]);
+      await Promise.all([refreshStatus(), refreshLog(), refreshHealth(), refreshDatabaseStatus()]);
     });
 
     btnDebug.addEventListener('click', () => {
@@ -446,7 +554,7 @@
             return sum + (typeof value === 'number' ? value : 0);
           }, 0);
           setState('idle', `EVO-Datenbank geleert (${totalRemoved} Datensätze entfernt)`);
-          await Promise.all([refreshStatus(), refreshLog()]);
+          await Promise.all([refreshStatus(), refreshLog(), refreshDatabaseStatus()]);
         } catch (err) {
           setState('error', err.message);
           await refreshLog();
@@ -479,7 +587,7 @@
           }
           const summary = parts.length ? parts.join(', ') : 'Keine Änderungen erforderlich';
           setState('idle', `Setup abgeschlossen – ${summary}.`);
-          await Promise.all([refreshHealth(), refreshStatus(), refreshLog()]);
+          await Promise.all([refreshHealth(), refreshDatabaseStatus(), refreshStatus(), refreshLog()]);
         } catch (err) {
           setState('error', err.message);
           await refreshLog();
@@ -515,7 +623,7 @@
           }
           const summary = parts.length ? parts.join(', ') : 'Keine Änderungen erforderlich';
           setState('idle', `Schema-Migration abgeschlossen – ${summary}.`);
-          await Promise.all([refreshStatus(), refreshLog()]);
+          await Promise.all([refreshStatus(), refreshLog(), refreshDatabaseStatus()]);
         } catch (err) {
           setState('error', err.message);
           await refreshLog();
@@ -530,7 +638,7 @@
         btnStatusReset.disabled = true;
         try {
           await fetchJson('sync_status_reset.php', { method: 'POST' });
-          await Promise.all([refreshStatus(), refreshLog()]);
+          await Promise.all([refreshStatus(), refreshLog(), refreshDatabaseStatus()]);
         } catch (err) {
           setState('error', err.message);
           await refreshLog();
@@ -572,8 +680,8 @@
     });
 
     // Initialize app
-    (async () => {
-      await Promise.all([refreshStatus(), refreshLog(), refreshHealth()]);
+(async () => {
+      await Promise.all([refreshStatus(), refreshLog(), refreshHealth(), refreshDatabaseStatus()]);
       if (REMOTE_SERVERS_ENABLED) {
         await refreshRemoteStatus();
       }

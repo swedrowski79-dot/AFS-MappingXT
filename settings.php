@@ -211,6 +211,125 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       color: rgba(226, 232, 240, 0.8);
       min-width: 90px;
     }
+
+    .database-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .database-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0.9rem;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .database-item header {
+      margin-bottom: 0.35rem;
+      font-weight: 600;
+      color: rgba(226, 232, 240, 0.95);
+    }
+
+    .database-meta {
+      font-size: 0.8rem;
+      color: rgba(226, 232, 240, 0.65);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .database-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      align-items: flex-end;
+    }
+
+    .database-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .database-status.ok {
+      background: rgba(34, 197, 94, 0.15);
+      color: rgb(74, 222, 128);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+
+    .database-status.error {
+      background: rgba(239, 68, 68, 0.15);
+      color: rgb(252, 165, 165);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+
+    .database-status.warning {
+      background: rgba(234, 179, 8, 0.15);
+      color: rgb(250, 204, 21);
+      border: 1px solid rgba(234, 179, 8, 0.35);
+    }
+
+    .database-roles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.35rem;
+    }
+
+    .database-role-pill {
+      padding: 0.2rem 0.45rem;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.18);
+      color: rgba(191, 219, 254, 0.95);
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .database-actions .btn-small {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(59, 130, 246, 0.18);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: rgba(191, 219, 254, 0.95);
+    }
+
+    .database-actions .btn-small:hover {
+      background: rgba(59, 130, 246, 0.28);
+    }
+
+    .db-form-roles {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .db-role-option {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.85rem;
+      color: rgba(226, 232, 240, 0.85);
+    }
+
+    .db-type-badge {
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.2);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      font-size: 0.7rem;
+      color: rgba(226, 232, 240, 0.85);
+      display: inline-block;
+      margin-left: 0.5rem;
+    }
     
     .modal-overlay {
       display: none;
@@ -611,13 +730,25 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           <p style="color: var(--muted);">Einstellungen werden geladen...</p>
         </div>
         
-        <div class="settings-footer">
-          <strong>Hinweis:</strong> Änderungen an den Einstellungen werden in der <code>.env</code> Datei gespeichert.
-          Eine Sicherungskopie wird automatisch erstellt. Die Änderungen werden beim nächsten Start der Anwendung wirksam.
+      <div class="settings-footer">
+        <strong>Hinweis:</strong> Änderungen an den Einstellungen werden in der <code>.env</code> Datei gespeichert.
+        Eine Sicherungskopie wird automatisch erstellt. Die Änderungen werden beim nächsten Start der Anwendung wirksam.
+      </div>
+    </section>
+
+    <section class="card" id="databases-card">
+      <div class="settings-header">
+        <h2>Datenbanken &amp; Pfade</h2>
+        <div class="settings-actions">
+          <button id="btn-db-refresh" class="btn-secondary">🔄 Aktualisieren</button>
+          <button id="btn-db-add" class="btn-primary">➕ Verbindung hinzufügen</button>
         </div>
-      </section>
-    </div>
+      </div>
+      <div id="databases-empty" style="color: var(--muted); font-size: 0.9rem;">Noch keine Verbindungen konfiguriert.</div>
+      <div class="database-list" id="database-list" hidden></div>
+    </section>
   </div>
+</div>
 
   <div id="loading-overlay" class="loading-overlay">
     <div class="loading-spinner"></div>
@@ -671,6 +802,45 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       </div>
       
       <button id="btn-add-server" class="btn-primary" style="width: 100%; margin-top: 1rem;">+ Neuen Server hinzufügen</button>
+    </div>
+  </div>
+
+  <!-- Database Management Modal -->
+  <div id="database-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="db-modal-title">Verbindung hinzufügen</div>
+        <button class="modal-close" id="db-modal-close">&times;</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="db-title">Titel *</label>
+        <input type="text" id="db-title" class="form-input" placeholder="z.B. Produktions-MSSQL" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="db-type">Datenbanktyp *</label>
+        <select id="db-type" class="form-input"></select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Verwendungszwecke</label>
+        <div id="db-form-roles" class="db-form-roles"></div>
+        <small style="color: rgba(226, 232, 240, 0.6); font-size: 0.8rem;">
+          Es können mehrere Rollen ausgewählt werden, sofern sie zum Typ passen.
+        </small>
+      </div>
+
+      <div id="db-form-fields"></div>
+
+      <div id="db-form-status" class="status-message"></div>
+
+      <div class="form-actions">
+        <button id="db-btn-test" class="btn-secondary" type="button">🔍 Verbindung testen</button>
+        <div style="flex:1"></div>
+        <button id="db-btn-cancel" class="btn-secondary" type="button">Abbrechen</button>
+        <button id="db-btn-save" class="btn-primary" type="button">Speichern</button>
+      </div>
     </div>
   </div>
 
@@ -770,6 +940,37 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           { value: '256M', label: '256 MB' }
         ]
       };
+
+      const DB_TYPE_FIELDS = {
+        mssql: [
+          { key: 'host', label: 'Host *', type: 'text', placeholder: 'z.B. 10.0.1.82', required: true },
+          { key: 'port', label: 'Port', type: 'number', placeholder: '1433', required: false, default: 1433 },
+          { key: 'database', label: 'Datenbank *', type: 'text', placeholder: 'z.B. AFS_2018', required: true },
+          { key: 'username', label: 'Benutzer *', type: 'text', placeholder: 'z.B. sa', required: true },
+          { key: 'password', label: 'Passwort', type: 'password', placeholder: 'Leer lassen für unverändert', required: false },
+          { key: 'encrypt', label: 'TLS-Verschlüsselung aktivieren', type: 'checkbox', default: true },
+          { key: 'trust_server_certificate', label: 'Serverzertifikat vertrauen (DEV)', type: 'checkbox', default: false }
+        ],
+        mysql: [
+          { key: 'host', label: 'Host *', type: 'text', placeholder: 'z.B. localhost', required: true },
+          { key: 'port', label: 'Port', type: 'number', placeholder: '3306', required: false, default: 3306 },
+          { key: 'database', label: 'Datenbank *', type: 'text', placeholder: 'z.B. xtcommerce', required: true },
+          { key: 'username', label: 'Benutzer *', type: 'text', placeholder: 'z.B. xt_user', required: true },
+          { key: 'password', label: 'Passwort', type: 'password', placeholder: 'Leer lassen für unverändert', required: false }
+        ],
+        sqlite: [
+          { key: 'path', label: 'Dateipfad *', type: 'text', placeholder: 'z.B. db/evo.db', required: true }
+        ],
+        file: [
+          { key: 'path', label: 'Verzeichnis *', type: 'text', placeholder: 'z.B. /mnt/share/data', required: true }
+        ]
+      };
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text ?? '';
+        return div.innerHTML;
+      }
 
       function showLoading(show) {
         loadingOverlay.classList.toggle('visible', show);
@@ -909,12 +1110,6 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
             await generateApiKey(targetId);
           });
         });
-      }
-
-      function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
       }
 
       function getUpdatedSettings() {
@@ -1125,6 +1320,546 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       btnReload.addEventListener('click', () => loadSettings());
 
       // =========================================================================
+      // Database Management
+      // =========================================================================
+
+      const dbList = document.getElementById('database-list');
+      const dbEmptyState = document.getElementById('databases-empty');
+      const dbEmptyDefaultText = dbEmptyState ? dbEmptyState.textContent : '';
+      const btnDbAdd = document.getElementById('btn-db-add');
+      const btnDbRefresh = document.getElementById('btn-db-refresh');
+      const dbModal = document.getElementById('database-modal');
+      const dbModalTitle = document.getElementById('db-modal-title');
+      const dbModalClose = document.getElementById('db-modal-close');
+      const dbTitleInput = document.getElementById('db-title');
+      const dbTypeSelect = document.getElementById('db-type');
+      const dbRolesContainer = document.getElementById('db-form-roles');
+      const dbFieldsContainer = document.getElementById('db-form-fields');
+      const dbStatusBox = document.getElementById('db-form-status');
+      const dbBtnTest = document.getElementById('db-btn-test');
+      const dbBtnSave = document.getElementById('db-btn-save');
+      const dbBtnCancel = document.getElementById('db-btn-cancel');
+
+      let databaseConnections = [];
+      let databaseRoles = {};
+      let databaseTypes = {};
+      let editingDatabase = null;
+
+      function setDbStatus(message, type) {
+        if (!dbStatusBox) {
+          return;
+        }
+        dbStatusBox.textContent = message;
+        dbStatusBox.className = 'status-message visible ' + type;
+      }
+
+      function clearDbStatus() {
+        if (!dbStatusBox) {
+          return;
+        }
+        dbStatusBox.textContent = '';
+        dbStatusBox.className = 'status-message';
+      }
+
+      function populateDbTypeOptions(selected) {
+        if (!dbTypeSelect) {
+          return;
+        }
+        dbTypeSelect.innerHTML = '';
+        const entries = Object.entries(databaseTypes || {});
+        if (!entries.length) {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = 'Keine Typen verfügbar';
+          dbTypeSelect.appendChild(option);
+          dbTypeSelect.disabled = true;
+          return;
+        }
+        entries.forEach(([value, label]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          dbTypeSelect.appendChild(option);
+        });
+        dbTypeSelect.disabled = false;
+        if (selected && databaseTypes[selected]) {
+          dbTypeSelect.value = selected;
+        } else {
+          dbTypeSelect.selectedIndex = 0;
+        }
+      }
+
+      function renderDbRoles(type, selectedRoles = []) {
+        if (!dbRolesContainer) {
+          return;
+        }
+        dbRolesContainer.innerHTML = '';
+        const entries = Object.entries(databaseRoles || {});
+        const relevant = entries.filter(([, meta]) => Array.isArray(meta.types) && meta.types.includes(type));
+        if (!relevant.length) {
+          const info = document.createElement('div');
+          info.style.color = 'rgba(226, 232, 240, 0.6)';
+          info.style.fontSize = '0.85rem';
+          info.textContent = 'Für diesen Typ sind keine Rollen verfügbar.';
+          dbRolesContainer.appendChild(info);
+          return;
+        }
+        relevant.forEach(([role, meta]) => {
+          const label = document.createElement('label');
+          label.className = 'db-role-option';
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.value = role;
+          input.name = 'db-role';
+          input.checked = selectedRoles.includes(role);
+          label.appendChild(input);
+          const span = document.createElement('span');
+          span.textContent = meta.label || role;
+          label.appendChild(span);
+          dbRolesContainer.appendChild(label);
+        });
+      }
+
+      function renderDbFields(type, settings = {}, options = {}) {
+        if (!dbFieldsContainer) {
+          return;
+        }
+        dbFieldsContainer.innerHTML = '';
+        const fields = DB_TYPE_FIELDS[type] || [];
+        fields.forEach(field => {
+          const group = document.createElement('div');
+          group.className = 'form-group';
+
+          if (field.type === 'checkbox') {
+            const label = document.createElement('label');
+            label.className = 'db-role-option';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'db-field';
+            input.dataset.key = field.key;
+            const current = settings[field.key];
+            input.checked = current !== undefined ? Boolean(current) : Boolean(field.default);
+            label.appendChild(input);
+            const span = document.createElement('span');
+            span.textContent = field.label;
+            label.appendChild(span);
+            group.appendChild(label);
+          } else {
+            const label = document.createElement('label');
+            label.className = 'form-label';
+            label.textContent = field.label;
+            const input = document.createElement('input');
+            input.className = 'form-input db-field';
+            input.dataset.key = field.key;
+            const isNumber = field.type === 'number';
+            const isPassword = field.type === 'password';
+            input.type = isNumber ? 'number' : (isPassword ? 'password' : 'text');
+            if (field.placeholder) {
+              input.placeholder = field.placeholder;
+            }
+            if (isNumber) {
+              const current = settings[field.key];
+              if (current === undefined || current === null || current === '') {
+                input.value = field.default !== undefined ? field.default : '';
+              } else {
+                input.value = current;
+              }
+            } else if (isPassword) {
+              const protectedFlag = options.passwordProtected === true;
+              input.dataset.protected = protectedFlag ? '1' : '0';
+              input.value = '';
+            } else {
+              const current = settings[field.key];
+              input.value = current !== undefined ? current : (field.default ?? '');
+            }
+            group.appendChild(label);
+            group.appendChild(input);
+          }
+
+          dbFieldsContainer.appendChild(group);
+        });
+      }
+
+      function collectDatabaseFormData() {
+        if (!dbTitleInput || !dbTypeSelect) {
+          throw new Error('Formular nicht verfügbar.');
+        }
+        const title = dbTitleInput.value.trim();
+        const type = dbTypeSelect.value;
+        if (!title) {
+          throw new Error('Bitte einen Titel vergeben.');
+        }
+        if (!type) {
+          throw new Error('Bitte einen Typ auswählen.');
+        }
+
+        const roles = [];
+        if (dbRolesContainer) {
+          dbRolesContainer.querySelectorAll('input[name="db-role"]').forEach(input => {
+            if (input.checked) {
+              roles.push(input.value);
+            }
+          });
+        }
+
+        const settings = {};
+        const fields = DB_TYPE_FIELDS[type] || [];
+        fields.forEach(field => {
+          const input = dbFieldsContainer
+            ? dbFieldsContainer.querySelector(`.db-field[data-key="${field.key}"]`)
+            : null;
+          if (!input) {
+            return;
+          }
+
+          let value;
+          if (field.type === 'checkbox') {
+            value = input.checked;
+          } else if (field.type === 'number') {
+            value = input.value.trim();
+            if (value === '') {
+              value = field.default !== undefined ? field.default : '';
+            } else {
+              value = Number(value);
+              if (Number.isNaN(value)) {
+                throw new Error(`Bitte eine gültige Zahl für "${field.label}" angeben.`);
+              }
+            }
+          } else if (field.type === 'password') {
+            value = input.value;
+            if (!value) {
+              if (input.dataset.protected === '1' && editingDatabase) {
+                value = '__PROTECTED__';
+              }
+            }
+          } else {
+            value = input.value.trim();
+          }
+
+          if (field.required && (value === '' || value === null || value === undefined)) {
+            throw new Error(`Bitte "${field.label.replace('*', '').trim()}" ausfüllen.`);
+          }
+
+          settings[field.key] = value;
+        });
+
+        return { title, type, roles, settings };
+      }
+
+      function openDatabaseModal(connection = null) {
+        if (!dbModal) {
+          return;
+        }
+        editingDatabase = connection;
+        dbFormReset();
+        dbModal.classList.add('visible');
+        clearDbStatus();
+
+        const type = connection?.type || Object.keys(databaseTypes || {})[0] || 'mssql';
+        populateDbTypeOptions(type);
+        dbTitleInput.value = connection?.title || '';
+        dbTypeSelect.value = type;
+        renderDbRoles(type, connection?.roles || []);
+        const options = { passwordProtected: connection?.password_protected === true };
+        renderDbFields(type, connection?.settings || {}, options);
+
+        dbModalTitle.textContent = connection ? 'Verbindung bearbeiten' : 'Verbindung hinzufügen';
+      }
+
+      function closeDatabaseModal() {
+        if (!dbModal) {
+          return;
+        }
+        dbModal.classList.remove('visible');
+        editingDatabase = null;
+        clearDbStatus();
+        dbFormReset();
+      }
+
+      function dbFormReset() {
+        if (dbTitleInput) dbTitleInput.value = '';
+        if (dbTypeSelect) dbTypeSelect.selectedIndex = 0;
+        if (dbRolesContainer) dbRolesContainer.innerHTML = '';
+        if (dbFieldsContainer) dbFieldsContainer.innerHTML = '';
+      }
+
+      function renderDatabaseList() {
+        if (!dbList || !dbEmptyState) {
+          return;
+        }
+        if (!databaseConnections.length) {
+          dbList.hidden = true;
+          dbEmptyState.textContent = dbEmptyDefaultText;
+          dbEmptyState.hidden = false;
+          dbList.innerHTML = '';
+          return;
+        }
+
+        dbEmptyState.hidden = true;
+        dbList.hidden = false;
+        dbList.innerHTML = '';
+
+        databaseConnections.forEach(connection => {
+          const item = document.createElement('div');
+          item.className = 'database-item';
+          item.dataset.id = connection.id;
+
+          const info = document.createElement('div');
+          const header = document.createElement('header');
+          header.textContent = connection.title || connection.id;
+          const badge = document.createElement('span');
+          badge.className = 'db-type-badge';
+          badge.textContent = databaseTypes[connection.type] || connection.type;
+          header.appendChild(badge);
+          info.appendChild(header);
+
+          const meta = document.createElement('div');
+          meta.className = 'database-meta';
+          const typeLine = document.createElement('div');
+          typeLine.textContent = `Typ: ${databaseTypes[connection.type] || connection.type}`;
+          meta.appendChild(typeLine);
+
+          if (connection.settings && connection.type === 'sqlite') {
+            const pathLine = document.createElement('div');
+            pathLine.textContent = `Pfad: ${connection.settings.path || ''}`;
+            meta.appendChild(pathLine);
+          }
+          if (connection.settings && connection.type === 'file') {
+            const pathLine = document.createElement('div');
+            pathLine.textContent = `Pfad: ${connection.settings.path || ''}`;
+            meta.appendChild(pathLine);
+          }
+          if (connection.settings && ['mssql', 'mysql'].includes(connection.type)) {
+            const hostLine = document.createElement('div');
+            const host = connection.settings.host || '';
+            const port = connection.settings.port || '';
+            hostLine.textContent = `Host: ${host}${port ? ':' + port : ''}`;
+            meta.appendChild(hostLine);
+            const dbLine = document.createElement('div');
+            dbLine.textContent = `Datenbank: ${connection.settings.database || ''}`;
+            meta.appendChild(dbLine);
+          }
+
+          const rolesPills = document.createElement('div');
+          rolesPills.className = 'database-roles';
+          (connection.roles || []).forEach(role => {
+            const pill = document.createElement('span');
+            pill.className = 'database-role-pill';
+            pill.textContent = (databaseRoles[role] && databaseRoles[role].label) ? databaseRoles[role].label : role;
+            rolesPills.appendChild(pill);
+          });
+          if (rolesPills.childElementCount > 0) {
+            meta.appendChild(rolesPills);
+          }
+
+          info.appendChild(meta);
+
+          const actions = document.createElement('div');
+          actions.className = 'database-actions';
+
+          const statusBadge = document.createElement('span');
+          const status = connection.status || {};
+          const statusClass = status.ok === true ? 'ok' : (status.ok === false ? 'error' : 'warning');
+          statusBadge.className = 'database-status ' + statusClass;
+          statusBadge.textContent = status.ok === true ? 'Online' : (status.ok === false ? 'Offline' : 'Unbekannt');
+          actions.appendChild(statusBadge);
+
+          if (status.message) {
+            const statusMessage = document.createElement('small');
+            statusMessage.style.fontSize = '0.75rem';
+            statusMessage.style.color = 'rgba(226, 232, 240, 0.6)';
+            statusMessage.textContent = status.message;
+            actions.appendChild(statusMessage);
+          }
+
+          const editBtn = document.createElement('button');
+          editBtn.type = 'button';
+          editBtn.className = 'btn-small';
+          editBtn.textContent = '✏️ Bearbeiten';
+          editBtn.addEventListener('click', () => openDatabaseModal(connection));
+          actions.appendChild(editBtn);
+
+          const testBtn = document.createElement('button');
+          testBtn.type = 'button';
+          testBtn.className = 'btn-small';
+          testBtn.textContent = '🔍 Testen';
+          testBtn.addEventListener('click', () => testDatabase(connection.id));
+          actions.appendChild(testBtn);
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.type = 'button';
+          deleteBtn.className = 'btn-small';
+          deleteBtn.style.background = 'rgba(239, 68, 68, 0.18)';
+          deleteBtn.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          deleteBtn.style.color = 'rgb(252, 165, 165)';
+          deleteBtn.textContent = '🗑️ Löschen';
+          deleteBtn.addEventListener('click', () => deleteDatabase(connection.id));
+          actions.appendChild(deleteBtn);
+
+          item.appendChild(info);
+          item.appendChild(actions);
+          dbList.appendChild(item);
+        });
+      }
+
+      async function loadDatabases() {
+        try {
+          const response = await fetchJson('databases_manage.php');
+          const data = response.data || {};
+          databaseConnections = data.connections || [];
+          databaseRoles = data.roles || {};
+          databaseTypes = data.types || {};
+          renderDatabaseList();
+        } catch (error) {
+          showStatus('Fehler beim Laden der Datenbanken: ' + error.message, 'error');
+        }
+      }
+
+      async function saveDatabase() {
+        try {
+          clearDbStatus();
+          showLoading(true);
+          const formData = collectDatabaseFormData();
+          const payload = {
+            action: editingDatabase ? 'update' : 'add',
+            connection: {
+              id: editingDatabase ? editingDatabase.id : '',
+              ...formData
+            }
+          };
+          const response = await fetchJson('databases_manage.php', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          const message = response.data?.message || 'Verbindung gespeichert.';
+          showStatus(message, 'success');
+          closeDatabaseModal();
+          await loadDatabases();
+        } catch (error) {
+          showLoading(false);
+          setDbStatus(error.message, 'error');
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      async function deleteDatabase(id) {
+        if (!id) {
+          return;
+        }
+        const confirmed = window.confirm('Verbindung wirklich löschen?');
+        if (!confirmed) {
+          return;
+        }
+        try {
+          showLoading(true);
+          await fetchJson('databases_manage.php', {
+            method: 'DELETE',
+            body: JSON.stringify({ id })
+          });
+          showStatus('Verbindung gelöscht.', 'success');
+          await loadDatabases();
+        } catch (error) {
+          showStatus('Fehler beim Löschen: ' + error.message, 'error');
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      async function testDatabase(id) {
+        if (!id) {
+          return;
+        }
+        try {
+          showLoading(true);
+          const response = await fetchJson('databases_test.php', {
+            method: 'POST',
+            body: JSON.stringify({ id })
+          });
+          const status = response.data?.status || {};
+          const type = status.ok ? 'success' : 'error';
+          showStatus(status.message || 'Test abgeschlossen.', type);
+          await loadDatabases();
+        } catch (error) {
+          showStatus('Fehler beim Testen: ' + error.message, 'error');
+        } finally {
+          showLoading(false);
+        }
+      }
+
+      async function testDatabaseForm() {
+        try {
+          clearDbStatus();
+          const formData = collectDatabaseFormData();
+          const payload = {
+            connection: {
+              id: editingDatabase ? editingDatabase.id : '',
+              ...formData
+            }
+          };
+          const response = await fetchJson('databases_test.php', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          const status = response.data?.status || {};
+          const type = status.ok ? 'success' : 'error';
+          setDbStatus(status.message || 'Test abgeschlossen.', type);
+        } catch (error) {
+          setDbStatus(error.message, 'error');
+        }
+      }
+
+      function updateDatabaseCardState() {
+        const disabled = currentServerIndex >= 0;
+        if (!dbList || !dbEmptyState) {
+          return;
+        }
+        if (btnDbAdd) btnDbAdd.disabled = disabled;
+        if (btnDbRefresh) btnDbRefresh.disabled = disabled;
+        if (disabled) {
+          dbList.hidden = true;
+          dbEmptyState.textContent = 'Datenbanken können nur auf dem lokalen Server verwaltet werden.';
+          dbEmptyState.hidden = false;
+        } else {
+          dbEmptyState.textContent = dbEmptyDefaultText;
+          loadDatabases();
+        }
+      }
+
+      if (btnDbAdd) {
+        btnDbAdd.addEventListener('click', () => openDatabaseModal());
+      }
+      if (btnDbRefresh) {
+        btnDbRefresh.addEventListener('click', () => loadDatabases());
+      }
+      if (dbModalClose) {
+        dbModalClose.addEventListener('click', () => closeDatabaseModal());
+      }
+      if (dbBtnCancel) {
+        dbBtnCancel.addEventListener('click', () => closeDatabaseModal());
+      }
+      if (dbModal) {
+        dbModal.addEventListener('click', (event) => {
+          if (event.target === dbModal) {
+            closeDatabaseModal();
+          }
+        });
+      }
+      if (dbTypeSelect) {
+        dbTypeSelect.addEventListener('change', () => {
+          const type = dbTypeSelect.value;
+          renderDbRoles(type, []);
+          renderDbFields(type, {}, { passwordProtected: false });
+        });
+      }
+      if (dbBtnSave) {
+        dbBtnSave.addEventListener('click', () => saveDatabase());
+      }
+      if (dbBtnTest) {
+        dbBtnTest.addEventListener('click', () => testDatabaseForm());
+      }
+
+      // =========================================================================
       // Server Management
       // =========================================================================
       
@@ -1149,6 +1884,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       let remoteServers = [];
       let editingServerIndex = -1;
       let currentServerIndex = -1; // -1 = local, 0+ = remote server index
+      updateDatabaseCardState();
       
       // Load remote servers
       async function loadRemoteServers() {
@@ -1203,6 +1939,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
               : '';
           }
         }
+        updateDatabaseCardState();
       }
       
       // Render server list in modal

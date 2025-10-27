@@ -35,6 +35,17 @@ Die Konfiguration funktioniert sowohl mit Docker als auch bei manueller Installa
 | `PHP_MAX_EXECUTION_TIME` | Max. Ausführungszeit in Sekunden | `300` | `300`, `600` |
 | `TZ` | Zeitzone | `Europe/Berlin` | `Europe/Berlin`, `UTC` |
 
+### Datenbank-Verbindungen verwalten (neu)
+
+Die Verbindungsdaten für MSSQL, MySQL, SQLite und Dateipfade werden nicht mehr über die `.env` gepflegt, sondern über die Datei `config/databases/databases.json` bzw. über die Weboberfläche (**Einstellungen → Datenbanken & Pfade**).
+
+- **Speicherort:** `config/databases/databases.json` (Beispiel: `config/databases/databases.example.json`)
+- **Sicherheit:** Das Verzeichnis ist per `.htaccess` gegen Direktzugriff geschützt und die Datei wird in `.gitignore` ausgeschlossen.
+- **Rollen-Zuordnung:** Jede Verbindung kann einer oder mehreren Rollen zugewiesen werden (z. B. `AFS_MSSQL`, `EVO_MAIN`, `AFS_FILES_IMAGES`). Diese Rollen steuern automatisch, welche Komponenten die Verbindung nutzen.
+- **Live-Prüfung:** Beim Speichern/Testen prüft die Oberfläche automatisch die Erreichbarkeit der Verbindung.
+
+> Hinweis: Die bisherigen `.env`-Variablen wie `AFS_MSSQL_HOST` oder `XT_MYSQL_PASS` dienen nur noch als Fallback. Sobald eine Rolle in `databases.json` hinterlegt ist, überschreibt sie die entsprechenden Werte automatisch.
+
 ### MSSQL-Datenbankverbindung
 
 | Variable | Beschreibung | Default | Beispiel |

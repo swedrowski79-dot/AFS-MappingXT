@@ -78,16 +78,6 @@ function getSettingCategories(): array
             'description' => 'Sicherheitseinstellungen für die Anwendung',
             'keys' => ['AFS_SECURITY_ENABLED'],
         ],
-        'database' => [
-            'label' => '🗄️ MSSQL Datenbank',
-            'description' => 'Verbindungseinstellungen für die AFS-ERP MSSQL Datenbank',
-            'keys' => ['AFS_MSSQL_HOST', 'AFS_MSSQL_PORT', 'AFS_MSSQL_DB', 'AFS_MSSQL_USER', 'AFS_MSSQL_PASS'],
-        ],
-        'xt_database' => [
-            'label' => '🗄️ XT-Commerce MySQL',
-            'description' => 'Verbindungseinstellungen für die XT-Commerce MySQL Datenbank',
-            'keys' => ['XT_MYSQL_HOST', 'XT_MYSQL_PORT', 'XT_MYSQL_DB', 'XT_MYSQL_USER', 'XT_MYSQL_PASS'],
-        ],
         'application' => [
             'label' => '⚙️ Anwendung',
             'description' => 'Allgemeine Anwendungseinstellungen',

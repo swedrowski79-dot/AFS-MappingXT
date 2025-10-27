@@ -2,6 +2,134 @@
 // config.php
 declare(strict_types=1);
 
+require_once __DIR__ . '/classes/config/DatabaseConfig.php';
+
+/**
+ * Resolve relative paths (project root relative) to absolute paths.
+ */
+function afs_config_resolve_path(string $path): string
+{
+    if ($path === '') {
+        return $path;
+    }
+    if (str_starts_with($path, '/') || preg_match('/^[A-Za-z]:[\\\\\\/]/', $path)) {
+        return $path;
+    }
+    return __DIR__ . '/' . ltrim($path, '/');
+}
+
+/**
+ * Apply database connection mapping from config/databases/databases.json.
+ *
+ * @param array<string, mixed> $config
+ */
+function afs_apply_database_connections(array &$config): void
+{
+    try {
+        $registry = DatabaseConfig::load();
+    } catch (Throwable $e) {
+        $config['databases'] = [
+            'connections' => [],
+            'error' => $e->getMessage(),
+        ];
+        return;
+    }
+
+    $connections = $registry['connections'] ?? [];
+    $config['databases'] = ['connections' => $connections];
+
+    $roleMap = [];
+    foreach ($connections as $connection) {
+        $roles = $connection['roles'] ?? [];
+        if (!is_array($roles)) {
+            continue;
+        }
+        foreach ($roles as $role) {
+            if (!isset($roleMap[$role])) {
+                $roleMap[$role] = $connection;
+            }
+        }
+    }
+
+    if (isset($roleMap['AFS_MSSQL']) && ($roleMap['AFS_MSSQL']['type'] ?? '') === 'mssql') {
+        $settings = $roleMap['AFS_MSSQL']['settings'] ?? [];
+        if (is_array($settings)) {
+            $config['mssql'] = [
+                'host' => $settings['host'] ?? ($config['mssql']['host'] ?? 'localhost'),
+                'port' => (int)($settings['port'] ?? ($config['mssql']['port'] ?? 1433)),
+                'database' => $settings['database'] ?? ($config['mssql']['database'] ?? ''),
+                'username' => $settings['username'] ?? ($config['mssql']['username'] ?? ''),
+                'password' => $settings['password'] ?? ($config['mssql']['password'] ?? ''),
+                'encrypt' => (bool)($settings['encrypt'] ?? true),
+                'trust_server_certificate' => (bool)($settings['trust_server_certificate'] ?? false),
+                'appname' => $config['mssql']['appname'] ?? 'Welafix-Sync',
+            ];
+        }
+    }
+
+    if (isset($roleMap['XT_MYSQL']) && ($roleMap['XT_MYSQL']['type'] ?? '') === 'mysql') {
+        $settings = $roleMap['XT_MYSQL']['settings'] ?? [];
+        if (is_array($settings)) {
+            $config['xt_mysql'] = [
+                'host' => $settings['host'] ?? ($config['xt_mysql']['host'] ?? 'localhost'),
+                'port' => (int)($settings['port'] ?? ($config['xt_mysql']['port'] ?? 3306)),
+                'database' => $settings['database'] ?? ($config['xt_mysql']['database'] ?? ''),
+                'username' => $settings['username'] ?? ($config['xt_mysql']['username'] ?? ''),
+                'password' => $settings['password'] ?? ($config['xt_mysql']['password'] ?? ''),
+            ];
+        }
+    }
+
+    if (isset($roleMap['EVO_MAIN']) && ($roleMap['EVO_MAIN']['type'] ?? '') === 'sqlite') {
+        $settings = $roleMap['EVO_MAIN']['settings'] ?? [];
+        if (is_array($settings) && isset($settings['path'])) {
+            $config['paths']['data_db'] = afs_config_resolve_path($settings['path']);
+        }
+    }
+
+    if (isset($roleMap['EVO_DELTA']) && ($roleMap['EVO_DELTA']['type'] ?? '') === 'sqlite') {
+        $settings = $roleMap['EVO_DELTA']['settings'] ?? [];
+        if (is_array($settings) && isset($settings['path'])) {
+            $config['paths']['delta_db'] = afs_config_resolve_path($settings['path']);
+        }
+    }
+
+    if (isset($roleMap['EVO_STATUS']) && ($roleMap['EVO_STATUS']['type'] ?? '') === 'sqlite') {
+        $settings = $roleMap['EVO_STATUS']['settings'] ?? [];
+        if (is_array($settings) && isset($settings['path'])) {
+            $config['paths']['status_db'] = afs_config_resolve_path($settings['path']);
+        }
+    }
+
+    if (isset($roleMap['ORDERS_MAIN']) && ($roleMap['ORDERS_MAIN']['type'] ?? '') === 'sqlite') {
+        $settings = $roleMap['ORDERS_MAIN']['settings'] ?? [];
+        if (is_array($settings) && isset($settings['path'])) {
+            $config['additional_databases']['orders_evo'] = afs_config_resolve_path($settings['path']);
+        }
+    }
+
+    if (isset($roleMap['ORDERS_DELTA']) && ($roleMap['ORDERS_DELTA']['type'] ?? '') === 'sqlite') {
+        $settings = $roleMap['ORDERS_DELTA']['settings'] ?? [];
+        if (is_array($settings) && isset($settings['path'])) {
+            $config['additional_databases']['orders_evo_delta'] = afs_config_resolve_path($settings['path']);
+        }
+    }
+
+    if (isset($roleMap['AFS_FILES_IMAGES']) && ($roleMap['AFS_FILES_IMAGES']['type'] ?? '') === 'file') {
+        $settings = $roleMap['AFS_FILES_IMAGES']['settings'] ?? [];
+        if (is_array($settings) && isset($settings['path'])) {
+            $config['paths']['media']['images']['source'] = afs_config_resolve_path($settings['path']);
+        }
+    }
+
+    if (isset($roleMap['AFS_FILES_DOCUMENTS']) && ($roleMap['AFS_FILES_DOCUMENTS']['type'] ?? '') === 'file') {
+        $settings = $roleMap['AFS_FILES_DOCUMENTS']['settings'] ?? [];
+        if (is_array($settings) && isset($settings['path'])) {
+            $config['paths']['media']['documents']['source'] = afs_config_resolve_path($settings['path']);
+        }
+    }
+}
+
 /**
  * Zentrale Konfiguration für AFS → SQLite Sync
  * 
@@ -16,7 +144,7 @@ declare(strict_types=1);
  * - AFS_MAPPING_VERSION (Mapping-Version für Logs)
  * - PHP_MEMORY_LIMIT, PHP_MAX_EXECUTION_TIME, TZ (Docker/PHP-Konfiguration)
  */
-return [
+$config = [
     'paths' => [
         'root'       => __DIR__,
         'db_dir'     => __DIR__ . '/db',
@@ -205,4 +333,8 @@ return [
         'timeout' => (int)(getenv('REMOTE_SERVER_TIMEOUT') ?: 5),
     ],
 ];
+
+afs_apply_database_connections($config);
+
+return $config;
 

@@ -134,12 +134,14 @@ docker-compose up -d
    ```
 
 2. **Konfiguriere die Werte in `.env`:**
-   - `AFS_MSSQL_*`: MSSQL-Datenbankverbindung (Host, Port, DB, User, Passwort)
-   - `PHP_MEMORY_LIMIT`, `PHP_MAX_EXECUTION_TIME`: PHP-Konfiguration
-   - `AFS_MEDIA_SOURCE`: Quellverzeichnis für Medien
-   - `TZ`: Zeitzone
-   - `AFS_GITHUB_AUTO_UPDATE`: Automatische Updates von GitHub (true/false)
+   - PHP-Runtime (`PHP_MEMORY_LIMIT`, `PHP_MAX_EXECUTION_TIME`), Zeitzone (`TZ`)
+   - Logging & Sicherheit (`AFS_ENABLE_FILE_LOGGING`, `AFS_SECURITY_ENABLED`, …)
+   - GitHub Auto-Update (`AFS_GITHUB_AUTO_UPDATE`) und Remote-Monitoring (`REMOTE_SERVERS_*`)
    - Weitere Optionen siehe [docs/CONFIGURATION_MANAGEMENT.md](docs/CONFIGURATION_MANAGEMENT.md)
+
+   > ℹ️ **Datenbank-Verbindungen verwaltest du jetzt separat** – entweder direkt über
+   > `config/databases/databases.json` (siehe `databases.example.json`) oder über die
+   > Weboberfläche unter **Einstellungen → Datenbanken & Pfade**.
 
 3. **Docker-Container starten:**
    ```bash

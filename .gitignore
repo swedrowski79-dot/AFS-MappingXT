@@ -68,3 +68,4 @@ phpunit.xml
 phpunit.xml.dist
 *.coverage
 *.cov
+config/databases/databases.json

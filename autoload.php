@@ -14,7 +14,7 @@ spl_autoload_register(function ($class) {
     }
     
     // Try subdirectories: afs, mssql, mapping, evo, sqlite, mysql, file, status, xt, security
-    $subdirs = ['afs', 'mssql', 'mapping', 'evo', 'sqlite', 'mysql', 'file', 'status', 'xt', 'security'];
+    $subdirs = ['afs', 'mssql', 'mapping', 'evo', 'sqlite', 'mysql', 'file', 'status', 'xt', 'security', 'config'];
     foreach ($subdirs as $subdir) {
         $file = $baseDir . $subdir . '/' . str_replace('\\', '/', $class) . '.php';
         if (is_file($file)) {
