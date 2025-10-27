@@ -148,6 +148,69 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       font-size: 0.8rem;
       color: rgba(226, 232, 240, 0.6);
     }
+
+    .setting-row.setting-row-toggle {
+      align-items: center;
+    }
+
+    .toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(148, 163, 184, 0.35);
+      transition: 0.2s;
+      border-radius: 24px;
+    }
+
+    .toggle-slider::before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      top: 3px;
+      background-color: #fff;
+      border-radius: 50%;
+      transition: 0.2s;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.45);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: rgba(34, 197, 94, 0.45);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(22px);
+      background-color: #1e293b;
+    }
+
+    .toggle-text {
+      font-size: 0.85rem;
+      color: rgba(226, 232, 240, 0.8);
+      min-width: 90px;
+    }
     
     .modal-overlay {
       display: none;
@@ -631,6 +694,83 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       let currentSettings = {};
       let categories = {};
 
+      const BOOLEAN_KEYS = new Set([
+        'AFS_SECURITY_ENABLED',
+        'AFS_ENABLE_FILE_LOGGING',
+        'AFS_GITHUB_AUTO_UPDATE',
+        'DATA_TRANSFER_ENABLE_DB',
+        'DATA_TRANSFER_ENABLE_IMAGES',
+        'DATA_TRANSFER_ENABLE_DOCUMENTS',
+        'DATA_TRANSFER_LOG_TRANSFERS',
+        'REMOTE_SERVERS_ENABLED',
+        'SYNC_BIDIRECTIONAL'
+      ]);
+
+      const SELECT_OPTIONS = {
+        PHP_MEMORY_LIMIT: [
+          { value: '128M', label: '128 MB' },
+          { value: '256M', label: '256 MB' },
+          { value: '512M', label: '512 MB' },
+          { value: '1G', label: '1 GB' },
+          { value: '2G', label: '2 GB' }
+        ],
+        PHP_MAX_EXECUTION_TIME: [
+          { value: '60', label: '60 Sekunden' },
+          { value: '120', label: '2 Minuten' },
+          { value: '300', label: '5 Minuten' },
+          { value: '600', label: '10 Minuten' },
+          { value: '1200', label: '20 Minuten' }
+        ],
+        TZ: [
+          { value: 'Europe/Berlin', label: 'Europe/Berlin (Empfohlen)' },
+          { value: 'UTC', label: 'UTC' },
+          { value: 'Europe/Zurich', label: 'Europe/Zurich' },
+          { value: 'America/New_York', label: 'America/New_York' },
+          { value: 'Asia/Dubai', label: 'Asia/Dubai' }
+        ],
+        OPCACHE_MEMORY_CONSUMPTION: [
+          { value: '128', label: '128 MB' },
+          { value: '256', label: '256 MB' },
+          { value: '512', label: '512 MB' }
+        ],
+        OPCACHE_INTERNED_STRINGS_BUFFER: [
+          { value: '8', label: '8 MB' },
+          { value: '16', label: '16 MB' },
+          { value: '32', label: '32 MB' }
+        ],
+        OPCACHE_MAX_ACCELERATED_FILES: [
+          { value: '4000', label: '4.000 Dateien' },
+          { value: '10000', label: '10.000 Dateien' },
+          { value: '20000', label: '20.000 Dateien' }
+        ],
+        OPCACHE_REVALIDATE_FREQ: [
+          { value: '0', label: '0 Sekunden (Entwicklung)' },
+          { value: '2', label: '2 Sekunden' },
+          { value: '60', label: '60 Sekunden' },
+          { value: '120', label: '120 Sekunden' },
+          { value: '300', label: '5 Minuten' }
+        ],
+        OPCACHE_VALIDATE_TIMESTAMPS: [
+          { value: '0', label: '0 (keine Prüfung)' },
+          { value: '1', label: '1 (prüfen)' }
+        ],
+        OPCACHE_HUGE_CODE_PAGES: [
+          { value: '0', label: 'Deaktiviert' },
+          { value: '1', label: 'Aktiviert' }
+        ],
+        OPCACHE_JIT_MODE: [
+          { value: 'disable', label: 'disable (0)' },
+          { value: 'tracing', label: 'tracing (Empfohlen)' },
+          { value: 'function', label: 'function' }
+        ],
+        OPCACHE_JIT_BUFFER_SIZE: [
+          { value: '0', label: '0 (deaktiviert)' },
+          { value: '64M', label: '64 MB' },
+          { value: '128M', label: '128 MB' },
+          { value: '256M', label: '256 MB' }
+        ]
+      };
+
       function showLoading(show) {
         loadingOverlay.classList.toggle('visible', show);
       }
@@ -680,25 +820,64 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           html += `</div>`;
 
           for (const key of categoryData.keys) {
-            const value = settings[key] || '';
-            // More specific password field detection
-            const isPassword = key.endsWith('_PASS') || key.endsWith('_PASSWORD') || 
-                              key === 'DATA_TRANSFER_API_KEY' || key === 'AFS_MSSQL_PASS' || 
-                              key === 'XT_MYSQL_PASS';
-            const inputType = isPassword ? 'password' : 'text';
+            const rawValue = settings[key] ?? '';
+            const value = String(rawValue);
+            const lowerValue = value.toLowerCase();
             const isApiKey = key === 'DATA_TRANSFER_API_KEY';
+            const isPassword = key.endsWith('_PASS') || key.endsWith('_PASSWORD') || isApiKey || 
+                               key === 'AFS_MSSQL_PASS' || key === 'XT_MYSQL_PASS';
+            const isBoolean = BOOLEAN_KEYS.has(key) || lowerValue === 'true' || lowerValue === 'false';
+            const selectOptions = SELECT_OPTIONS[key] || null;
+            const datalistId = selectOptions ? `options-${key}` : null;
 
-            html += `<div class="setting-row">`;
+            html += `<div class="setting-row${isBoolean ? ' setting-row-toggle' : ''}">`;
             html += `<label class="setting-label" for="setting-${key}">${escapeHtml(key)}</label>`;
-            html += `<input type="${inputType}" id="setting-${key}" class="setting-input" 
-                            data-key="${escapeHtml(key)}" value="${escapeHtml(value)}" 
-                            placeholder="(leer)">`;
-            
-            // Add generate button for API key field
-            if (isApiKey) {
-              html += `<button class="btn-generate" data-target="setting-${key}" title="Neuen API-Key generieren">🔑 Generieren</button>`;
+
+            if (isBoolean) {
+              const checked = lowerValue === 'true';
+              const toggleId = `setting-${key}`;
+              html += `
+                <div class="toggle-wrapper">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="${toggleId}" class="setting-input setting-toggle-input"
+                           data-key="${escapeHtml(key)}" ${checked ? 'checked' : ''}>
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-text" data-toggle-label="${escapeHtml(key)}">${checked ? 'Aktiviert' : 'Deaktiviert'}</span>
+                </div>
+              `;
+              html += `<div></div>`;
             } else {
-              html += `<div></div>`; // Empty div for grid layout
+              const inputId = `setting-${key}`;
+              const inputType = isPassword ? 'password' : 'text';
+              const listAttr = datalistId ? ` list="${datalistId}"` : '';
+              html += `<div>`;
+              html += `<input type="${inputType}" id="${inputId}" class="setting-input" 
+                            data-key="${escapeHtml(key)}" value="${escapeHtml(value)}" 
+                            placeholder="(leer)"${listAttr}>`;
+              if (selectOptions) {
+                html += `<datalist id="${datalistId}">`;
+                let hasCurrent = false;
+                selectOptions.forEach(option => {
+                  const optionValue = String(option.value);
+                  if (optionValue === value) {
+                    hasCurrent = true;
+                  }
+                  const optionLabel = option.label ? ` label="${escapeHtml(option.label)}"` : '';
+                  html += `<option value="${escapeHtml(optionValue)}"${optionLabel}></option>`;
+                });
+                if (value && !hasCurrent) {
+                  html += `<option value="${escapeHtml(value)}" label="(aktueller Wert)"></option>`;
+                }
+                html += `</datalist>`;
+              }
+              html += `</div>`;
+              
+              if (isApiKey) {
+                html += `<button class="btn-generate" data-target="${inputId}" title="Neuen API-Key generieren">🔑 Generieren</button>`;
+              } else {
+                html += `<div></div>`;
+              }
             }
             
             html += `</div>`;
@@ -708,6 +887,18 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         }
 
         settingsContainer.innerHTML = html;
+        
+        const toggleInputs = settingsContainer.querySelectorAll('.setting-toggle-input');
+        toggleInputs.forEach(input => {
+          const label = input.closest('.toggle-wrapper')?.querySelector('.toggle-text');
+          const updateLabel = () => {
+            if (label) {
+              label.textContent = input.checked ? 'Aktiviert' : 'Deaktiviert';
+            }
+          };
+          updateLabel();
+          input.addEventListener('change', updateLabel);
+        });
         
         // Attach event listeners to generate buttons
         const generateButtons = settingsContainer.querySelectorAll('.btn-generate');
@@ -732,10 +923,16 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
 
         inputs.forEach(input => {
           const key = input.dataset.key;
-          const value = input.value;
+          let value;
+          if (input.type === 'checkbox') {
+            value = input.checked ? 'true' : 'false';
+          } else {
+            value = input.value;
+          }
+          const currentValue = String(currentSettings[key] ?? '');
           
           // Only include changed values
-          if (value !== (currentSettings[key] || '')) {
+          if (value !== currentValue) {
             updated[key] = value;
           }
         });
