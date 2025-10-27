@@ -285,18 +285,14 @@ $config = [
             'target' => getenv('DB_TRANSFER_TARGET') ?: '/tmp/evo_delta.db',
         ],
         
-        // Images transfer paths
+        // Images transfer configuration (paths come from per-server settings)
         'images' => [
             'enabled' => filter_var(getenv('DATA_TRANSFER_ENABLE_IMAGES') ?: 'true', FILTER_VALIDATE_BOOLEAN),
-            'source' => getenv('IMAGES_TRANSFER_SOURCE') ?: __DIR__ . '/Files/Bilder',
-            'target' => getenv('IMAGES_TRANSFER_TARGET') ?: '/tmp/Bilder',
         ],
         
-        // Documents transfer paths
+        // Documents transfer configuration (paths come from per-server settings)
         'documents' => [
             'enabled' => filter_var(getenv('DATA_TRANSFER_ENABLE_DOCUMENTS') ?: 'true', FILTER_VALIDATE_BOOLEAN),
-            'source' => getenv('DOCUMENTS_TRANSFER_SOURCE') ?: __DIR__ . '/Files/Dokumente',
-            'target' => getenv('DOCUMENTS_TRANSFER_TARGET') ?: '/tmp/Dokumente',
         ],
         
         // Transfer options

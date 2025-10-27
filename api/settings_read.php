@@ -62,8 +62,6 @@ function getSettingCategories(): array
             'label' => '🔐 Data Transfer API (Remote Server Verbindung)',
             'description' => 'API-Schlüssel und Konfiguration für die sichere Verbindung mit Remote-Servern',
             'keys' => ['DATA_TRANSFER_API_KEY', 'DB_TRANSFER_SOURCE', 'DB_TRANSFER_TARGET',
-                       'IMAGES_TRANSFER_SOURCE', 'IMAGES_TRANSFER_TARGET',
-                       'DOCUMENTS_TRANSFER_SOURCE', 'DOCUMENTS_TRANSFER_TARGET',
                        'DATA_TRANSFER_ENABLE_DB', 'DATA_TRANSFER_ENABLE_IMAGES',
                        'DATA_TRANSFER_ENABLE_DOCUMENTS', 'DATA_TRANSFER_MAX_FILE_SIZE',
                        'DATA_TRANSFER_LOG_TRANSFERS'],

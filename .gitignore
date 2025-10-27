@@ -5,7 +5,6 @@ ehthumbs.db
 Icon?
 desktop.ini
 
-<<<<<<< HEAD
 # === Logs & temporäre Daten ===
 logs/
 files/
@@ -14,11 +13,10 @@ files/
 tmp/
 cache/
 *.bak
-=======
+
 # Environment
 .env
 .env.backup.*
->>>>>>> f1fee13f9a8f14e94e0e3f9c9db2186c33c010e2
 
 # === PHP & Composer ===
 vendor/

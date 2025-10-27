@@ -1,0 +1,31 @@
+{
+    "connections": [
+        {
+            "id": "afs",
+            "title": "AFS",
+            "type": "mssql",
+            "roles": [],
+            "settings": {
+                "host": "10.0.1.82",
+                "port": 1435,
+                "database": "AFS_2018",
+                "username": "sa",
+                "password": "W3laf!x",
+                "encrypt": true,
+                "trust_server_certificate": true
+            }
+        },
+        {
+            "id": "afs-files",
+            "title": "AFS-Files",
+            "type": "file",
+            "roles": [
+                "AFS_FILES_IMAGES",
+                "AFS_FILES_DOCUMENTS"
+            ],
+            "settings": {
+                "path": "/var/www/html/srcFiles"
+            }
+        }
+    ]
+}

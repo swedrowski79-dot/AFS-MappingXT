@@ -17,19 +17,21 @@ declare(strict_types=1);
  */
 class API_Transfer
 {
-    private array $config;
+    private array $transferConfig;
+    private array $appConfig;
     private ?STATUS_MappingLogger $logger;
     private array $transferResults = [];
     private ?SQLite_Connection $db = null;
 
     public function __construct(array $config, ?STATUS_MappingLogger $logger = null, ?SQLite_Connection $db = null)
     {
-        $this->config = $config['data_transfer'] ?? [];
+        $this->appConfig = $config;
+        $this->transferConfig = $config['data_transfer'] ?? [];
         $this->logger = $logger;
         $this->db = $db;
         
         // Validate configuration
-        if (empty($this->config['api_key'])) {
+        if (empty($this->transferConfig['api_key'])) {
             throw new AFS_ConfigurationException('DATA_TRANSFER_API_KEY ist nicht konfiguriert');
         }
     }
@@ -39,7 +41,7 @@ class API_Transfer
      */
     public function validateApiKey(string $providedKey): bool
     {
-        $configuredKey = $this->config['api_key'] ?? '';
+        $configuredKey = $this->transferConfig['api_key'] ?? '';
         
         if (empty($configuredKey)) {
             return false;
@@ -54,7 +56,7 @@ class API_Transfer
      */
     public function transferDatabase(): array
     {
-        $dbConfig = $this->config['database'] ?? [];
+        $dbConfig = $this->transferConfig['database'] ?? [];
         
         if (!($dbConfig['enabled'] ?? false)) {
             return [
@@ -85,7 +87,7 @@ class API_Transfer
         
         // Get file size
         $fileSize = filesize($source);
-        $maxSize = $this->config['max_file_size'] ?? 104857600;
+        $maxSize = $this->transferConfig['max_file_size'] ?? 104857600;
         
         if ($fileSize > $maxSize) {
             throw new AFS_FileException("Datenbank ist zu groß: {$fileSize} Bytes (Max: {$maxSize} Bytes)");
@@ -120,10 +122,7 @@ class API_Transfer
      */
     public function transferImages(): array
     {
-        return $this->transferDirectory(
-            'images',
-            $this->config['images'] ?? []
-        );
+        return $this->transferDirectory('images');
     }
 
     /**
@@ -131,10 +130,7 @@ class API_Transfer
      */
     public function transferDocuments(): array
     {
-        return $this->transferDirectory(
-            'documents',
-            $this->config['documents'] ?? []
-        );
+        return $this->transferDirectory('documents');
     }
 
     /**
@@ -186,41 +182,74 @@ class API_Transfer
     }
 
     /**
+     * Resolve media directory configuration for transfers.
+     *
+     * @param string $type images|documents
+     * @return array{enabled: bool, source: string, target: string}
+     */
+    private function resolveDirectoryConfig(string $type): array
+    {
+        $transferSection = $this->transferConfig[$type] ?? [];
+        $enabled = (bool)($transferSection['enabled'] ?? false);
+
+        $mediaKey = $type === 'images' ? 'images' : 'documents';
+        $mediaConfig = $this->appConfig['paths']['media'][$mediaKey] ?? [];
+
+        // Optional override per transfer section
+        $pathOverride = $transferSection['path'] ?? null;
+
+        $source = $pathOverride ?: ($mediaConfig['source'] ?? '');
+        $target = $pathOverride ?: ($mediaConfig['target'] ?? ($mediaConfig['source'] ?? ''));
+
+        if ($source === '') {
+            throw new AFS_ConfigurationException(ucfirst($type) . '-Pfad (Quelle) ist nicht konfiguriert');
+        }
+
+        if ($target === '') {
+            $target = $source;
+        }
+
+        return [
+            'enabled' => $enabled,
+            'source' => $source,
+            'target' => $target,
+        ];
+    }
+
+    /**
      * Transfer directory contents
      */
-    private function transferDirectory(string $type, array $config): array
+    private function transferDirectory(string $type): array
     {
-        if (!($config['enabled'] ?? false)) {
+        $dirConfig = $this->resolveDirectoryConfig($type);
+
+        if (!$dirConfig['enabled']) {
             return [
                 'success' => false,
                 'message' => ucfirst($type) . '-Transfer ist deaktiviert',
                 'skipped' => true,
             ];
         }
-        
-        $source = $config['source'] ?? '';
-        $target = $config['target'] ?? '';
-        
-        if (empty($source) || empty($target)) {
-            throw new AFS_ConfigurationException(ucfirst($type) . '-Quell- oder Zielpfad nicht konfiguriert');
-        }
-        
+
+        $source = $dirConfig['source'];
+        $target = $dirConfig['target'];
+
         if (!is_dir($source)) {
             throw new AFS_FileException("Quellverzeichnis nicht gefunden: {$source}");
         }
-        
+
         // Ensure target directory exists
         if (!is_dir($target)) {
             if (!mkdir($target, 0755, true)) {
                 throw new AFS_FileException("Zielverzeichnis konnte nicht erstellt werden: {$target}");
             }
         }
-        
+
         // Transfer files
         $startTime = microtime(true);
         $stats = $this->copyDirectoryRecursive($source, $target);
         $duration = microtime(true) - $startTime;
-        
+
         $result = [
             'success' => true,
             'source' => $source,
@@ -231,14 +260,14 @@ class API_Transfer
             'duration' => round($duration, 3),
             'timestamp' => date('Y-m-d H:i:s'),
         ];
-        
+
         if (!empty($stats['errors'])) {
             $result['errors'] = $stats['errors'];
         }
-        
+
         $this->logTransfer($type, $result);
         $this->transferResults[$type] = $result;
-        
+
         return $result;
     }
 
@@ -254,7 +283,7 @@ class API_Transfer
             'errors' => [],
         ];
         
-        $maxSize = $this->config['max_file_size'] ?? 104857600;
+        $maxSize = $this->transferConfig['max_file_size'] ?? 104857600;
         
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS),
@@ -299,7 +328,7 @@ class API_Transfer
      */
     private function logTransfer(string $type, array $result): void
     {
-        if (!($this->config['log_transfers'] ?? true)) {
+        if (!($this->transferConfig['log_transfers'] ?? true)) {
             return;
         }
         
@@ -434,9 +463,8 @@ class API_Transfer
             throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
         }
 
-        $imagesConfig = $this->config['images'] ?? [];
-        
-        if (!($imagesConfig['enabled'] ?? false)) {
+        $dirConfig = $this->resolveDirectoryConfig('images');
+        if (!$dirConfig['enabled']) {
             return [
                 'success' => false,
                 'message' => 'Bilder-Transfer ist deaktiviert',
@@ -444,12 +472,8 @@ class API_Transfer
             ];
         }
 
-        $source = $imagesConfig['source'] ?? '';
-        $target = $imagesConfig['target'] ?? '';
-
-        if (empty($source) || empty($target)) {
-            throw new AFS_ConfigurationException('Bilder-Quell- oder Zielpfad nicht konfiguriert');
-        }
+        $source = $dirConfig['source'];
+        $target = $dirConfig['target'];
 
         // Get image info from database
         $sql = 'SELECT ID, Bildname, md5 FROM Bilder WHERE ID = ? AND uploaded = 0';
@@ -486,7 +510,7 @@ class API_Transfer
 
         // Check file size
         $fileSize = filesize($sourcePath);
-        $maxSize = $this->config['max_file_size'] ?? 104857600;
+        $maxSize = $this->transferConfig['max_file_size'] ?? 104857600;
         
         if ($fileSize > $maxSize) {
             return [
@@ -542,9 +566,8 @@ class API_Transfer
             throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
         }
 
-        $documentsConfig = $this->config['documents'] ?? [];
-        
-        if (!($documentsConfig['enabled'] ?? false)) {
+        $dirConfig = $this->resolveDirectoryConfig('documents');
+        if (!$dirConfig['enabled']) {
             return [
                 'success' => false,
                 'message' => 'Dokumente-Transfer ist deaktiviert',
@@ -552,12 +575,8 @@ class API_Transfer
             ];
         }
 
-        $source = $documentsConfig['source'] ?? '';
-        $target = $documentsConfig['target'] ?? '';
-
-        if (empty($source) || empty($target)) {
-            throw new AFS_ConfigurationException('Dokumente-Quell- oder Zielpfad nicht konfiguriert');
-        }
+        $source = $dirConfig['source'];
+        $target = $dirConfig['target'];
 
         // Get document info from database
         $sql = 'SELECT ID, Titel, Dateiname, md5 FROM Dokumente WHERE ID = ? AND uploaded = 0';
@@ -607,7 +626,7 @@ class API_Transfer
 
         // Check file size
         $fileSize = filesize($sourcePath);
-        $maxSize = $this->config['max_file_size'] ?? 104857600;
+        $maxSize = $this->transferConfig['max_file_size'] ?? 104857600;
         
         if ($fileSize > $maxSize) {
             return [

@@ -54,8 +54,6 @@ Implementierung einer sicheren REST-API zum Transferieren von Delta-Datenbanken,
   - Neue Umgebungsvariablen:
     - `DATA_TRANSFER_API_KEY`: API-Key für Authentifizierung
     - `DB_TRANSFER_SOURCE/TARGET`: Pfade für Datenbank-Transfer
-    - `IMAGES_TRANSFER_SOURCE/TARGET`: Pfade für Bilder-Transfer
-    - `DOCUMENTS_TRANSFER_SOURCE/TARGET`: Pfade für Dokumente-Transfer
     - `DATA_TRANSFER_ENABLE_*`: Enable/Disable-Flags
     - `DATA_TRANSFER_MAX_FILE_SIZE`: Max. Dateigröße (Standard: 100MB)
     - `DATA_TRANSFER_LOG_TRANSFERS`: Logging aktivieren/deaktivieren
