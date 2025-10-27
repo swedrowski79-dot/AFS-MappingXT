@@ -192,6 +192,15 @@ class API_Transfer
         $transferSection = $this->transferConfig[$type] ?? [];
         $enabled = (bool)($transferSection['enabled'] ?? false);
 
+        // Support legacy configuration format with direct source/target in transfer section
+        if (isset($transferSection['source']) && isset($transferSection['target'])) {
+            return [
+                'enabled' => $enabled,
+                'source' => $transferSection['source'],
+                'target' => $transferSection['target'],
+            ];
+        }
+
         $mediaKey = $type === 'images' ? 'images' : 'documents';
         $mediaConfig = $this->appConfig['paths']['media'][$mediaKey] ?? [];
 
@@ -281,6 +290,7 @@ class API_Transfer
             'dirs' => 0,
             'size' => 0,
             'errors' => [],
+            'skipped' => 0,
         ];
         
         $maxSize = $this->transferConfig['max_file_size'] ?? 104857600;
@@ -291,7 +301,15 @@ class API_Transfer
         );
         
         foreach ($iterator as $item) {
-            $targetPath = $target . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
+            $subPathName = $iterator->getSubPathName();
+            
+            // Skip "logs" directory and its contents
+            if ($this->shouldSkipPath($subPathName)) {
+                $stats['skipped']++;
+                continue;
+            }
+            
+            $targetPath = $target . DIRECTORY_SEPARATOR . $subPathName;
             
             if ($item->isDir()) {
                 if (!is_dir($targetPath)) {
@@ -321,6 +339,30 @@ class API_Transfer
         }
         
         return $stats;
+    }
+
+    /**
+     * Check if a path should be skipped during transfer
+     * 
+     * @param string $path Relative path from source directory
+     * @return bool True if path should be skipped
+     */
+    private function shouldSkipPath(string $path): bool
+    {
+        // Normalize path separators
+        $normalizedPath = str_replace('\\', '/', $path);
+        
+        // Split path into components
+        $pathParts = explode('/', $normalizedPath);
+        
+        // Skip if any path component is "logs" (case-insensitive)
+        foreach ($pathParts as $part) {
+            if (strcasecmp($part, 'logs') === 0) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**
