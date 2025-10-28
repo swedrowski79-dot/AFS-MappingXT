@@ -982,7 +982,8 @@
     envStatus.textContent = message;
   }
 
-  async function createRemoteEnv(serverIndex) {
+  async function createRemoteEnv(serverIndex, options = {}) {
+    const { onSuccess } = options;
     try {
       showLoading(true);
       const localSettings = await fetchJson('settings_read.php');
@@ -998,6 +999,9 @@
         })
       });
       showStatus('Remote .env erfolgreich erstellt', 'success');
+      if (typeof onSuccess === 'function') {
+        await onSuccess();
+      }
     } catch (error) {
       showStatus('Fehler beim Erstellen der Remote .env: ' + (error.message || error), 'error');
     } finally {
