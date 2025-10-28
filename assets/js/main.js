@@ -521,21 +521,26 @@
 
     btnRefresh.addEventListener('click', async () => {
       await Promise.all([refreshStatus(), refreshLog(), refreshHealth(), refreshDatabaseStatus()]);
+      if (window.CONNECTIONS_REFRESH) {
+        try { await window.CONNECTIONS_REFRESH(); } catch {}
+      }
     });
 
-    btnDebug.addEventListener('click', () => {
-      const table = debugTable.value;
-      if (!table) {
-        return;
-      }
-      const rawLimit = (debugLimit.value || '').toLowerCase();
-      const limitParam = rawLimit === 'all'
-        ? 'all'
-        : String(Math.min(Math.max(parseInt(rawLimit, 10) || 100, 1), 1000));
-      const db = debugDb ? debugDb.value : 'main';
-      const url = `${API_BASE}db_table_view.php?table=${encodeURIComponent(table)}&limit=${encodeURIComponent(limitParam)}&db=${encodeURIComponent(db)}`;
-      window.open(url, '_blank', 'noopener');
-    });
+    if (btnDebug) {
+      btnDebug.addEventListener('click', () => {
+        const table = debugTable ? debugTable.value : '';
+        if (!table) {
+          return;
+        }
+        const rawLimit = (debugLimit && debugLimit.value ? debugLimit.value : '').toLowerCase();
+        const limitParam = rawLimit === 'all'
+          ? 'all'
+          : String(Math.min(Math.max(parseInt(rawLimit, 10) || 100, 1), 1000));
+        const db = debugDb ? debugDb.value : 'main';
+        const url = `${API_BASE}db_table_view.php?table=${encodeURIComponent(table)}&limit=${encodeURIComponent(limitParam)}&db=${encodeURIComponent(db)}`;
+        window.open(url, '_blank', 'noopener');
+      });
+    }
 
     if (btnResetEvo) {
       btnResetEvo.addEventListener('click', async () => {

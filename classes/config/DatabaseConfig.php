@@ -19,11 +19,11 @@ class DatabaseConfig
             'types' => ['mssql'],
         ],
         'AFS_FILES_IMAGES' => [
-            'label' => 'AFS · Bilderquelle (Dateipfad)',
+            'label' => 'AFS · Artikel (Dateipfad)',
             'types' => ['file'],
         ],
         'AFS_FILES_DOCUMENTS' => [
-            'label' => 'AFS · Dokumentequelle (Dateipfad)',
+            'label' => 'AFS · Warengruppen (Dateipfad)',
             'types' => ['file'],
         ],
         'EVO_MAIN' => [

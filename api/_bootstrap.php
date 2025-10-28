@@ -46,6 +46,23 @@ function api_json(array $payload, int $status = 200): void
 
 function api_error(string $message, int $status = 500): void
 {
+    // Log API errors into status log so they appear in the main protocol
+    try {
+        global $config;
+        if (isset($config)) {
+            $tracker = createStatusTracker($config, 'categories');
+            $tracker->logError(
+                'API-Fehler: ' . $message,
+                [
+                    'endpoint' => basename($_SERVER['SCRIPT_NAME'] ?? ''),
+                    'status' => $status,
+                ],
+                'api_error'
+            );
+        }
+    } catch (Throwable $e) {
+        // Ignore logging failures to not mask the original error
+    }
     api_json(['ok' => false, 'error' => $message], $status);
 }
 

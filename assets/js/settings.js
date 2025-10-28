@@ -137,6 +137,17 @@
     ]
   };
 
+  function canonicalType(value) {
+    if (!value) return '';
+    const v = String(value).trim().toLowerCase();
+    if (DB_TYPE_FIELDS[v]) return v;
+    if (v.includes('mysql') || v.includes('maria')) return 'mysql';
+    if (v.includes('mssql') || v.includes('sql server') || v.includes('sqlserver')) return 'mssql';
+    if (v.includes('sqlite')) return 'sqlite';
+    if (v.includes('file') || v.includes('pfad')) return 'file';
+    return v;
+  }
+
   const DB_TYPE_FIELDS = {
     mssql: [
       { key: 'host', label: 'Host *', type: 'text', placeholder: 'z.B. 10.0.1.82', required: true },
@@ -494,23 +505,19 @@
       return;
     }
     dbTypeSelect.innerHTML = '';
-    const entries = Object.entries(databaseTypes || {});
+    let entries = Object.entries(databaseTypes || {});
     if (!entries.length) {
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = 'Keine Typen verfügbar';
-      dbTypeSelect.appendChild(option);
-      dbTypeSelect.disabled = true;
-      return;
+      // Fallback: use local DB_TYPE_FIELDS keys
+      entries = Object.keys(DB_TYPE_FIELDS).map((k) => [k, (databaseTypes && databaseTypes[k]) || k.toUpperCase()]);
     }
     entries.forEach(([value, label]) => {
       const option = document.createElement('option');
-      option.value = value;
+      option.value = canonicalType(value);
       option.textContent = label;
       dbTypeSelect.appendChild(option);
     });
-    dbTypeSelect.disabled = false;
-    if (selected && databaseTypes[selected]) {
+    dbTypeSelect.disabled = entries.length === 0;
+    if (selected && entries.some(([v]) => v === selected)) {
       dbTypeSelect.value = selected;
     } else {
       dbTypeSelect.selectedIndex = 0;
@@ -684,13 +691,37 @@
     dbModal.classList.add('visible');
     clearDbStatus();
 
-    const type = connection?.type || Object.keys(databaseTypes || {})[0] || 'mssql';
-    populateDbTypeOptions(type);
-    dbTitleInput.value = connection?.title || '';
-    dbTypeSelect.value = type;
-    renderDbRoles(type, connection?.roles || []);
-    const options = { passwordProtected: connection?.password_protected === true };
-    renderDbFields(type, connection?.settings || {}, options);
+    const fallbackType = Object.keys(databaseTypes || {})[0] || Object.keys(DB_TYPE_FIELDS)[0] || 'mssql';
+    const initialType = canonicalType((connection && connection.type) ? connection.type : fallbackType);
+    populateDbTypeOptions(initialType);
+    if (dbTitleInput) dbTitleInput.value = (connection && connection.title) ? connection.title : '';
+    if (dbTypeSelect) dbTypeSelect.value = initialType;
+    renderDbRoles(initialType, (connection && connection.roles) ? connection.roles : []);
+    const options = { passwordProtected: !!(connection && connection.password_protected === true) };
+    renderDbFields(initialType, (connection && connection.settings) ? connection.settings : {}, options);
+
+    if (dbTypeSelect) {
+      const onTypeChange = () => {
+        const t = canonicalType(dbTypeSelect.value);
+        renderDbRoles(t, []);
+        renderDbFields(t, {}, {});
+      };
+      dbTypeSelect.onchange = onTypeChange;
+      // Also react immediately on input (some browsers only fire change on blur)
+      dbTypeSelect.addEventListener('input', onTypeChange);
+    }
+
+    // Also attach a global change listener once (in case modal reopened)
+    if (dbTypeSelect && !dbTypeSelect.dataset.changeBound) {
+      const onGlobalTypeChange = () => {
+        const t = canonicalType(dbTypeSelect.value);
+        renderDbRoles(t, []);
+        renderDbFields(t, {}, {});
+      };
+      dbTypeSelect.addEventListener('change', onGlobalTypeChange);
+      dbTypeSelect.addEventListener('input', onGlobalTypeChange);
+      dbTypeSelect.dataset.changeBound = '1';
+    }
 
     dbModalTitle.textContent = connection ? 'Verbindung bearbeiten' : 'Verbindung hinzufügen';
   }
@@ -832,6 +863,11 @@
 
   async function loadDatabases() {
     const isRemote = currentServerIndex >= 0;
+    // Reset UI immediately to prevent stale local entries when switching
+    if (dbList) {
+      dbList.innerHTML = '';
+      dbList.hidden = true;
+    }
     try {
       if (dbEmptyState) {
         const defaultText = dbEmptyState.dataset.defaultText || dbEmptyState.textContent || '';
@@ -848,7 +884,7 @@
         : 'databases_manage.php';
       const response = await fetchJson(endpoint);
       const data = response.data || {};
-      databaseConnections = data.connections || [];
+      databaseConnections = (data.connections || []).filter((conn) => conn?.status?.ok === true);
       databaseRoles = data.roles || {};
       databaseTypes = data.types || {};
       renderDatabaseList();
@@ -857,6 +893,10 @@
       if (dbEmptyState) {
         dbEmptyState.hidden = false;
         dbEmptyState.textContent = error.message || String(error);
+      }
+      if (dbList) {
+        dbList.innerHTML = '';
+        dbList.hidden = true;
       }
     }
   }
@@ -1297,6 +1337,11 @@
         currentServerIndex = -1;
       } else if (value.startsWith('remote-')) {
         currentServerIndex = parseInt(value.substring(7), 10);
+      }
+      // Clear UI to prevent stale local data
+      if (dbList) {
+        dbList.innerHTML = '';
+        dbList.hidden = true;
       }
       updateCurrentServerDisplay();
       await loadSettings();

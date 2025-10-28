@@ -327,6 +327,7 @@ $config = [
         
         // Timeout for remote server requests (seconds)
         'timeout' => (int)(getenv('REMOTE_SERVER_TIMEOUT') ?: 5),
+        'allow_insecure' => filter_var(getenv('REMOTE_SERVER_ALLOW_INSECURE') ?: 'false', FILTER_VALIDATE_BOOLEAN),
     ],
 ];
 

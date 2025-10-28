@@ -89,6 +89,9 @@ function getRemoteServers(): array
  */
 function makeRemoteRequest(string $url, string $apiKey, string $method = 'GET', ?array $body = null, int $timeout = 10): array
 {
+    global $config;
+    $allowInsecure = (bool)($config['remote_servers']['allow_insecure'] ?? false);
+
     $ch = curl_init($url);
     
     $headers = [
@@ -105,8 +108,8 @@ function makeRemoteRequest(string $url, string $apiKey, string $method = 'GET', 
         CURLOPT_TIMEOUT => $timeout,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_MAXREDIRS => 3,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_SSL_VERIFYPEER => !$allowInsecure,
+        CURLOPT_SSL_VERIFYHOST => $allowInsecure ? 0 : 2,
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_CUSTOMREQUEST => $method,
     ]);

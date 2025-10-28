@@ -20,11 +20,10 @@
             "title": "AFS-Files",
             "type": "file",
             "roles": [
-                "AFS_FILES_IMAGES",
-                "AFS_FILES_DOCUMENTS"
+                "AFS_FILES_IMAGES"
             ],
             "settings": {
-                "path": "/var/www/html/srcFiles"
+                "path": "/var/www/html/srcFiles/Data/Artikel"
             }
         },
         {
@@ -36,6 +35,28 @@
             ],
             "settings": {
                 "path": "db/evo.db"
+            }
+        },
+        {
+            "id": "logs",
+            "title": "Logs",
+            "type": "sqlite",
+            "roles": [
+                "EVO_STATUS"
+            ],
+            "settings": {
+                "path": "db/status.db"
+            }
+        },
+        {
+            "id": "afs-warengruppen-file",
+            "title": "AFS-Warengruppen-File",
+            "type": "file",
+            "roles": [
+                "AFS_FILES_DOCUMENTS"
+            ],
+            "settings": {
+                "path": "/var/www/html/srcFiles/Warengruppen"
             }
         }
     ]

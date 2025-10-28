@@ -75,13 +75,14 @@ try {
         
         try {
             $ch = curl_init($statusUrl);
+            $allowInsecure = (bool)(($config['remote_servers']['allow_insecure'] ?? false));
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => $timeout,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_MAXREDIRS => 3,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_SSL_VERIFYHOST => 2,
+                CURLOPT_SSL_VERIFYPEER => !$allowInsecure,
+                CURLOPT_SSL_VERIFYHOST => $allowInsecure ? 0 : 2,
             ]);
             
             // Add API key header if configured
