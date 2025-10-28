@@ -105,7 +105,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       </div>
     </section>
 
-    <section class="card" id="databases-card">
+    <section class="card" id="databases-card" style="grid-column: 1 / -1;">
       <div class="settings-header">
         <h2>Datenbanken &amp; Pfade</h2>
         <div class="settings-actions">
