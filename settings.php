@@ -1315,10 +1315,6 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         }
       }
 
-      // Event listeners
-      btnSave.addEventListener('click', () => saveSettings());
-      btnReload.addEventListener('click', () => loadSettings());
-
       // =========================================================================
       // Database Management
       // =========================================================================
@@ -2110,11 +2106,15 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       });
 
       // Initial load
-      loadRemoteServers().then(() => {
-        loadSettings();
-        loadDatabases();
-      });
-
+      loadRemoteServers()
+        .catch((error) => {
+          console.error('Remote-Server konnten nicht geladen werden:', error);
+          showStatus('Remote-Server konnten nicht geladen werden: ' + error.message, 'error');
+        })
+        .finally(() => {
+          loadSettings();
+          loadDatabases();
+        });
     })(window.APP_CONFIG);
   </script>
 </body>
