@@ -2106,15 +2106,18 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       });
 
       // Initial load
-      loadRemoteServers()
-        .catch((error) => {
+      async function initializePage() {
+        try {
+          await loadRemoteServers();
+        } catch (error) {
           console.error('Remote-Server konnten nicht geladen werden:', error);
           showStatus('Remote-Server konnten nicht geladen werden: ' + error.message, 'error');
-        })
-        .finally(() => {
-          loadSettings();
-          loadDatabases();
-        });
+        }
+        await loadSettings();
+        await loadDatabases();
+      }
+
+      initializePage();
     })(window.APP_CONFIG);
   </script>
 </body>
