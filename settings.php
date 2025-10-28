@@ -1166,8 +1166,15 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
 
           renderSettings(data.settings, data.categories);
         } catch (error) {
-          showStatus('Fehler beim Laden der Einstellungen: ' + error.message, 'error');
-          settingsContainer.innerHTML = '<p style="color: var(--error);">Fehler beim Laden der Einstellungen.</p>';
+          const message = error?.message || '';
+          const isLocal = currentServerIndex < 0;
+          const looksLikeMissingEnv = /(\.env|env datei|config)/i.test(message);
+          if (isLocal && looksLikeMissingEnv) {
+            showNoEnvMessage();
+          } else {
+            showStatus('Fehler beim Laden der Einstellungen: ' + message, 'error');
+            settingsContainer.innerHTML = '<p style="color: var(--error);">Fehler beim Laden der Einstellungen.</p>';
+          }
         } finally {
           showLoading(false);
         }
@@ -1998,6 +2005,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
             action,
             server: { name, url, api_key: apiKey, database }
           };
+          
           
           if (action === 'update') {
             payload.index = editingServerIndex;
