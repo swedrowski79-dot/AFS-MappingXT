@@ -1,6 +1,6 @@
 <?php
 // index.php
-declare(strict_types=1;
+declare(strict_types=1);
 
 // Security headers
 header('X-Content-Type-Options: nosniff');
