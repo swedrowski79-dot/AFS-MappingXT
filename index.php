@@ -117,16 +117,6 @@ $envExampleExists = is_file(__DIR__ . '/.env.example');
     </header>
 
     <div class="grid">
-<?php if (!$envExists): ?>
-      <section class="card" style="grid-column:1 / -1; border:1px solid rgba(234,179,8,0.3); background:rgba(234,179,8,0.08);">
-        <h2>.env fehlt</h2>
-        <p>Die Konfigurationsdatei <code>.env</code> wurde nicht gefunden.<?php if ($envExampleExists): ?> Eine Vorlage ist als <code>.env.example</code> vorhanden.<?php endif; ?></p>
-        <div style="display:flex;gap:0.75rem;align-items:center;margin-top:0.75rem;">
-          <button id="btn-create-env-overview" class="btn-primary">📝 .env anlegen</button>
-          <span id="env-status-message" style="color:rgba(226,232,240,0.8);font-size:0.9rem;"></span>
-        </div>
-      </section>
-<?php endif; ?>
       <section class="card status">
         <h2>Status</h2>
         <div class="status-pill" id="status-state" data-state="idle">Status: idle</div>
@@ -260,8 +250,6 @@ if (is_readable($mainJsPath)) {
       const remoteEnabled = APP.remoteServersEnabled === true;
       const localList = document.getElementById('database-status-list');
       const remoteList = document.getElementById('remote-servers-list');
-      const envButton = document.getElementById('btn-create-env-overview');
-      const envStatus = document.getElementById('env-status-message');
 
       function escapeHtml(value) {
         const div = document.createElement('div');
@@ -486,41 +474,8 @@ if (is_readable($mainJsPath)) {
         }
       }
 
-      function setEnvStatus(message, type = 'info') {
-        if (!envStatus) {
-          return;
-        }
-        envStatus.style.color = type === 'error' ? 'rgb(252,165,165)' : 'rgba(74,222,128,0.9)';
-        envStatus.textContent = message;
-      }
-      async function createEnvFromOverview() {
-        if (!envButton) {
-          return;
-        }
-        try {
-          envButton.disabled = true;
-          setEnvStatus('Erstelle .env...', 'info');
-          const apiKeyResponse = await requestJson(`${apiBase}generate_api_key.php`, { method: 'POST' });
-          const apiKey = apiKeyResponse?.data?.api_key;
-          if (!apiKey) {
-            throw new Error('API-Key konnte nicht generiert werden.');
-          }
-          await requestJson(`${apiBase}initial_setup.php`, {
-            method: 'POST',
-            body: JSON.stringify({ settings: { DATA_TRANSFER_API_KEY: apiKey } })
-          });
-          setEnvStatus('.env wurde erstellt. Seite bitte neu laden.', 'success');
-        } catch (error) {
-          setEnvStatus(error.message || 'Erstellung fehlgeschlagen.', 'error');
-          envButton.disabled = false;
-        }
-      }
-
       loadLocalConnections();
       loadRemoteServers();
-      if (envButton) {
-        envButton.addEventListener('click', createEnvFromOverview);
-      }
     })(window.APP_CONFIG || {});
   </script>
 </body>
