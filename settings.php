@@ -1589,12 +1589,13 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         }
         if (!databaseConnections.length) {
           dbList.hidden = true;
-          dbEmptyState.textContent = dbEmptyDefaultText;
+          dbEmptyState.textContent = currentServerIndex >= 0
+            ? 'Noch keine Verbindungen auf diesem Remote-Server.'
+            : dbEmptyDefaultText;
           dbEmptyState.hidden = false;
           dbList.innerHTML = '';
           return;
         }
-
         dbEmptyState.hidden = true;
         dbList.hidden = false;
         dbList.innerHTML = '';
@@ -1703,8 +1704,18 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       }
 
       async function loadDatabases() {
+        const isRemote = currentServerIndex >= 0;
         try {
-          const response = await fetchJson('databases_manage.php');
+          if (dbEmptyState) {
+            dbEmptyState.hidden = false;
+            dbEmptyState.textContent = isRemote
+              ? 'Verbindungen werden vom Remote-Server geladen...'
+              : dbEmptyDefaultText;
+          }
+          const endpoint = isRemote
+            ? `databases_remote.php?server_index=${encodeURIComponent(currentServerIndex)}`
+            : 'databases_manage.php';
+          const response = await fetchJson(endpoint);
           const data = response.data || {};
           databaseConnections = data.connections || [];
           databaseRoles = data.roles || {};
@@ -1712,6 +1723,10 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
           renderDatabaseList();
         } catch (error) {
           showStatus('Fehler beim Laden der Datenbanken: ' + error.message, 'error');
+          if (dbEmptyState) {
+            dbEmptyState.hidden = false;
+            dbEmptyState.textContent = error.message;
+          }
         }
       }
 
@@ -1727,7 +1742,11 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
               ...formData
             }
           };
-          const response = await fetchJson('databases_manage.php', {
+          if (currentServerIndex >= 0) {
+            payload.server_index = currentServerIndex;
+          }
+          const endpoint = currentServerIndex >= 0 ? 'databases_remote.php' : 'databases_manage.php';
+          const response = await fetchJson(endpoint, {
             method: 'POST',
             body: JSON.stringify(payload)
           });
@@ -1753,9 +1772,14 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         }
         try {
           showLoading(true);
-          await fetchJson('databases_manage.php', {
+          const payload = { id };
+          if (currentServerIndex >= 0) {
+            payload.server_index = currentServerIndex;
+          }
+          const endpoint = currentServerIndex >= 0 ? 'databases_remote.php' : 'databases_manage.php';
+          await fetchJson(endpoint, {
             method: 'DELETE',
-            body: JSON.stringify({ id })
+            body: JSON.stringify(payload)
           });
           showStatus('Verbindung gelöscht.', 'success');
           await loadDatabases();
@@ -1772,9 +1796,14 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         }
         try {
           showLoading(true);
-          const response = await fetchJson('databases_test.php', {
+          const payload = { id };
+          if (currentServerIndex >= 0) {
+            payload.server_index = currentServerIndex;
+          }
+          const endpoint = currentServerIndex >= 0 ? 'databases_test_remote.php' : 'databases_test.php';
+          const response = await fetchJson(endpoint, {
             method: 'POST',
-            body: JSON.stringify({ id })
+            body: JSON.stringify(payload)
           });
           const status = response.data?.status || {};
           const type = status.ok ? 'success' : 'error';
@@ -1797,7 +1826,11 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
               ...formData
             }
           };
-          const response = await fetchJson('databases_test.php', {
+          if (currentServerIndex >= 0) {
+            payload.server_index = currentServerIndex;
+          }
+          const endpoint = currentServerIndex >= 0 ? 'databases_test_remote.php' : 'databases_test.php';
+          const response = await fetchJson(endpoint, {
             method: 'POST',
             body: JSON.stringify(payload)
           });
@@ -1810,116 +1843,14 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       }
 
       function updateDatabaseCardState() {
-        const disabled = currentServerIndex >= 0;
-        if (!dbList || !dbEmptyState) {
+        if (!dbEmptyState) {
           return;
         }
-        if (btnDbAdd) btnDbAdd.disabled = disabled;
-        if (btnDbRefresh) btnDbRefresh.disabled = disabled;
-        if (disabled) {
-          dbList.hidden = true;
-          dbEmptyState.textContent = 'Datenbanken können nur auf dem lokalen Server verwaltet werden.';
-          dbEmptyState.hidden = false;
-        } else {
-          dbEmptyState.textContent = dbEmptyDefaultText;
-          loadDatabases();
-        }
+        dbEmptyState.textContent = currentServerIndex >= 0
+          ? 'Verbindungen werden vom Remote-Server geladen...'
+          : dbEmptyDefaultText;
       }
 
-      if (btnDbAdd) {
-        btnDbAdd.addEventListener('click', () => openDatabaseModal());
-      }
-      if (btnDbRefresh) {
-        btnDbRefresh.addEventListener('click', () => loadDatabases());
-      }
-      if (dbModalClose) {
-        dbModalClose.addEventListener('click', () => closeDatabaseModal());
-      }
-      if (dbBtnCancel) {
-        dbBtnCancel.addEventListener('click', () => closeDatabaseModal());
-      }
-      if (dbModal) {
-        dbModal.addEventListener('click', (event) => {
-          if (event.target === dbModal) {
-            closeDatabaseModal();
-          }
-        });
-      }
-      if (dbTypeSelect) {
-        dbTypeSelect.addEventListener('change', () => {
-          const type = dbTypeSelect.value;
-          renderDbRoles(type, []);
-          renderDbFields(type, {}, { passwordProtected: false });
-        });
-      }
-      if (dbBtnSave) {
-        dbBtnSave.addEventListener('click', () => saveDatabase());
-      }
-      if (dbBtnTest) {
-        dbBtnTest.addEventListener('click', () => testDatabaseForm());
-      }
-
-      // =========================================================================
-      // Server Management
-      // =========================================================================
-      
-      const serverSelect = document.getElementById('server-select');
-      const btnManageServers = document.getElementById('btn-manage-servers');
-      const serverModal = document.getElementById('server-modal');
-      const modalClose = document.getElementById('modal-close');
-      const serverList = document.getElementById('server-list');
-      const serverForm = document.getElementById('server-form');
-      const btnAddServer = document.getElementById('btn-add-server');
-      const btnFormCancel = document.getElementById('btn-form-cancel');
-      const btnFormSave = document.getElementById('btn-form-save');
-      const serverNameInput = document.getElementById('server-name');
-      const serverUrlInput = document.getElementById('server-url');
-      const serverApiKeyInput = document.getElementById('server-api-key');
-      const serverDbInput = document.getElementById('server-database');
-      const formTitle = document.getElementById('form-title');
-      const currentServerName = document.getElementById('current-server-name');
-      const currentServerBadge = document.getElementById('current-server-badge');
-      const currentServerDatabase = document.getElementById('current-server-database');
-      
-      let remoteServers = [];
-      let editingServerIndex = -1;
-      let currentServerIndex = -1; // -1 = local, 0+ = remote server index
-      updateDatabaseCardState();
-      
-      // Load remote servers
-      async function loadRemoteServers() {
-        try {
-          const response = await fetchJson('remote_servers_manage.php');
-          remoteServers = response.data.servers || [];
-          updateServerSelect();
-          return remoteServers;
-        } catch (error) {
-          console.error('Error loading remote servers:', error);
-          remoteServers = [];
-          return [];
-        }
-      }
-      
-      // Update server select dropdown
-      function updateServerSelect() {
-        const currentValue = serverSelect.value;
-        serverSelect.innerHTML = '<option value="local">Lokaler Server</option>';
-        
-        remoteServers.forEach((server, index) => {
-          const option = document.createElement('option');
-          option.value = 'remote-' + index;
-          const label = server.database ? `${server.name} (${server.database})` : server.name;
-          option.textContent = label;
-          serverSelect.appendChild(option);
-        });
-        
-        // Restore selection if possible
-        if (currentValue && document.querySelector(`option[value="${currentValue}"]`)) {
-          serverSelect.value = currentValue;
-        }
-      }
-      
-      // Update current server display
       function updateCurrentServerDisplay() {
         if (currentServerIndex === -1) {
           currentServerName.textContent = 'Lokaler Server';
@@ -2139,11 +2070,13 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
         if (value === 'local') {
           currentServerIndex = -1;
         } else if (value.startsWith('remote-')) {
-          currentServerIndex = parseInt(value.substring(7));
+          currentServerIndex = parseInt(value.substring(7), 10);
         }
         
         updateCurrentServerDisplay();
+        updateDatabaseCardState();
         await loadSettings();
+        await loadDatabases();
       });
       
       // Modal controls
@@ -2179,6 +2112,7 @@ $title = (string)($config['ui']['title'] ?? 'AFS-Schnittstelle');
       // Initial load
       loadRemoteServers().then(() => {
         loadSettings();
+        loadDatabases();
       });
 
     })(window.APP_CONFIG);

@@ -1,6 +1,6 @@
 <?php
 // index.php
-declare(strict_types=1);
+declare(strict_types=1;
 
 // Security headers
 header('X-Content-Type-Options: nosniff');
@@ -132,27 +132,13 @@ $remoteServers = $remoteConfig['servers'] ?? [];
       <section class="card health">
         <h2>Verbindungen</h2>
         <h3 class="health-subtitle">Lokaler Server</h3>
-        <div class="health-list">
-          <div class="health-item" id="health-evo" data-status="<?= $checks['evo']['ok'] ? 'ok' : 'error' ?>">
+        <div class="health-list" id="database-status-list">
+          <div class="health-item" data-status="loading">
             <div>
-              <strong><?= htmlspecialchars($checks['evo']['label'], ENT_QUOTES, 'UTF-8') ?></strong>
-              <small><?= htmlspecialchars($checks['evo']['path'], ENT_QUOTES, 'UTF-8') ?></small>
+              <strong>Datenbanken</strong>
+              <small>Wird geladen...</small>
             </div>
-            <span class="state"><?= $checks['evo']['ok'] ? 'OK' : 'Datei fehlt' ?></span>
-          </div>
-          <div class="health-item" id="health-status" data-status="<?= $checks['status']['ok'] ? 'ok' : 'error' ?>">
-            <div>
-              <strong><?= htmlspecialchars($checks['status']['label'], ENT_QUOTES, 'UTF-8') ?></strong>
-              <small><?= htmlspecialchars($checks['status']['path'], ENT_QUOTES, 'UTF-8') ?></small>
-            </div>
-            <span class="state"><?= $checks['status']['ok'] ? 'OK' : 'Datei fehlt' ?></span>
-          </div>
-          <div class="health-item" id="health-mssql" data-status="unknown">
-            <div>
-              <strong>MSSQL</strong>
-              <small><?= htmlspecialchars(($config['mssql']['host'] ?? 'undefined') . ':' . ($config['mssql']['port'] ?? ''), ENT_QUOTES, 'UTF-8') ?></small>
-            </div>
-            <span class="state">?</span>
+            <span class="state">...</span>
           </div>
         </div>
         <h3 class="health-subtitle">Remote Server</h3>
@@ -174,16 +160,6 @@ $remoteServers = $remoteConfig['servers'] ?? [];
             <span class="state">Hinweis</span>
           </div>
 <?php endif; ?>
-        </div>
-        <h3 class="health-subtitle">Datenbanken</h3>
-        <div class="health-list" id="database-status-list">
-          <div class="health-item" data-status="warning">
-            <div>
-              <strong>Datenbankstatus</strong>
-              <small>Wird geladen...</small>
-            </div>
-            <span class="state">...</span>
-          </div>
         </div>
       </section>
 
@@ -263,6 +239,242 @@ if (is_readable($mainJsPath)) {
     echo "console.error('main.js konnte nicht geladen werden.');";
 }
 ?>
+  </script>
+  <script>
+    (function(APP) {
+      'use strict';
+
+      const apiBase = APP.apiBase || '';
+      const remoteEnabled = APP.remoteServersEnabled === true;
+      const localList = document.getElementById('database-status-list');
+      const remoteList = document.getElementById('remote-servers-list');
+
+      function escapeHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value == null ? '' : String(value);
+        return div.innerHTML;
+      }
+
+      async function requestJson(url, options = {}) {
+        const headers = Object.assign({ Accept: 'application/json' }, options.headers || {});
+        if (options.body && !Object.keys(headers).some((key) => key.toLowerCase() === 'content-type')) {
+          headers['Content-Type'] = 'application/json';
+        }
+        const response = await fetch(url, { cache: 'no-store', ...options, headers });
+        const text = await response.text();
+        let payload = {};
+        try {
+          payload = text ? JSON.parse(text) : {};
+        } catch (error) {
+          throw new Error('Antwort konnte nicht gelesen werden.');
+        }
+        if (!response.ok || payload.ok === false) {
+          throw new Error(payload.error || response.statusText || 'Unbekannter Fehler');
+        }
+        return payload;
+      }
+
+      function connectionStatusClass(status) {
+        if (status && status.ok === true) {
+          return 'ok';
+        }
+        if (status && status.ok === false) {
+          return 'error';
+        }
+        return 'warning';
+      }
+
+      function formatConnectionDetails(connection) {
+        const settings = connection?.settings || {};
+        if (connection?.type === 'sqlite' && settings.path) {
+          return settings.path;
+        }
+        if (connection?.type === 'mssql' || connection?.type === 'mysql') {
+          const host = settings.host || '';
+          const port = settings.port ? `:${settings.port}` : '';
+          const database = settings.database ? ` · ${settings.database}` : '';
+          return `${host}${port}${database}`.trim();
+        }
+        return settings.path || '';
+      }
+
+      function renderLocalConnections(connections) {
+        if (!localList) {
+          return;
+        }
+        localList.innerHTML = '';
+        if (!connections.length) {
+          const item = document.createElement('div');
+          item.className = 'health-item';
+          item.dataset.status = 'warning';
+          item.innerHTML = '<div><strong>Keine Verbindungen</strong><small>Auf diesem Server sind keine Datenbanken konfiguriert.</small></div><span class="state">Hinweis</span>';
+          localList.appendChild(item);
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        connections.forEach((connection) => {
+          const item = document.createElement('div');
+          item.className = 'health-item';
+          item.dataset.status = connectionStatusClass(connection.status);
+
+          const info = document.createElement('div');
+          const title = document.createElement('strong');
+          title.innerHTML = escapeHtml(connection.title || connection.id || 'Unbenannte Verbindung');
+          info.appendChild(title);
+
+          const subtitle = document.createElement('small');
+          const detail = formatConnectionDetails(connection);
+          subtitle.innerHTML = escapeHtml(detail || connection.type || '');
+          info.appendChild(subtitle);
+
+          if (Array.isArray(connection.roles) && connection.roles.length) {
+            const rolesLine = document.createElement('small');
+            rolesLine.innerHTML = escapeHtml('Rollen: ' + connection.roles.join(', '));
+            rolesLine.style.display = 'block';
+            info.appendChild(rolesLine);
+          }
+
+          const state = document.createElement('span');
+          state.className = 'state';
+          state.textContent = connection.status && connection.status.ok === true ? 'OK' : (connection.status && connection.status.ok === false ? 'Fehler' : 'Unbekannt');
+
+          item.appendChild(info);
+          item.appendChild(state);
+          fragment.appendChild(item);
+        });
+        localList.appendChild(fragment);
+      }
+
+      function renderRemoteListError(message) {
+        if (!remoteList) {
+          return;
+        }
+        remoteList.innerHTML = '';
+        const item = document.createElement('div');
+        item.className = 'health-item';
+        item.dataset.status = 'error';
+        item.innerHTML = `<div><strong>Remote-Status fehlgeschlagen</strong><small>${escapeHtml(message)}</small></div><span class="state">Fehler</span>`;
+        remoteList.appendChild(item);
+      }
+
+      function renderRemoteConnections(container, server, connections) {
+        container.innerHTML = '';
+        if (!connections.length) {
+          const fallback = server?.database ? `Konfigurierte Datenbank: ${server.database}` : 'Keine Verbindungen vorhanden.';
+          container.innerHTML = `<small>${escapeHtml(fallback)}</small>`;
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        connections.forEach((connection) => {
+          const wrapper = document.createElement('div');
+          wrapper.style.display = 'flex';
+          wrapper.style.flexDirection = 'column';
+          wrapper.style.gap = '0.2rem';
+
+          const chip = document.createElement('span');
+          chip.className = 'database-role-pill';
+          chip.textContent = connection.title || connection.id || 'Unbenannt';
+          wrapper.appendChild(chip);
+
+          const detail = formatConnectionDetails(connection);
+          if (detail) {
+            const detailLine = document.createElement('small');
+            detailLine.style.color = 'rgba(226, 232, 240, 0.7)';
+            detailLine.textContent = detail;
+            wrapper.appendChild(detailLine);
+          }
+
+          fragment.appendChild(wrapper);
+        });
+        container.appendChild(fragment);
+      }
+
+      async function loadLocalConnections() {
+        try {
+          const payload = await requestJson(`${apiBase}databases_manage.php`);
+          const connections = payload?.data?.connections || [];
+          renderLocalConnections(connections);
+        } catch (error) {
+          if (!localList) {
+            return;
+          }
+          localList.innerHTML = `<div class="health-item" data-status="error"><div><strong>Laden fehlgeschlagen</strong><small>${escapeHtml(error.message)}</small></div><span class="state">Fehler</span></div>`;
+        }
+      }
+
+      async function loadRemoteConnections(item, badge, listContainer, server, index) {
+        try {
+          const payload = await requestJson(`${apiBase}databases_remote.php?server_index=${index}`);
+          const connections = payload?.data?.connections || [];
+          item.dataset.status = 'ok';
+          badge.textContent = 'API OK';
+          renderRemoteConnections(listContainer, server, connections);
+        } catch (error) {
+          item.dataset.status = 'error';
+          badge.textContent = 'API Fehler';
+          listContainer.innerHTML = `<small>${escapeHtml(error.message)}</small>`;
+        }
+      }
+
+      function renderRemoteServer(server, index) {
+        const item = document.createElement('div');
+        item.className = 'health-item';
+        item.dataset.status = 'loading';
+
+        const info = document.createElement('div');
+
+        const title = document.createElement('strong');
+        title.innerHTML = escapeHtml(server.name || `Remote-Server ${index + 1}`);
+        info.appendChild(title);
+
+        const subtitle = document.createElement('small');
+        subtitle.innerHTML = escapeHtml(server.url || '');
+        info.appendChild(subtitle);
+
+        const listContainer = document.createElement('div');
+        listContainer.style.display = 'flex';
+        listContainer.style.flexDirection = 'column';
+        listContainer.style.gap = '0.35rem';
+        listContainer.style.marginTop = '0.35rem';
+        listContainer.innerHTML = '<small>Verbindungen werden geladen...</small>';
+        info.appendChild(listContainer);
+
+        const badge = document.createElement('span');
+        badge.className = 'state';
+        badge.textContent = 'Prüfung';
+        item.appendChild(info);
+        item.appendChild(badge);
+
+        remoteList.appendChild(item);
+        loadRemoteConnections(item, badge, listContainer, server, index);
+      }
+
+      async function loadRemoteServers() {
+        if (!remoteEnabled || !remoteList) {
+          return;
+        }
+        try {
+          const payload = await requestJson(`${apiBase}remote_servers_manage.php`);
+          const servers = Array.isArray(payload?.data?.servers) ? payload.data.servers : [];
+          remoteList.innerHTML = '';
+          if (!servers.length) {
+            const item = document.createElement('div');
+            item.className = 'health-item';
+            item.dataset.status = 'warning';
+            item.innerHTML = '<div><strong>Keine Remote-Server konfiguriert</strong><small>Remote-Server können in den Einstellungen gepflegt werden.</small></div><span class="state">Hinweis</span>';
+            remoteList.appendChild(item);
+            return;
+          }
+          servers.forEach((server, index) => renderRemoteServer(server, index));
+        } catch (error) {
+          renderRemoteListError(error.message || 'Remote-Status konnte nicht geladen werden.');
+        }
+      }
+
+      loadLocalConnections();
+      loadRemoteServers();
+    })(window.APP_CONFIG || {});
   </script>
 </body>
 </html>
