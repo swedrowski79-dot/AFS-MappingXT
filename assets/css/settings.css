@@ -627,3 +627,7 @@
   background: rgba(34, 197, 94, 0.3);
   border-color: rgba(34, 197, 94, 0.5);
 }
+
+#databases-card {
+  grid-column: 1 / -1;
+}
