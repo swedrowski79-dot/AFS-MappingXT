@@ -1,0 +1,18 @@
+version: 1
+name: EVO
+connections:
+  evo_main:
+    role: EVO_MAIN
+  xt_mysql:
+    role: XT_MYSQL
+entities:
+  - name: products
+    target:
+      connection: evo_main
+      table: products
+      key: products_id
+  - name: categories
+    target:
+      connection: evo_main
+      table: categories
+      key: categories_id

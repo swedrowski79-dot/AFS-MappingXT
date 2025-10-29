@@ -21,13 +21,13 @@ if ($rawInput !== false && $rawInput !== '') {
 }
 
 $serverIndex = $decodedInput['server_index'] ?? $_GET['server_index'] ?? null;
-if ($serverIndex === null || !is_numeric((string)$serverIndex)) {
+if ($serverIndex !== null && !is_numeric((string)$serverIndex)) {
     http_response_code(400);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['ok' => false, 'error' => 'Ungültiger Server-Index.']);
     exit;
 }
-$serverIndex = (int)$serverIndex;
+$serverIndex = $serverIndex !== null ? (int)$serverIndex : null;
 
 $servers = $config['remote_servers']['servers'] ?? [];
 
@@ -60,6 +60,11 @@ if (is_file($envPath)) {
     }
 }
 
+if ($serverIndex === null) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok'=>true,'data'=>['servers'=>$servers]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
 if (!isset($servers[$serverIndex])) {
     http_response_code(404);
     header('Content-Type: application/json; charset=utf-8');

@@ -124,9 +124,34 @@ try {
                 $stmt = sqlsrv_query($h, "SELECT * FROM ({$from}) AS t WHERE rn BETWEEN ? AND ?", [($offset + 1), ($offset + $limit)], ['QueryTimeout'=>30,'Scrollable'=>SQLSRV_CURSOR_CLIENT_BUFFERED]);
             }
         } else {
-            $stmt = sqlsrv_query($h, "SELECT * FROM {$tq} ORDER BY {$orderExpr}", [], ['QueryTimeout'=>30,'Scrollable'=>SQLSRV_CURSOR_CLIENT_BUFFERED]);
+            $stmt = sqlsrv_query($h, "SELECT * FROM {$tq} ORDER BY {$orderExpr}", [], ['QueryTimeout'=>120,'Scrollable'=>SQLSRV_CURSOR_FORWARD]);
         }
-        if ($stmt) { while ($r = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) { $rows[] = $r; } sqlsrv_free_stmt($stmt); } else { $err = sqlsrv_errors(); $dbgLog('MSSQL SELECT failed: '.json_encode($err)); }
+        if ($stmt) {
+            $fetched = 0;
+            while ($r = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) { $rows[] = $r; $fetched++; }
+            sqlsrv_free_stmt($stmt);
+            if ($limit === null) {
+                if ($fetched === 0 && $totalRows > 0) {
+                    $dbgLog('MSSQL all-mode empty, using batch fetch');
+                    $batch = 1000; $rows = [];
+                    for ($off = 0; $off < $totalRows; $off += $batch) {
+                        $s2 = sqlsrv_query($h, "SELECT * FROM {$tq} ORDER BY {$orderExpr} OFFSET {$off} ROWS FETCH NEXT {$batch} ROWS ONLY", [], ['QueryTimeout'=>120,'Scrollable'=>SQLSRV_CURSOR_FORWARD]);
+                        if ($s2) { while ($rr = sqlsrv_fetch_array($s2, SQLSRV_FETCH_ASSOC)) { $rows[] = $rr; } sqlsrv_free_stmt($s2); } else { $err = sqlsrv_errors(); $dbgLog('MSSQL batch failed at offset '.$off.': '.json_encode($err)); break; }
+                    }
+                }
+            } else if ($fetched < min($limit, max(0,$totalRows))) {
+                $dbgLog('MSSQL fetched '.$fetched.' of expected '.min($limit, max(0,$totalRows)).' — applying TOP fallback');
+                // Try TOP fallback
+                $stmt2 = sqlsrv_query($h, "SET ROWCOUNT {$limit}; SELECT * FROM {$tq} ORDER BY {$orderExpr}; SET ROWCOUNT 0;", [], ['QueryTimeout'=>30,'Scrollable'=>SQLSRV_CURSOR_CLIENT_BUFFERED]);
+                if ($stmt2) {
+                    $rows = [];
+                    while ($rr = sqlsrv_fetch_array($stmt2, SQLSRV_FETCH_ASSOC)) { $rows[] = $rr; }
+                    sqlsrv_free_stmt($stmt2);
+                } else { $err = sqlsrv_errors(); $dbgLog('MSSQL TOP fallback failed: '.json_encode($err)); }
+            } else {
+                $dbgLog('MSSQL fetched rows='.$fetched.' totalRows='.$totalRows.' limit='.(string)$limit.' page='.(string)$page);
+            }
+        } else { $err = sqlsrv_errors(); $dbgLog('MSSQL SELECT failed: '.json_encode($err)); }
         sqlsrv_close($h);
     } elseif ($type === 'sqlite') {
         $path = (string)($settings['path'] ?? ''); if ($path === '') throw new RuntimeException('Pfad fehlt');
@@ -166,6 +191,7 @@ try {
   tbody tr:nth-child(odd){background:rgba(15,23,42,.65)}
   tbody tr:nth-child(even){background:rgba(15,23,42,.45)}
   code{font-family:"Fira Code","JetBrains Mono",ui-monospace,monospace;font-size:.85rem;white-space:pre-wrap}
+  td code{max-height:12rem;display:block;overflow:auto;overflow-wrap:anywhere}
   .pagination{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;color:rgba(226,232,240,.8);font-size:.9rem}
   .pagination a{color:#bfdbfe;text-decoration:none;padding:6px 10px;border-radius:8px;border:1px solid rgba(148,163,184,.25);background:rgba(59,130,246,.15)}
 </style></head><body>

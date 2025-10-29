@@ -15,6 +15,36 @@ if ($serverIndex < 0 || $connId === '') {
 
 global $config;
 $servers = $config['remote_servers']['servers'] ?? [];
+// Fallback: load from .env like databases_remote.php
+if (!isset($servers[$serverIndex])) {
+    $envPath = dirname(__DIR__) . '/.env';
+    if (is_file($envPath)) {
+        $content = file_get_contents($envPath) ?: '';
+        $lines = explode("\n", $content);
+        $remoteServersValue = '';
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (preg_match('/^REMOTE_SERVERS\s*=\s*(.*)$/', $line, $m)) {
+                $remoteServersValue = trim($m[1], "\"' ");
+                break;
+            }
+        }
+        if ($remoteServersValue !== '') {
+            $servers = [];
+            foreach (array_filter(array_map('trim', explode(',', $remoteServersValue))) as $cfg) {
+                $parts = array_map('trim', explode('|', $cfg));
+                if (count($parts) >= 2) {
+                    $servers[] = [
+                        'name' => $parts[0],
+                        'url' => rtrim($parts[1], '/'),
+                        'api_key' => $parts[2] ?? '',
+                        'database' => $parts[3] ?? '',
+                    ];
+                }
+            }
+        }
+    }
+}
 if (!isset($servers[$serverIndex])) {
     api_error('Remote-Server nicht gefunden', 404);
 }

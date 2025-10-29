@@ -22,6 +22,13 @@ class TargetMapper
      */
     public function __construct(array $config = [])
     {
+        if (isset($config['yaml']) || isset($config['yaml_path'])) {
+            $path = (string)($config['yaml'] ?? $config['yaml_path']);
+            if ($path !== '' && is_file($path)) {
+                $this->config = (new YamlMappingLoader())::load($path);
+                return;
+            }
+        }
         $this->config = $config;
     }
 
