@@ -161,7 +161,7 @@ public function import(): array {
 
 ## Hash Field Documentation
 
-The `mappings/target_sqlite.yml` file documents which fields are included in the hash calculation under the `hash_fields` section:
+The `mappings/evo.yml` file documents which fields are included in the hash calculation under the `hash_fields` section:
 
 ```yaml
 hash_fields:

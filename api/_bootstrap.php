@@ -169,10 +169,12 @@ function createSyncEnvironment(array $config, string $job = 'categories'): array
         $mssql->close();
         throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
     }
-    $dataSource = new AFS_Get_Data($mssql);
+    $sourceMappingPath = $config['sync_mappings']['primary']['source'] ?? (__DIR__ . '/../mappings/afs.yml');
+    $dataSource = new AFS_Get_Data($mssql, is_string($sourceMappingPath) ? $sourceMappingPath : null);
     $afs = new AFS($dataSource, $config);
     $logger = createMappingLogger($config);
     $evo = new EVO($pdo, $afs, $tracker, $config, $logger);
+    $evo->setSourceConnection($mssql);
 
     return [$tracker, $evo, $mssql];
 }

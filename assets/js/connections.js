@@ -232,9 +232,25 @@
     // Show loading placeholder
     remoteList.innerHTML = '<div class="health-item" data-status="warning"><div><strong>Remote</strong><small>Lade Serverliste...</small></div><span class="state">...</span></div>';
     try {
-      const payload = await requestJson(`${apiBase}remote_servers_manage.php`);
-      const data = (payload && payload.data) ? payload.data : {};
-      const servers = Array.isArray(data.servers) ? data.servers : [];
+      let servers = [];
+      // Primary source
+      try {
+        const payload = await requestJson(`${apiBase}databases_remote.php`);
+        const data = (payload && payload.data) ? payload.data : {};
+        servers = Array.isArray(data.servers) ? data.servers : [];
+      } catch (e) {
+        // ignore and try fallback
+      }
+      // Fallback to legacy endpoint
+      if (!servers.length) {
+        try {
+          const payload2 = await requestJson(`${apiBase}remote_servers_manage.php`);
+          const data2 = (payload2 && payload2.data) ? payload2.data : {};
+          servers = Array.isArray(data2.servers) ? data2.servers : [];
+        } catch (e2) {
+          // will handle below
+        }
+      }
       remoteList.innerHTML = '';
       if (!servers.length) {
         const item = document.createElement('div');

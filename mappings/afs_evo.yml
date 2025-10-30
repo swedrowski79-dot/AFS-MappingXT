@@ -1,0 +1,224 @@
+version: 1
+from: afs
+to: evo
+
+entities:
+
+  # =========================
+  # A R T I K E L
+  # =========================
+  artikel:
+    key_map:
+      evo.Artikel.Artikelnummer: AFS.Artikel.Artikelnummer
+
+    # AFS-Filter kommen aus schemas/afs.yml (default_filter)
+    map:
+      evo.Artikel.Artikelnummer:  AFS.Artikel.Artikelnummer | trim
+      evo.Artikel.Bezeichnung:    AFS.Artikel.Bezeichnung   | trim | null_if_empty
+      evo.Artikel.Bestand:        AFS.Artikel.Bestand
+      evo.Artikel.EANNummer:      AFS.Artikel.EANNummer | trim
+      evo.Artikel.Preis:          AFS.Artikel.VK3 | to_decimal | round(2)
+      evo.Artikel.Category:       AFS.Artikel.Warengruppe   # Zuordnung zu category.ID (gleiche ID)
+      evo.Artikel.Mindestmenge:   AFS.Artikel.Zusatzfeld01  # „Mindestmenge“
+      evo.Artikel.Master:         AFS.Artikel.Zusatzfeld07  # „Einzelartikel/Master/Masterartikelnummer“ (1/2/…)
+      evo.Artikel.Masterartikelnummer: AFS.Artikel.Zusatzfeld07 | trim
+      evo.Artikel.Bruttogewicht:  AFS.Artikel.Bruttogewicht
+      evo.Artikel.Online:         AFS.Artikel.Internet | case(1->1, else->0)
+      evo.Artikel.Einheit:        AFS.Artikel.Einheit | trim
+      evo.Artikel.Langtext:       AFS.Artikel.Langtext      # (optional RTF→HTML via separate Feld)
+      evo.Artikel.Werbetext:      AFS.Artikel.Werbetext1
+      evo.Artikel.Benerkung:      AFS.Artikel.Bemerkung
+      evo.Artikel.Hinweis:        AFS.Artikel.Hinweis
+      evo.Artikel.change:         1
+      evo.Artikel.update:         1
+      # meta_title/meta_description füllst du später aus der Meta-DB
+
+    delta:
+      fields: [Bezeichnung, Bestand, EANNummer, Preis, Category, Mindestmenge, Master, Masterartikelnummer, Bruttogewicht, Online, Einheit, Langtext, Werbetext, Benerkung, Hinweis]
+
+    flags:
+      on_insert: { evo.Artikel.change: =1 }
+      on_update_when_delta_changed: { evo.Artikel.change: =1 }
+      on_update_when_no_change: { evo.Artikel.change: =0 }
+
+    orphan_policy:
+      scope: evo.Artikel
+      match_key: Artikelnummer
+      actions:
+        - set: { evo.Artikel.Online: =0 }
+        - when_changed:
+            compare_fields: [Bezeichnung, Preis, Einheit, Langtext, Werbetext, Benerkung, Hinweis]
+            then_set: { evo.Artikel.change: =1 }
+        - otherwise:
+            set: { evo.Artikel.change: =0 }
+
+  # =========================
+  # W A R E N G R U P P E N  →  category
+  # =========================
+  warengruppe:
+    key_map:
+      evo.category.ID: AFS.Warengruppe.Warengruppe   # AFS-WG-ID == EVO.category.ID
+
+    map:
+      evo.category.ID:         AFS.Warengruppe.Warengruppe
+      evo.category.Parent_ID:  AFS.Warengruppe.Anhang       # Annahme: „Anhang“ = Parent-ID
+      evo.category.name:       AFS.Warengruppe.Bezeichnung  | trim | null_if_empty
+      evo.category.online:     AFS.Warengruppe.Internet     | case(1->1, else->0)
+      evo.category.Bild:       AFS.Warengruppe.Bild
+      evo.category.description: AFS.Warengruppe.Beschreibung
+      evo.category.change:     1
+      # meta_title/meta_description aus Meta-DB später
+
+    delta:
+      fields: [Parent_ID, name, online, Bild, description]
+
+    flags:
+      on_insert: { evo.category.change: =1 }
+      on_update_when_delta_changed: { evo.category.change: =1 }
+      on_update_when_no_change: { evo.category.change: =0 }
+
+    orphan_policy:
+      scope: evo.category
+      match_key: ID
+      actions:
+        - set: { evo.category.online: =0 }
+        - when_changed:
+            compare_fields: [Parent_ID, name, Bild, description]
+            then_set: { evo.category.change: =1 }
+        - otherwise:
+            set: { evo.category.change: =0 }
+
+  # =========================
+  # B I L D E R  (Master, dedupliziert über hash)
+  # =========================
+  bilder_master:
+    # Fanout: AFS.Artikel.Bild1..Bild10 in Einzelzeilen drehen
+    fanout:
+      pattern:
+        base: "AFS.Artikel.Bild{n}"
+        range: { from: 1, to: 10 }
+      attach_context:
+        artikelnummer: AFS.Artikel.Artikelnummer
+        position_from_index: true
+
+    skip_when:
+      - "$fanout.value == null"
+      - "$fanout.value == ''"
+
+    map:
+      evo.Bilder.hash:      "$func.hash_file($fanout.value)"
+      evo.Bilder.Bildname:  "$fanout.value | basename"
+      evo.Bilder.upload:    =1
+      # weitere Metadaten (mime, width, …) bei Bedarf via probe-Funktion
+
+    delta:
+      fields: [Bildname]    # hash dient als Business-Key
+
+    upsert:
+      keys: [hash]
+      insert: [hash, Bildname, upload, change]
+      update: [Bildname, upload, change]
+
+    flags:
+      on_insert: { evo.Bilder.change: =1 }
+      on_update_when_delta_changed: { evo.Bilder.change: =1 }
+      on_update_when_no_change: { evo.Bilder.change: =0 }
+
+  # =========================
+  # A R T I K E L  ↔  B I L D E R  (Pivot mit Position)
+  # =========================
+  artikel_bilder_pivot:
+    fanout:
+      pattern:
+        base: "AFS.Artikel.Bild{n}"
+        range: { from: 1, to: 10 }
+      attach_context:
+        artikelnummer: AFS.Artikel.Artikelnummer
+        position_from_index: true
+
+    skip_when:
+      - "$fanout.value == null"
+      - "$fanout.value == ''"
+
+    map:
+      evo.Artikel_Bilder.Artikel_ID: "$func.resolveEvoArtikelIdByNummer($fanout.context.artikelnummer)"
+      evo.Artikel_Bilder.Bild_ID:    "$func.resolveImageIdByHash($func.hash_file($fanout.value))"
+      evo.Artikel_Bilder.Bildnummer: "$fanout.index"
+
+    delta:
+      fields: [Bildnummer]
+
+    upsert:
+      keys: [Artikel_ID, Bild_ID]
+      insert: [Artikel_ID, Bild_ID, Bildnummer, change]
+      update: [Bildnummer, change]
+
+    flags:
+      on_insert: { evo.Artikel_Bilder.change: =1 }
+      on_update_when_delta_changed: { evo.Artikel_Bilder.change: =1 }
+      on_update_when_no_change: { evo.Artikel_Bilder.change: =0 }
+
+    orphan_policy:
+      scope: evo.Artikel_Bilder
+      match_key: [Artikel_ID, Bild_ID]
+      actions:
+        - mode: mark
+          set: { evo.Artikel_Bilder.change: =1 }
+        # alternativ hart löschen:
+        # - mode: delete
+
+  # =========================
+  # D O K U M E N T E  (Master)
+  # =========================
+  dokumente_master:
+    # Quelle: AFS.Dokument (mit Filter „Artikel > 0“ bereits in schemas/afs.yml)
+    key_map:
+      evo.Documents.hash: "$func.hash_file(AFS.Dokument.Dateiname)"
+
+    map:
+      evo.Documents.Documentname: AFS.Dokument.Dateiname | basename
+      evo.Documents.hash:         "$func.hash_file(AFS.Dokument.Dateiname)"
+      evo.Documents.upload:       =1
+
+    delta:
+      fields: [Documentname]  # hash ist Business-Key
+
+    upsert:
+      keys: [hash]
+      insert: [Documentname, hash, upload, change]
+      update: [Documentname, upload, change]
+
+    flags:
+      on_insert: { evo.Documents.change: =1 }
+      on_update_when_delta_changed: { evo.Documents.change: =1 }
+      on_update_when_no_change: { evo.Documents.change: =0 }
+
+  # =========================
+  # D O K U M E N T  ↔  A R T I K E L  (Pivot)
+  # =========================
+  dokument_artikel_pivot:
+    map:
+      evo.Document_Artikel.Document_ID: "$func.resolveDocumentIdByHash($func.hash_file(AFS.Dokument.Dateiname))"
+      evo.Document_Artikel.Artikel_ID:  "$func.resolveEvoArtikelIdByNummer(AFS.Dokument.Artikel)"
+
+    delta:
+      fields: []   # reine Existenzbeziehung
+
+    upsert:
+      keys: [Document_ID, Artikel_ID]
+      insert: [Document_ID, Artikel_ID, Change]
+      update: [Change]
+
+    flags:
+      on_insert: { evo.Document_Artikel.Change: =1 }
+      on_update_when_delta_changed: { evo.Document_Artikel.Change: =1 }
+      on_update_when_no_change: { evo.Document_Artikel.Change: =0 }
+
+    orphan_policy:
+      scope: evo.Document_Artikel
+      match_key: [Document_ID, Artikel_ID]
+      actions:
+        - mode: mark
+          set: { evo.Document_Artikel.Change: =1 }
+        # oder:
+        # - mode: delete

@@ -1,0 +1,150 @@
+version: 1
+connection: evo
+introspect: true
+
+tables:
+
+  Artikel:
+    business_key: [Artikelnummer]
+    fields:
+      - ID
+      - Artikelnummer
+      - Bezeichnung
+      - Bestand
+      - EANNummer
+      - Bild
+      - Preis
+      - Category
+      - Mindestmenge
+      - Master
+      - Masterartikelnummer
+      - Bruttogewicht
+      - Online
+      - Einheit
+      - Langtext
+      - Werbetext
+      - Benerkung
+      - Hinweis
+      - meta_title
+      - meta_description
+      - update
+      - change
+
+  Artikel_Plattfotm:
+    keys: [Evo_ID]
+    fields:
+      - ID
+      - Evo_ID
+      - AFS_ID
+      - XT_ID
+      - change
+
+  Bilder:
+    business_key: [hash]
+    fields:
+      - ID
+      - Bildname
+      - hash
+      - upload
+      - change
+
+  Bilder_Platform:
+    keys: [Evo_ID]
+    fields:
+      - ID
+      - Evo_ID
+      - XT_ID
+
+  Artikel_Bilder:
+    keys: [Artikel_ID, Bild_ID]
+    fields:
+      - ID
+      - Bild_ID
+      - Artikel_ID
+      - Bildnummer
+      - change
+
+  Attribute:
+    business_key: [Name]
+    fields:
+      - ID
+      - Name
+      - change
+
+  Attribute_Plattform:
+    keys: [Evo_ID]
+    fields:
+      - ID
+      - Evo_ID
+      - XT_ID
+      - change
+
+  Artikel_Attribute:
+    keys: [Artikel_ID, Attribute_ID, Attributenummer]
+    fields:
+      - ID
+      - Attribute_ID
+      - Artikel_ID
+      - Value
+      - Attributenummer
+      - Change
+
+  Documents:
+    business_key: [hash]
+    fields:
+      - ID
+      - Documentname
+      - hash
+      - upload
+      - change
+
+  Document_Artikel:
+    keys: [Document_ID, Artikel_ID]
+    fields:
+      - ID
+      - Document_ID
+      - Artikel_ID
+      - Change
+
+  Document_Platform:
+    keys: [Evo_ID]
+    fields:
+      - ID
+      - AFS_ID
+      - Evo_ID
+      - XT_ID
+
+  category:
+    keys: [ID]
+    fields:
+      - ID
+      - Parent_ID
+      - name
+      - online
+      - Bild
+      - description
+      - meta_title
+      - meta_description
+      - change
+
+  category_platform:
+    keys: [EVO_ID]
+    fields:
+      - ID
+      - AFS_ID
+      - EVO_ID
+      - XT_ID
+
+hints:
+  images:
+    master_table: Bilder
+    pivot_table: Artikel_Bilder
+    pivot_keys: [Artikel_ID, Bild_ID]
+    position_field: Bildnummer
+    master_business_key: [hash]
+
+  documents:
+    master_table: Documents
+    pivot_table: Document_Artikel
+    pivot_keys: [Document_ID, Artikel_ID]
+    master_business_key: [hash]

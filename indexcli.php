@@ -226,10 +226,12 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
         throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
     }
 
-    $dataSource = new AFS_Get_Data($mssql);
+    $sourceMappingPath = $config['sync_mappings']['primary']['source'] ?? (__DIR__ . '/mappings/afs.yml');
+    $dataSource = new AFS_Get_Data($mssql, is_string($sourceMappingPath) ? $sourceMappingPath : null);
     $afs = new AFS($dataSource, $config);
     $logger = createMappingLoggerCli($config);
     $evo = new EVO($pdo, $afs, $tracker, $config, $logger);
+    $evo->setSourceConnection($mssql);
 
     return [
         'tracker' => $tracker,

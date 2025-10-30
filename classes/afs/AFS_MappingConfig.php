@@ -2,7 +2,7 @@
 /**
  * AFS_MappingConfig - YAML Configuration Loader for AFS Data Mapping
  * 
- * Loads and parses the source_afs.yml configuration file to provide
+ * Loads and parses the afs.yml configuration file to provide
  * field mappings and transformation rules for AFS_Get_Data.
  */
 class AFS_MappingConfig

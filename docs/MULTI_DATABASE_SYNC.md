@@ -45,8 +45,9 @@ Configure multiple source-target sync pairs via environment variables.
 
 #### Primary Sync: AFS → EVO
 ```env
-SOURCE_MAPPING=mappings/source_afs.yml
-TARGET_MAPPING=mappings/target_sqlite.yml
+SOURCE_MAPPING=mappings/afs.yml
+TARGET_MAPPING=mappings/evo.yml
+RULE_MAPPING=mappings/afs_evo.yml
 ```
 
 #### Secondary Sync: XT Orders → EVO
@@ -112,8 +113,8 @@ The `config.php` now includes sync mapping configuration:
 'sync_mappings' => [
     'primary' => [
         'enabled' => true,
-        'source' => getenv('SOURCE_MAPPING') ?: 'mappings/source_afs.yml',
-        'target' => getenv('TARGET_MAPPING') ?: 'mappings/target_sqlite.yml',
+        'source' => getenv('SOURCE_MAPPING') ?: 'mappings/afs.yml',
+        'target' => getenv('TARGET_MAPPING') ?: 'mappings/evo.yml',
         'action' => 'sync_afs_to_evo',
     ],
     'secondary' => [

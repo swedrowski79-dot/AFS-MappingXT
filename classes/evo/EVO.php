@@ -13,6 +13,9 @@ class EVO
     private AFS $afs;
     /** @var array<string,mixed> */
     private array $config;
+    private ?MSSQL_Connection $sourceConnection = null;
+    private ?MappingSyncEngine $mappingEngine = null;
+    private bool $mappingEngineChecked = false;
 
     /**
      * @param array<string,mixed> $config
@@ -29,6 +32,11 @@ class EVO
         $this->attributes = new EVO_AttributeSync($db, $afs, $status);
         $this->categories = new EVO_CategorySync($db, $afs, $status);
         $this->articles   = new EVO_ArticleSync($db, $afs, $this->images, $this->documents, $this->attributes, $this->categories, $status);
+    }
+
+    public function setSourceConnection(MSSQL_Connection $connection): void
+    {
+        $this->sourceConnection = $connection;
     }
 
     public function importBilder(): array
@@ -48,12 +56,69 @@ class EVO
 
     public function importWarengruppen(): array
     {
+        if ($engine = $this->getMappingEngine()) {
+            return $engine->syncEntity('warengruppe', $this->sourceConnection, $this->db);
+        }
         return $this->categories->import();
     }
 
     public function importArtikel(): array
     {
+        if ($engine = $this->getMappingEngine()) {
+            return $engine->syncEntity('artikel', $this->sourceConnection, $this->db);
+        }
         return $this->articles->import();
+    }
+
+    private function getMappingEngine(): ?MappingSyncEngine
+    {
+        if ($this->mappingEngineChecked) {
+            return $this->mappingEngine;
+        }
+        $this->mappingEngineChecked = true;
+
+        if ($this->sourceConnection === null) {
+            return null;
+        }
+
+        $primary = $this->config['sync_mappings']['primary'] ?? null;
+        if (!is_array($primary) || empty($primary['enabled'])) {
+            return null;
+        }
+
+        $sourcePath = isset($primary['source']) ? (string)$primary['source'] : '';
+        $schemaPath = isset($primary['schema']) ? (string)$primary['schema'] : (string)($primary['target'] ?? '');
+        $rulesPath  = isset($primary['rules'])  ? (string)$primary['rules']  : '';
+
+        if ($sourcePath === '' || $schemaPath === '' || $rulesPath === '') {
+            return null;
+        }
+
+        if (!is_file($sourcePath) || !is_file($schemaPath) || !is_file($rulesPath)) {
+            $this->logWarning(
+                'Mapping-Konfiguration unvollständig – falle auf Legacy-Sync zurück',
+                [
+                    'source' => $sourcePath,
+                    'schema' => $schemaPath,
+                    'rules'  => $rulesPath,
+                ],
+                'mapping'
+            );
+            return null;
+        }
+
+        try {
+            $this->mappingEngine = MappingSyncEngine::fromFiles($sourcePath, $schemaPath, $rulesPath);
+        } catch (\Throwable $e) {
+            $this->logError(
+                'MappingSyncEngine konnte nicht initialisiert werden',
+                ['error' => $e->getMessage()],
+                'mapping'
+            );
+            $this->mappingEngine = null;
+        }
+
+        return $this->mappingEngine;
     }
 
     public function syncAll(bool $copyImages = false, ?string $imageSourceDir = null, ?string $imageDestDir = null, bool $copyDocuments = false, ?string $documentSourceDir = null, ?string $documentDestDir = null): array
@@ -169,15 +234,31 @@ class EVO
             $currentStage = 'warengruppen';
             [$summary['warengruppen'], $catDuration] = $this->executeStage($currentStage, 'Importiere Warengruppen', fn () => $this->importWarengruppen());
             $wg = $summary['warengruppen'];
-            $this->status?->advance($currentStage, [
-                'message' => sprintf('Warengruppen importiert (neu: %d · aktualisiert: %d · Eltern: %d · %s)', $wg['inserted'] ?? 0, $wg['updated'] ?? 0, $wg['parent_set'] ?? 0, $this->formatDuration($catDuration)),
-            ]);
-            $this->logger?->logRecordChanges('Warengruppen', $wg['inserted'] ?? 0, $wg['updated'] ?? 0, 0, ($wg['inserted'] ?? 0) + ($wg['updated'] ?? 0));
-            $this->logger?->logStageComplete($currentStage, $catDuration, [
-                'inserted' => $wg['inserted'] ?? 0,
-                'updated' => $wg['updated'] ?? 0,
-                'parent_set' => $wg['parent_set'] ?? 0,
-            ]);
+            if (($wg['mode'] ?? '') === 'mapping') {
+                $processedCategories = (int)($wg['processed'] ?? 0);
+                $categoryErrors = (int)($wg['errors'] ?? 0);
+                $this->status?->advance($currentStage, [
+                    'message' => sprintf('Warengruppen synchronisiert (%d verarbeitet, %d Fehler, %s)', $processedCategories, $categoryErrors, $this->formatDuration($catDuration)),
+                    'processed' => $processedCategories,
+                    'total' => $processedCategories,
+                ]);
+                $this->logger?->logRecordChanges('Warengruppen', 0, $processedCategories, 0, $processedCategories);
+                $this->logger?->logStageComplete($currentStage, $catDuration, [
+                    'processed' => $processedCategories,
+                    'errors' => $categoryErrors,
+                    'mode' => 'mapping',
+                ]);
+            } else {
+                $this->status?->advance($currentStage, [
+                    'message' => sprintf('Warengruppen importiert (neu: %d · aktualisiert: %d · Eltern: %d · %s)', $wg['inserted'] ?? 0, $wg['updated'] ?? 0, $wg['parent_set'] ?? 0, $this->formatDuration($catDuration)),
+                ]);
+                $this->logger?->logRecordChanges('Warengruppen', $wg['inserted'] ?? 0, $wg['updated'] ?? 0, 0, ($wg['inserted'] ?? 0) + ($wg['updated'] ?? 0));
+                $this->logger?->logStageComplete($currentStage, $catDuration, [
+                    'inserted' => $wg['inserted'] ?? 0,
+                    'updated' => $wg['updated'] ?? 0,
+                    'parent_set' => $wg['parent_set'] ?? 0,
+                ]);
+            }
 
             $currentStage = 'artikel';
             $articleTotal = is_array($this->afs->Artikel) ? count($this->afs->Artikel) : 0;
@@ -190,30 +271,55 @@ class EVO
             $articleDuration = microtime(true) - $articleStart;
             $art = $summary['artikel'];
             $processed = $art['processed'] ?? $articleTotal;
-            $this->status?->logInfo(
-                'Artikelimport abgeschlossen',
-                [
-                    'duration_seconds' => $articleDuration,
-                    'duration' => $this->formatDuration($articleDuration),
+            if (($art['mode'] ?? '') === 'mapping') {
+                $articleErrors = (int)($art['errors'] ?? 0);
+                $this->status?->logInfo(
+                    'Artikel-Mapping abgeschlossen',
+                    [
+                        'duration_seconds' => $articleDuration,
+                        'duration' => $this->formatDuration($articleDuration),
+                        'processed' => $processed,
+                        'errors' => $articleErrors,
+                    ],
+                    $currentStage
+                );
+                $this->logger?->logRecordChanges('Artikel', 0, $processed, 0, $processed);
+                $this->logger?->logStageComplete($currentStage, $articleDuration, [
+                    'processed' => $processed,
+                    'errors' => $articleErrors,
+                    'mode' => 'mapping',
+                ]);
+                $this->status?->advance($currentStage, [
+                    'message' => sprintf('Artikel synchronisiert (%d verarbeitet, %d Fehler, %s)', $processed, $articleErrors, $this->formatDuration($articleDuration)),
+                    'processed' => $processed,
+                    'total' => $processed,
+                ]);
+            } else {
+                $this->status?->logInfo(
+                    'Artikelimport abgeschlossen',
+                    [
+                        'duration_seconds' => $articleDuration,
+                        'duration' => $this->formatDuration($articleDuration),
+                        'processed' => $processed,
+                        'inserted' => $art['inserted'] ?? 0,
+                        'updated' => $art['updated'] ?? 0,
+                        'deactivated' => $art['deactivated'] ?? 0,
+                    ],
+                    $currentStage
+                );
+                $this->logger?->logRecordChanges('Artikel', $art['inserted'] ?? 0, $art['updated'] ?? 0, $art['deactivated'] ?? 0, $processed);
+                $this->logger?->logStageComplete($currentStage, $articleDuration, [
                     'processed' => $processed,
                     'inserted' => $art['inserted'] ?? 0,
                     'updated' => $art['updated'] ?? 0,
                     'deactivated' => $art['deactivated'] ?? 0,
-                ],
-                $currentStage
-            );
-            $this->logger?->logRecordChanges('Artikel', $art['inserted'] ?? 0, $art['updated'] ?? 0, $art['deactivated'] ?? 0, $processed);
-            $this->logger?->logStageComplete($currentStage, $articleDuration, [
-                'processed' => $processed,
-                'inserted' => $art['inserted'] ?? 0,
-                'updated' => $art['updated'] ?? 0,
-                'deactivated' => $art['deactivated'] ?? 0,
-            ]);
-            $this->status?->advance($currentStage, [
-                'message' => sprintf('Artikel importiert (neu: %d · aktualisiert: %d · offline: %d · %s)', $art['inserted'] ?? 0, $art['updated'] ?? 0, $art['deactivated'] ?? 0, $this->formatDuration($articleDuration)),
-                'processed' => $processed,
-                'total' => $articleTotal,
-            ]);
+                ]);
+                $this->status?->advance($currentStage, [
+                    'message' => sprintf('Artikel importiert (neu: %d · aktualisiert: %d · offline: %d · %s)', $art['inserted'] ?? 0, $art['updated'] ?? 0, $art['deactivated'] ?? 0, $this->formatDuration($articleDuration)),
+                    'processed' => $processed,
+                    'total' => $articleTotal,
+                ]);
+            }
 
             $deltaPath = $this->config['paths']['delta_db'] ?? null;
             if (is_string($deltaPath) && $deltaPath !== '') {

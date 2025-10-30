@@ -227,8 +227,10 @@ $config = [
         // Primary sync: AFS → EVO
         'primary' => [
             'enabled' => true,
-            'source' => getenv('SOURCE_MAPPING') ?: __DIR__ . '/mappings/source_afs.yml',
+            'source' => getenv('SOURCE_MAPPING') ?: __DIR__ . '/mappings/afs.yml',
             'target' => getenv('TARGET_MAPPING') ?: __DIR__ . '/mappings/target_sqlite.yml',
+            'schema' => getenv('SCHEMA_MAPPING') ?: __DIR__ . '/mappings/evo.yml',
+            'rules'  => getenv('RULE_MAPPING') ?: __DIR__ . '/mappings/afs_evo.yml',
             'action' => 'sync_afs_to_evo',
         ],
         // Secondary sync: XT Orders → EVO Orders
@@ -331,7 +333,18 @@ $config = [
     ],
 ];
 
+foreach ($config['sync_mappings'] as &$mappingConfig) {
+    if (!is_array($mappingConfig)) {
+        continue;
+    }
+    foreach (['source', 'target', 'rules', 'schema'] as $mappingKey) {
+        if (isset($mappingConfig[$mappingKey]) && is_string($mappingConfig[$mappingKey])) {
+            $mappingConfig[$mappingKey] = afs_config_resolve_path($mappingConfig[$mappingKey]);
+        }
+    }
+}
+unset($mappingConfig);
+
 afs_apply_database_connections($config);
 
 return $config;
-

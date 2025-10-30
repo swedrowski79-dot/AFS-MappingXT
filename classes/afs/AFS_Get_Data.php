@@ -3,7 +3,7 @@
  * AFS – Datenlese- und Nachbearbeitungs-Klasse für AFS-Manager (MSSQL)
  *
  * Liest die Tabellen "Artikel", "Warengruppe" und "Dokument" gemäß Vorgaben
- * aus der YAML-Konfiguration (source_afs.yml) und liefert die Ergebnisse als Arrays zurück.
+ * aus der YAML-Konfiguration (afs.yml) und liefert die Ergebnisse als Arrays zurück.
  * Nutzt TransformRegistry für Transformationen (trim, basename, rtf_to_html, etc.).
  *
  * Voraussetzungen:
@@ -12,7 +12,7 @@
  *    "query($sql, $params = [])" bereitstellt und ein Array von Zeilen
  *    (assoziative Arrays) zurückliefert.
  *  - YAML-Extension für PHP
- *  - source_afs.yml Konfigurationsdatei in /mappings
+ *  - afs.yml Konfigurationsdatei in /mappings
  *
  * Beispielverwendung:
  *  require __DIR__ . '/../mssql/MSSQL_Connection.php';
@@ -49,7 +49,7 @@ class AFS_Get_Data
 
         // Load configuration
         if ($configPath === null) {
-            $configPath = __DIR__ . '/../../mappings/source_afs.yml';
+            $configPath = __DIR__ . '/../../mappings/afs.yml';
         }
         $this->config = new AFS_MappingConfig($configPath);
 

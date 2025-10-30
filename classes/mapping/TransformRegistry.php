@@ -90,6 +90,55 @@ class TransformRegistry
             $standardized = strtr($trimmed, ['\\' => '/', '//' => '/']);
             return basename($standardized);
         });
+
+        // Null wenn leerer String
+        $this->register('null_if_empty', function($value) {
+            if (!is_scalar($value) && $value !== null) {
+                return $value;
+            }
+            $str = trim((string)$value);
+            return $str === '' ? null : $value;
+        });
+
+        // Zu Dezimalzahl (locale-unabhängig)
+        $this->register('to_decimal', function($value) {
+            if ($value === null || $value === '') {
+                return null;
+            }
+            $normalized = str_replace(',', '.', (string)$value);
+            if (!is_numeric($normalized)) {
+                return null;
+            }
+            return (float)$normalized;
+        });
+
+        // Integer-Konvertierung
+        $this->register('to_int', function($value) {
+            if ($value === null || $value === '') {
+                return null;
+            }
+            if (is_numeric($value)) {
+                return (int)$value;
+            }
+            return null;
+        });
+
+        // Boolean -> int (true=1/false=0)
+        $this->register('bool_to_int', function($value) {
+            if (is_bool($value)) {
+                return $value ? 1 : 0;
+            }
+            if (is_numeric($value)) {
+                return ((int)$value) === 1 ? 1 : 0;
+            }
+            if (is_string($value)) {
+                $normalized = strtolower(trim($value));
+                if (in_array($normalized, ['1', 'true', 'yes', 'ja', 'y'], true)) {
+                    return 1;
+                }
+            }
+            return 0;
+        });
     }
 
     /**

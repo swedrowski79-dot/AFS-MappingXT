@@ -42,7 +42,7 @@ The script:
 - Provides clear status messages
 
 ### 3. Mapping Configuration
-**File: `mappings/target_sqlite.yml`**
+**File: `mappings/evo.yml`**
 
 Added Bildnummer to the article_images relationship fields:
 

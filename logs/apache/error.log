@@ -32,3 +32,4 @@ AH00558: apache2: Could not reliably determine the server's fully qualified doma
 AH00558: apache2: Could not reliably determine the server's fully qualified domain name, using 172.18.0.3. Set the 'ServerName' directive globally to suppress this message
 [Mon Oct 27 14:34:03.145411 2025] [mpm_event:notice] [pid 21:tid 21] AH00489: Apache/2.4.65 (Debian) mod_fcgid/2.3.9 configured -- resuming normal operations
 [Mon Oct 27 14:34:03.145871 2025] [core:notice] [pid 21:tid 21] AH00094: Command line: '/usr/sbin/apache2 -D FOREGROUND'
+AH00558: apache2: Could not reliably determine the server's fully qualified domain name, using 172.18.0.2. Set the 'ServerName' directive globally to suppress this message

@@ -16,19 +16,17 @@ require __DIR__ . '/../autoload.php';
 echo "Testing Bildnummer functionality...\n\n";
 
 // Test 1: Verify YAML mapping includes Bildnummer
-echo "Test 1: Checking target_sqlite.yml mapping...\n";
-$mappingPath = __DIR__ . '/../mappings/target_sqlite.yml';
-$config = new AFS_TargetMappingConfig($mappingPath);
-$relationship = $config->getRelationship('article_images');
-if ($relationship === null) {
-    echo "❌ Failed: article_images relationship not found\n";
+echo "Test 1: Checking evo.yml mapping...\n";
+$mappingPath = __DIR__ . '/../mappings/evo.yml';
+$mappingData = YamlMappingLoader::load($mappingPath);
+$articleImagesConfig = $mappingData['tables']['Artikel_Bilder'] ?? null;
+if (!is_array($articleImagesConfig)) {
+    echo "❌ Failed: Artikel_Bilder table definition not found\n";
     exit(1);
 }
-$fields = $relationship['fields'] ?? [];
-if (isset($fields['Bildnummer'])) {
+$fields = array_map('strval', $articleImagesConfig['fields'] ?? []);
+if (in_array('Bildnummer', $fields, true)) {
     echo "✓ Bildnummer field found in mapping\n";
-    echo "  Type: " . ($fields['Bildnummer']['type'] ?? 'unknown') . "\n";
-    echo "  Nullable: " . (($fields['Bildnummer']['nullable'] ?? false) ? 'yes' : 'no') . "\n";
 } else {
     echo "❌ Failed: Bildnummer field not found in mapping\n";
     exit(1);
@@ -36,8 +34,8 @@ if (isset($fields['Bildnummer'])) {
 
 // Test 2: Verify SQL builder includes Bildnummer in INSERT statement
 echo "\nTest 2: Checking SQL builder generates correct INSERT...\n";
-$sqlBuilder = new AFS_SqlBuilder($config);
-$insertSql = $sqlBuilder->buildRelationshipUpsert('article_images');
+$targetMapper = TargetMapper::fromFile($mappingPath);
+$insertSql = $targetMapper->generateUpsertSql('Artikel_Bilder', $fields);
 if (strpos($insertSql, 'Bildnummer') !== false || strpos($insertSql, 'bildnummer') !== false) {
     echo "✓ Bildnummer included in INSERT statement\n";
     echo "Generated SQL:\n";
@@ -92,7 +90,7 @@ echo "✓ Structure test passed (implementation verified in code)\n";
 
 echo "\n✓ All tests passed!\n";
 echo "\nSummary:\n";
-echo "- Bildnummer field added to target_sqlite.yml mapping\n";
+echo "- Bildnummer field added to evo.yml mapping\n";
 echo "- SQL builder includes Bildnummer in INSERT statements\n";
 echo "- Database schema includes Bildnummer column\n";
 echo "- collectArticleImages() returns image number along with name\n";
