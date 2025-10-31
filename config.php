@@ -20,6 +20,26 @@ function afs_config_resolve_path(string $path): string
 }
 
 /**
+ * Returns the preferred absolute path for a mapping-related file, preferring the new
+ * directory structure but falling back to legacy locations when they still exist.
+ */
+function afs_prefer_path(string $relative, string $primaryDir, string $legacyDir = 'mappings'): string
+{
+    $relative = ltrim($relative, '/');
+    $primary = __DIR__ . '/' . trim($primaryDir, '/') . '/' . $relative;
+    if (file_exists($primary)) {
+        return $primary;
+    }
+
+    $legacy = __DIR__ . '/' . trim($legacyDir, '/') . '/' . $relative;
+    if (file_exists($legacy)) {
+        return $legacy;
+    }
+
+    return $primary;
+}
+
+/**
  * Apply database connection mapping from config/databases/databases.json.
  *
  * @param array<string, mixed> $config
