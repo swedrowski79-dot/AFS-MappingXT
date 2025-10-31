@@ -6,7 +6,7 @@ use PDOStatement;
 /**
  * TargetMapper
  *
- * Nutzt das Zielschema (z. B. mappings/evo.yml), um vorbereitete UPSERT-Statements
+ * Nutzt das Zielschema (z. B. schemas/evo.yml), um vorbereitete UPSERT-Statements
  * dynamisch zu erzeugen. Unterstützt sowohl das neue "tables"-Format als auch
  * das Legacy-Format mit "entities"/"relationships".
  */

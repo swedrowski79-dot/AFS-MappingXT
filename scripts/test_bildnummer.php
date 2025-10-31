@@ -17,7 +17,13 @@ echo "Testing Bildnummer functionality...\n\n";
 
 // Test 1: Verify YAML mapping includes Bildnummer
 echo "Test 1: Checking evo.yml mapping...\n";
-$mappingPath = __DIR__ . '/../mappings/evo.yml';
+$mappingPath = __DIR__ . '/../schemas/evo.yml';
+if (!is_file($mappingPath)) {
+    $legacy = __DIR__ . '/../mappings/evo.yml';
+    if (is_file($legacy)) {
+        $mappingPath = $legacy;
+    }
+}
 $targetMapper = TargetMapper::fromFile($mappingPath);
 $fields = $targetMapper->getFields('Artikel_Bilder');
 if (in_array('Bildnummer', $fields, true)) {

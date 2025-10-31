@@ -63,9 +63,15 @@ try {
         'created' => !$statusWasPresent,
     ];
 
-    // 2) evo.db: bevorzugt aus mappings/evo.yml erzeugen/aktualisieren
+    // 2) evo.db: bevorzugt aus schemas/evo.yml erzeugen/aktualisieren
     $evoPath = $config['paths']['data_db'] ?? ($dbDir . '/evo.db');
-    $evoYaml = $root . '/mappings/evo.yml';
+    $evoYaml = $root . '/schemas/evo.yml';
+    if (!is_file($evoYaml)) {
+        $legacyYaml = $root . '/mappings/evo.yml';
+        if (is_file($legacyYaml)) {
+            $evoYaml = $legacyYaml;
+        }
+    }
     $evoSqlFallback = $scriptsDir . '/create_evo.sql';
 
     $dir = dirname($evoPath);
@@ -85,7 +91,7 @@ try {
         $result = applyEvoSchemaFromYaml($pdoEvo, $yaml);
     } else {
         if (!is_file($evoSqlFallback)) {
-            throw new AFS_ConfigurationException("Weder mappings/evo.yml noch SQL-Datei gefunden: {$evoSqlFallback}");
+            throw new AFS_ConfigurationException("Weder schemas/evo.yml noch SQL-Datei gefunden: {$evoSqlFallback}");
         }
         $initEvoSql = file_get_contents($evoSqlFallback);
         if ($initEvoSql === false || trim($initEvoSql) === '') {

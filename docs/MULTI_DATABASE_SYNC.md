@@ -45,20 +45,20 @@ Configure multiple source-target sync pairs via environment variables.
 
 #### Primary Sync: AFS → EVO
 ```env
-RULE_MAPPING=mappings/afs_evo.yml
+RULE_MAPPING=mapping/afs_evo.yml
 # Optional: SOURCE_MAPPING, SCHEMA_MAPPING (werden sonst aus dem Mapping abgeleitet)
 ```
 
 #### Secondary Sync: XT Orders → EVO
 ```env
-SOURCE_MAPPING_2=mappings/xt-order.yaml
-TARGET_MAPPING_2=mappings/orders-evo.yaml
+SOURCE_MAPPING_2=mapping/xt-order.yaml
+TARGET_MAPPING_2=mapping/orders-evo.yaml
 ```
 
 #### Tertiary Sync: EVO Articles → XT
 ```env
-SOURCE_MAPPING_3=mappings/evo-artikel.yaml
-TARGET_MAPPING_3=mappings/xt-artikel.yaml
+SOURCE_MAPPING_3=mapping/evo-artikel.yaml
+TARGET_MAPPING_3=mapping/xt-artikel.yaml
 ```
 
 ### 4. New YAML Mapping Files
@@ -112,14 +112,14 @@ The `config.php` now includes sync mapping configuration:
 'sync_mappings' => [
     'primary' => [
         'enabled' => true,
-        'source' => getenv('SOURCE_MAPPING') ?: 'mappings/afs.yml',
-        'target' => getenv('TARGET_MAPPING') ?: 'mappings/evo.yml',
+        'source' => getenv('SOURCE_MAPPING') ?: 'schemas/afs.yml',
+        'target' => getenv('TARGET_MAPPING') ?: 'schemas/evo.yml',
         'action' => 'sync_afs_to_evo',
     ],
     'secondary' => [
         'enabled' => str_contains(getenv('SYNC_ENABLED_ACTIONS') ?: '', 'sync_xt_orders_to_evo'),
-        'source' => getenv('SOURCE_MAPPING_2') ?: 'mappings/xt-order.yaml',
-        'target' => getenv('TARGET_MAPPING_2') ?: 'mappings/orders-evo.yaml',
+        'source' => getenv('SOURCE_MAPPING_2') ?: 'mapping/xt-order.yaml',
+        'target' => getenv('TARGET_MAPPING_2') ?: 'mapping/orders-evo.yaml',
         'action' => 'sync_xt_orders_to_evo',
     ],
     // ... more mappings
@@ -263,7 +263,7 @@ The system is now prepared for:
 ## Troubleshooting
 
 ### Issue: Sync mapping not found
-**Solution:** Check that the YAML files exist in the `mappings/` directory and environment variables are correctly set.
+**Solution:** Check that the YAML files exist in the `mapping/` directory and environment variables are correctly set.
 
 ### Issue: Database connection failed
 **Solution:** Verify connection credentials in .env file and ensure database servers are accessible.

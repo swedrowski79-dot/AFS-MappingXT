@@ -43,7 +43,7 @@ Der Sync lässt sich per Web-Oberfläche wie auch per CLI starten. Beide greifen
 
 **Neu:** **Multi-Database Support** – Das System unterstützt jetzt mehrere Datenbank-Synchronisationspaare gleichzeitig. Konfigurieren Sie flexible Datenflüsse zwischen AFS (MSSQL), EVO (SQLite) und XT-Commerce (MySQL). Details siehe [MULTI_DATABASE_SYNC.md](docs/MULTI_DATABASE_SYNC.md).
 
-**Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mappings/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
+**Architektur:** Vollständig **mapping-basiertes System** – alle Feldzuordnungen und SQL-Statements werden dynamisch aus YAML-Konfigurationen (`mapping/*.yml` und `schemas/*.yml`) generiert. Keine hardcodierten Feldnamen oder SQL-Queries mehr im Code. Details siehe [YAML_MAPPING_GUIDE.md](docs/YAML_MAPPING_GUIDE.md).
 
 **Neu:** **Server-to-Server Data Transfer API** – Sichere API zum Transferieren von Delta-Datenbanken, Bildern und Dokumenten zwischen verschiedenen Servern. Mit API-Key-Authentifizierung und flexibler Konfiguration über Umgebungsvariablen. Details siehe [DATA_TRANSFER_API.md](docs/DATA_TRANSFER_API.md).
 

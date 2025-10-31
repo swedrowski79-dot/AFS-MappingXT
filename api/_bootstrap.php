@@ -177,7 +177,8 @@ function createSyncEnvironment(array $config, string $job = 'categories'): array
         $mssql->close();
         throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
     }
-    $sourceMappingPath = $config['sync_mappings']['primary']['source'] ?? (__DIR__ . '/../mappings/afs.yml');
+    $defaultSource = afs_prefer_path('afs.yml', 'schemas');
+    $sourceMappingPath = $config['sync_mappings']['primary']['source'] ?? $defaultSource;
     $dataSource = new AFS_Get_Data($mssql, is_string($sourceMappingPath) ? $sourceMappingPath : null);
     $afs = new AFS($dataSource, $config);
     $logger = createMappingLogger($config);
@@ -204,22 +205,10 @@ function createMappingOnlyEnvironment(array $config, string $job = 'categories')
     }
 
     $primary = $config['sync_mappings']['primary'] ?? [];
-    $projectRoot = dirname(__DIR__);
 
-    $defaultSource = $projectRoot . '/schemas/afs.yml';
-    if (!is_file($defaultSource) && is_file($projectRoot . '/mappings/afs.yml')) {
-        $defaultSource = $projectRoot . '/mappings/afs.yml';
-    }
-
-    $defaultSchema = $projectRoot . '/schemas/evo.yml';
-    if (!is_file($defaultSchema) && is_file($projectRoot . '/mappings/evo.yml')) {
-        $defaultSchema = $projectRoot . '/mappings/evo.yml';
-    }
-
-    $defaultRules = $projectRoot . '/mapping/afs_evo.yml';
-    if (!is_file($defaultRules) && is_file($projectRoot . '/mappings/afs_evo.yml')) {
-        $defaultRules = $projectRoot . '/mappings/afs_evo.yml';
-    }
+    $defaultSource = afs_prefer_path('afs.yml', 'schemas');
+    $defaultSchema = afs_prefer_path('evo.yml', 'schemas');
+    $defaultRules = afs_prefer_path('afs_evo.yml', 'mapping');
 
     $sourcePath = isset($primary['source']) && is_string($primary['source']) && $primary['source'] !== ''
         ? $primary['source'] : $defaultSource;

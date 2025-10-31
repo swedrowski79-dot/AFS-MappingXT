@@ -250,22 +250,22 @@ $config = [
             'enabled' => true,
             'source' => getenv('SOURCE_MAPPING') ?: null,
             'schema' => getenv('SCHEMA_MAPPING') ?: null,
-            'rules'  => getenv('RULE_MAPPING') ?: __DIR__ . '/mappings/afs_evo.yml',
+            'rules'  => getenv('RULE_MAPPING') ?: afs_prefer_path('afs_evo.yml', 'mapping'),
             'target' => getenv('TARGET_MAPPING') ?: null,
             'action' => 'sync_afs_to_evo',
         ],
         // Secondary sync: XT Orders → EVO Orders
         'secondary' => [
             'enabled' => str_contains(getenv('SYNC_ENABLED_ACTIONS') ?: '', 'sync_xt_orders_to_evo'),
-            'source' => getenv('SOURCE_MAPPING_2') ?: __DIR__ . '/mappings/xt-order.yaml',
-            'target' => getenv('TARGET_MAPPING_2') ?: __DIR__ . '/mappings/orders-evo.yaml',
+            'source' => getenv('SOURCE_MAPPING_2') ?: afs_prefer_path('xt-order.yaml', 'mapping'),
+            'target' => getenv('TARGET_MAPPING_2') ?: afs_prefer_path('orders-evo.yaml', 'mapping'),
             'action' => 'sync_xt_orders_to_evo',
         ],
         // Tertiary sync: EVO Articles → XT Articles
         'tertiary' => [
             'enabled' => str_contains(getenv('SYNC_ENABLED_ACTIONS') ?: '', 'sync_evo_to_xt'),
-            'source' => getenv('SOURCE_MAPPING_3') ?: __DIR__ . '/mappings/evo-artikel.yaml',
-            'target' => getenv('TARGET_MAPPING_3') ?: __DIR__ . '/mappings/xt-artikel.yaml',
+            'source' => getenv('SOURCE_MAPPING_3') ?: afs_prefer_path('evo-artikel.yaml', 'mapping'),
+            'target' => getenv('TARGET_MAPPING_3') ?: afs_prefer_path('xt-artikel.yaml', 'mapping'),
             'action' => 'sync_evo_to_xt',
         ],
     ],
@@ -383,7 +383,7 @@ foreach ($config['sync_mappings'] as &$mappingConfig) {
             $resolved = afs_config_resolve_path($baseDir . '/' . $candidate . '.yml');
         }
         if (!is_file($resolved)) {
-            $resolved = afs_config_resolve_path(__DIR__ . '/mappings/' . $candidate . '.yml');
+            $resolved = afs_prefer_path($candidate . '.yml', 'schemas');
         }
         if (is_file($resolved)) {
             $mappingConfig['source'] = $resolved;
@@ -397,7 +397,7 @@ foreach ($config['sync_mappings'] as &$mappingConfig) {
             $resolved = afs_config_resolve_path($baseDir . '/' . $candidate . '.yml');
         }
         if (!is_file($resolved)) {
-            $resolved = afs_config_resolve_path(__DIR__ . '/mappings/' . $candidate . '.yml');
+            $resolved = afs_prefer_path($candidate . '.yml', 'schemas');
         }
         if (is_file($resolved)) {
             $mappingConfig['schema'] = $resolved;
@@ -417,7 +417,7 @@ foreach ($config['sync_mappings'] as &$mappingConfig) {
         if (!empty($mappingConfig['schema']) && is_file($mappingConfig['schema'])) {
             $fallback = $mappingConfig['schema'];
         } else {
-            $fallbackCandidate = afs_config_resolve_path(__DIR__ . '/mappings/evo.yml');
+            $fallbackCandidate = afs_prefer_path('evo.yml', 'schemas');
             if (is_file($fallbackCandidate)) {
                 $fallback = $fallbackCandidate;
             }
@@ -428,14 +428,14 @@ foreach ($config['sync_mappings'] as &$mappingConfig) {
     }
 
     if (!empty($mappingConfig['source']) && !is_file($mappingConfig['source'])) {
-        $fallback = afs_config_resolve_path(__DIR__ . '/mappings/afs.yml');
+        $fallback = afs_prefer_path('afs.yml', 'schemas');
         if (is_file($fallback)) {
             $mappingConfig['source'] = $fallback;
         }
     }
 
     if (!empty($mappingConfig['schema']) && !is_file($mappingConfig['schema'])) {
-        $fallback = afs_config_resolve_path(__DIR__ . '/mappings/evo.yml');
+        $fallback = afs_prefer_path('evo.yml', 'schemas');
         if (is_file($fallback)) {
             $mappingConfig['schema'] = $fallback;
             if (isset($mappingConfig['target']) && (!is_file($mappingConfig['target']) || $mappingConfig['target'] === '')) {

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 /**
  * Orchestriert den Mapping-Lauf zwischen Quelle (z. B. AFS/MSSQL) und Ziel (z. B. EVO/SQLite).
- * Aktueller Fokus: Entities "artikel" und "warengruppe" aus mappings/afs_evo.yml.
+ * Aktueller Fokus: Entities "artikel" und "warengruppe" aus mapping/afs_evo.yml.
  */
 class MappingSyncEngine
 {

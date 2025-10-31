@@ -42,7 +42,7 @@ The script:
 - Provides clear status messages
 
 ### 3. Mapping Configuration
-**File: `mappings/evo.yml`**
+**File: `schemas/evo.yml`**
 
 Added Bildnummer to the article_images relationship fields:
 

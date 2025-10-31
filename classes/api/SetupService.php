@@ -38,7 +38,13 @@ class SetupService
         $summary['status'] = ['path' => $statusPath, 'created' => !$statusWasPresent];
         // evo.db
         $evoPath = $config['paths']['data_db'] ?? ($dbDir . '/evo.db');
-        $evoYaml = $root . '/mappings/evo.yml';
+        $evoYaml = $root . '/schemas/evo.yml';
+        if (!is_file($evoYaml)) {
+            $legacyYaml = $root . '/mappings/evo.yml';
+            if (is_file($legacyYaml)) {
+                $evoYaml = $legacyYaml;
+            }
+        }
         $evoSqlFallback = $scriptsDir . '/create_evo.sql';
         $dir = dirname($evoPath);
         if (!is_dir($dir) && !@mkdir($dir, 0777, true) && !is_dir($dir)) {
@@ -53,7 +59,7 @@ class SetupService
             $result = $this->applyEvoSchemaFromYaml($pdoEvo, $yaml);
         } else {
             if (!is_file($evoSqlFallback)) {
-                throw new AFS_ConfigurationException("Weder mappings/evo.yml noch SQL-Datei gefunden: {$evoSqlFallback}");
+                throw new AFS_ConfigurationException("Weder schemas/evo.yml noch SQL-Datei gefunden: {$evoSqlFallback}");
             }
             $initEvoSql = (string)file_get_contents($evoSqlFallback);
             if (trim($initEvoSql) === '') {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * SourceMapper
  *
- * Lädt die Quell-Schema-Beschreibung (z. B. mappings/afs.yml) und erzeugt
+ * Lädt die Quell-Schema-Beschreibung (z. B. schemas/afs.yml) und erzeugt
  * daraus performante SELECT-Statements inklusive konfigurierter Filter.
  * Die Klasse ist bewusst generisch gehalten, damit künftig weitere
  * Quell-Datenbanken angebunden werden können.

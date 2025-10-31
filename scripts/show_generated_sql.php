@@ -7,7 +7,13 @@ require_once __DIR__ . '/../autoload.php';
 
 echo "=== Generated SQL Statements from Target Mapping ===\n\n";
 
-$mappingPath = __DIR__ . '/../mappings/evo.yml';
+$mappingPath = __DIR__ . '/../schemas/evo.yml';
+if (!is_file($mappingPath)) {
+    $legacy = __DIR__ . '/../mappings/evo.yml';
+    if (is_file($legacy)) {
+        $mappingPath = $legacy;
+    }
+}
 $mappingData = YamlMappingLoader::load($mappingPath);
 $targetMapper = TargetMapper::fromFile($mappingPath);
 
