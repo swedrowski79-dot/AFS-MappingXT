@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/classes/config/DatabaseConfig.php';
+require_once __DIR__ . '/classes/mapping/YamlMappingLoader.php';
 
 /**
  * Resolve relative paths (project root relative) to absolute paths.
@@ -227,10 +228,10 @@ $config = [
         // Primary sync: AFS → EVO
         'primary' => [
             'enabled' => true,
-            'source' => getenv('SOURCE_MAPPING') ?: __DIR__ . '/mappings/afs.yml',
-            'target' => getenv('TARGET_MAPPING') ?: __DIR__ . '/mappings/target_sqlite.yml',
-            'schema' => getenv('SCHEMA_MAPPING') ?: __DIR__ . '/mappings/evo.yml',
+            'source' => getenv('SOURCE_MAPPING') ?: null,
+            'schema' => getenv('SCHEMA_MAPPING') ?: null,
             'rules'  => getenv('RULE_MAPPING') ?: __DIR__ . '/mappings/afs_evo.yml',
+            'target' => getenv('TARGET_MAPPING') ?: null,
             'action' => 'sync_afs_to_evo',
         ],
         // Secondary sync: XT Orders → EVO Orders
@@ -340,6 +341,86 @@ foreach ($config['sync_mappings'] as &$mappingConfig) {
     foreach (['source', 'target', 'rules', 'schema'] as $mappingKey) {
         if (isset($mappingConfig[$mappingKey]) && is_string($mappingConfig[$mappingKey])) {
             $mappingConfig[$mappingKey] = afs_config_resolve_path($mappingConfig[$mappingKey]);
+        }
+    }
+
+    $rulesPath = $mappingConfig['rules'] ?? null;
+    if (!is_string($rulesPath) || $rulesPath === '' || !is_file($rulesPath)) {
+        continue;
+    }
+
+    try {
+        $rulesConfig = YamlMappingLoader::load($rulesPath);
+    } catch (Throwable $e) {
+        continue;
+    }
+
+    $baseDir = dirname($rulesPath);
+    if (empty($mappingConfig['source']) && isset($rulesConfig['from'])) {
+        $candidate = (string)$rulesConfig['from'];
+        $resolved = afs_config_resolve_path($candidate);
+        if (!is_file($resolved)) {
+            $resolved = afs_config_resolve_path($baseDir . '/' . $candidate . '.yml');
+        }
+        if (!is_file($resolved)) {
+            $resolved = afs_config_resolve_path(__DIR__ . '/mappings/' . $candidate . '.yml');
+        }
+        if (is_file($resolved)) {
+            $mappingConfig['source'] = $resolved;
+        }
+    }
+
+    if (empty($mappingConfig['schema']) && isset($rulesConfig['to'])) {
+        $candidate = (string)$rulesConfig['to'];
+        $resolved = afs_config_resolve_path($candidate);
+        if (!is_file($resolved)) {
+            $resolved = afs_config_resolve_path($baseDir . '/' . $candidate . '.yml');
+        }
+        if (!is_file($resolved)) {
+            $resolved = afs_config_resolve_path(__DIR__ . '/mappings/' . $candidate . '.yml');
+        }
+        if (is_file($resolved)) {
+            $mappingConfig['schema'] = $resolved;
+        }
+    }
+
+    if (empty($mappingConfig['schema']) && !empty($mappingConfig['target'])) {
+        $mappingConfig['schema'] = afs_config_resolve_path((string)$mappingConfig['target']);
+    }
+
+    if (empty($mappingConfig['target']) && !empty($mappingConfig['schema'])) {
+        $mappingConfig['target'] = $mappingConfig['schema'];
+    }
+
+    if (!empty($mappingConfig['target']) && !is_file($mappingConfig['target'])) {
+        $fallback = null;
+        if (!empty($mappingConfig['schema']) && is_file($mappingConfig['schema'])) {
+            $fallback = $mappingConfig['schema'];
+        } else {
+            $fallbackCandidate = afs_config_resolve_path(__DIR__ . '/mappings/evo.yml');
+            if (is_file($fallbackCandidate)) {
+                $fallback = $fallbackCandidate;
+            }
+        }
+        if ($fallback !== null && is_string($fallback) && is_file($fallback)) {
+            $mappingConfig['target'] = $fallback;
+        }
+    }
+
+    if (!empty($mappingConfig['source']) && !is_file($mappingConfig['source'])) {
+        $fallback = afs_config_resolve_path(__DIR__ . '/mappings/afs.yml');
+        if (is_file($fallback)) {
+            $mappingConfig['source'] = $fallback;
+        }
+    }
+
+    if (!empty($mappingConfig['schema']) && !is_file($mappingConfig['schema'])) {
+        $fallback = afs_config_resolve_path(__DIR__ . '/mappings/evo.yml');
+        if (is_file($fallback)) {
+            $mappingConfig['schema'] = $fallback;
+            if (isset($mappingConfig['target']) && (!is_file($mappingConfig['target']) || $mappingConfig['target'] === '')) {
+                $mappingConfig['target'] = $fallback;
+            }
         }
     }
 }

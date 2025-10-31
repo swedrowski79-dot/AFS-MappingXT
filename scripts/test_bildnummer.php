@@ -18,13 +18,8 @@ echo "Testing Bildnummer functionality...\n\n";
 // Test 1: Verify YAML mapping includes Bildnummer
 echo "Test 1: Checking evo.yml mapping...\n";
 $mappingPath = __DIR__ . '/../mappings/evo.yml';
-$mappingData = YamlMappingLoader::load($mappingPath);
-$articleImagesConfig = $mappingData['tables']['Artikel_Bilder'] ?? null;
-if (!is_array($articleImagesConfig)) {
-    echo "❌ Failed: Artikel_Bilder table definition not found\n";
-    exit(1);
-}
-$fields = array_map('strval', $articleImagesConfig['fields'] ?? []);
+$targetMapper = TargetMapper::fromFile($mappingPath);
+$fields = $targetMapper->getFields('Artikel_Bilder');
 if (in_array('Bildnummer', $fields, true)) {
     echo "✓ Bildnummer field found in mapping\n";
 } else {
@@ -34,7 +29,6 @@ if (in_array('Bildnummer', $fields, true)) {
 
 // Test 2: Verify SQL builder includes Bildnummer in INSERT statement
 echo "\nTest 2: Checking SQL builder generates correct INSERT...\n";
-$targetMapper = TargetMapper::fromFile($mappingPath);
 $insertSql = $targetMapper->generateUpsertSql('Artikel_Bilder', $fields);
 if (strpos($insertSql, 'Bildnummer') !== false || strpos($insertSql, 'bildnummer') !== false) {
     echo "✓ Bildnummer included in INSERT statement\n";

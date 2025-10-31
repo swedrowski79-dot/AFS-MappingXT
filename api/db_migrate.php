@@ -11,8 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 global $config;
 
 try {
-    $pdo = createEvoPdo($config);
-    $changes = runSchemaMigration($pdo);
+    $service = new MigrateService();
+    $changes = $service->run($config);
 
     try {
         $tracker = createStatusTracker($config, 'categories');
@@ -26,12 +26,8 @@ try {
     api_error($e->getMessage());
 }
 
-/**
- * Führt dieselben Anpassungen wie scripts/migrate_update_columns.php aus.
- *
- * @return array<string,mixed>
- */
-function runSchemaMigration(PDO $pdo): array
+/* legacy code removed after refactor */
+/* legacy */ function _legacy_runSchemaMigration(PDO $pdo): array
 {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);

@@ -15,14 +15,13 @@ $version = $mappingData['version'] ?? 'n/a';
 echo "Mapping Version: {$version}\n";
 echo str_repeat('=', 80) . "\n\n";
 
-$tables = $mappingData['tables'] ?? [];
-
-$printUpsert = function(string $title, string $tableName) use ($targetMapper, $tables): void {
-    if (!isset($tables[$tableName])) {
+$printUpsert = function(string $title, string $tableName) use ($targetMapper): void {
+    try {
+        $fields = $targetMapper->getFields($tableName);
+    } catch (Throwable $e) {
         echo "⚠ Table {$tableName} not defined in mapping\n\n";
         return;
     }
-    $fields = array_map('strval', $tables[$tableName]['fields'] ?? []);
     if ($fields === []) {
         echo "⚠ Table {$tableName} has no fields in mapping\n\n";
         return;
@@ -33,12 +32,13 @@ $printUpsert = function(string $title, string $tableName) use ($targetMapper, $t
     echo $sql . "\n\n";
 };
 
-$printDelete = function(string $title, string $tableName) use ($targetMapper, $tables): void {
-    if (!isset($tables[$tableName])) {
+$printDelete = function(string $title, string $tableName) use ($targetMapper): void {
+    try {
+        $keys = $targetMapper->getUniqueKeyColumns($tableName);
+    } catch (Throwable $e) {
         echo "⚠ Table {$tableName} not defined in mapping\n\n";
         return;
     }
-    $keys = array_map('strval', $tables[$tableName]['keys'] ?? []);
     if ($keys === []) {
         echo "⚠ Table {$tableName} has no key definition in mapping\n\n";
         return;

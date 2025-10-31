@@ -17,9 +17,11 @@ class MappingExpressionEvaluator
     }
 
     /**
-     * @param array<string,mixed> $context
+     * Bereitet einen Ausdruck für wiederholte Auswertung vor.
+     *
+     * @return array{base:string,transforms:array<int,string>}|null
      */
-    public function evaluate(string $expression, array $context)
+    public function compile(string $expression): ?array
     {
         $expression = trim($expression);
         if ($expression === '') {
@@ -27,21 +29,49 @@ class MappingExpressionEvaluator
         }
 
         $segments = array_map('trim', explode('|', $expression));
-        if ($segments === []) {
+        $filtered = [];
+        foreach ($segments as $segment) {
+            if ($segment !== '') {
+                $filtered[] = $segment;
+            }
+        }
+
+        if ($filtered === []) {
             return null;
         }
 
-        $first = array_shift($segments);
-        $value = $this->resolveReference($first ?? '', $context);
+        $base = array_shift($filtered);
+        return [
+            'base' => $base ?? '',
+            'transforms' => array_values($filtered),
+        ];
+    }
 
-        foreach ($segments as $segment) {
-            if ($segment === '') {
-                continue;
-            }
+    /**
+     * @param array<string,mixed> $context
+     * @param array{base:string,transforms:array<int,string>}|null $compiled
+     */
+    public function evaluateCompiled(?array $compiled, array $context)
+    {
+        if ($compiled === null) {
+            return null;
+        }
+
+        $value = $this->resolveReference($compiled['base'], $context);
+        foreach ($compiled['transforms'] as $segment) {
             $value = $this->applyTransformation($segment, $value);
         }
 
         return $value;
+    }
+
+    /**
+     * @param array<string,mixed> $context
+     */
+    public function evaluate(string $expression, array $context)
+    {
+        $compiled = $this->compile($expression);
+        return $this->evaluateCompiled($compiled, $context);
     }
 
     /**

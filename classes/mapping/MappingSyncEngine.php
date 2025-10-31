@@ -12,6 +12,10 @@ class MappingSyncEngine
     /** @var array<string,mixed> */
     private array $mappingConfig;
     private MappingExpressionEvaluator $expressionEvaluator;
+    /** @var array<string,array<int,string>> */
+    private array $uniqueKeyCache = [];
+    /** @var array<string,array<int,array<string,mixed>>> */
+    private array $compiledMapCache = [];
 
     /**
      * @param array<string,mixed> $entityMapping
@@ -40,6 +44,7 @@ class MappingSyncEngine
     public function syncEntity(string $entityName, MSSQL_Connection $sourceDb, PDO $targetDb): array
     {
         $entityConfig = $this->getEntityConfig($entityName);
+        $compiledMap = $this->getCompiledMap($entityName, $entityConfig);
 
         $sourceTables = $this->detectSourceTables($entityConfig);
         if ($sourceTables === []) {
@@ -66,13 +71,18 @@ class MappingSyncEngine
             foreach ($sourceRows as $row) {
                 $stats['processed']++;
                 try {
-                    $targetRows = $this->buildTargetRows($entityConfig, [
+                    $targetRows = $this->buildTargetRows($compiledMap, [
                         'AFS' => [
                             $primarySource => $row,
                         ],
                     ]);
                     foreach ($targetRows as $table => $payload) {
                         if ($payload === []) {
+                            $stats['skipped']++;
+                            continue;
+                        }
+                        $uniqueKeys = $this->getTargetUniqueKeys($table);
+                        if ($uniqueKeys !== [] && !$this->hasAllUniqueKeyValues($payload, $uniqueKeys)) {
                             $stats['skipped']++;
                             continue;
                         }
@@ -145,33 +155,36 @@ class MappingSyncEngine
     }
 
     /**
-     * @param array<string,mixed> $entityConfig
+     * @param array<int,array<string,mixed>> $compiledMap
      * @param array<string,mixed> $context
      * @return array<string,array<string,mixed>>
      */
-    private function buildTargetRows(array $entityConfig, array $context): array
+    private function buildTargetRows(array $compiledMap, array $context): array
     {
-        $map = $entityConfig['map'] ?? [];
-        if (!is_array($map) || $map === []) {
+        if ($compiledMap === []) {
             return [];
         }
 
         $result = [];
-        foreach ($map as $targetPath => $expression) {
-            if (!is_string($targetPath) || !is_string($expression)) {
+        foreach ($compiledMap as $definition) {
+            $table = $definition['table'] ?? null;
+            $column = $definition['column'] ?? null;
+            if (!is_string($table) || $table === '' || !is_string($column) || $column === '') {
                 continue;
             }
-            $targetInfo = $this->parseTargetPath($targetPath);
-            if ($targetInfo === null) {
-                continue;
-            }
-            $value = $this->expressionEvaluator->evaluate($expression, $context);
-            $table = $targetInfo['table'];
-            $column = $targetInfo['column'];
+
             if (!isset($result[$table])) {
                 $result[$table] = [];
             }
-            $result[$table][$column] = $value;
+
+            if (($definition['type'] ?? 'expression') === 'literal') {
+                $result[$table][$column] = $definition['value'] ?? null;
+                continue;
+            }
+
+            $compiled = $definition['compiled'] ?? null;
+            $compiled = is_array($compiled) ? $compiled : null;
+            $result[$table][$column] = $this->expressionEvaluator->evaluateCompiled($compiled, $context);
         }
 
         return $result;
@@ -198,5 +211,99 @@ class MappingSyncEngine
             'table' => $table,
             'column' => $column,
         ];
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    private function getTargetUniqueKeys(string $table): array
+    {
+        if (isset($this->uniqueKeyCache[$table])) {
+            return $this->uniqueKeyCache[$table];
+        }
+        try {
+            $keys = $this->targetMapper->getUniqueKeyColumns($table);
+        } catch (RuntimeException $e) {
+            $keys = [];
+        }
+        return $this->uniqueKeyCache[$table] = $keys;
+    }
+
+    /**
+     * @param array<string,mixed> $entityConfig
+     * @return array<int,array<string,mixed>>
+     */
+    private function getCompiledMap(string $entityName, array $entityConfig): array
+    {
+        if (isset($this->compiledMapCache[$entityName])) {
+            return $this->compiledMapCache[$entityName];
+        }
+
+        $mapConfig = $entityConfig['map'] ?? [];
+        $compiled = $this->compileMap($mapConfig);
+        $this->compiledMapCache[$entityName] = $compiled;
+        return $compiled;
+    }
+
+    /**
+     * @param mixed $mapConfig
+     * @return array<int,array<string,mixed>>
+     */
+    private function compileMap($mapConfig): array
+    {
+        if (!is_array($mapConfig) || $mapConfig === []) {
+            return [];
+        }
+
+        $compiled = [];
+        foreach ($mapConfig as $targetPath => $expression) {
+            if (!is_string($targetPath)) {
+                continue;
+            }
+            $targetInfo = $this->parseTargetPath($targetPath);
+            if ($targetInfo === null) {
+                continue;
+            }
+
+            if (is_string($expression)) {
+                $compiled[] = [
+                    'table' => $targetInfo['table'],
+                    'column' => $targetInfo['column'],
+                    'type' => 'expression',
+                    'compiled' => $this->expressionEvaluator->compile($expression),
+                ];
+                continue;
+            }
+
+            $compiled[] = [
+                'table' => $targetInfo['table'],
+                'column' => $targetInfo['column'],
+                'type' => 'literal',
+                'value' => $expression,
+            ];
+        }
+
+        return $compiled;
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     * @param array<int,string> $keys
+     */
+    private function hasAllUniqueKeyValues(array $payload, array $keys): bool
+    {
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $payload)) {
+                return false;
+            }
+            $value = $payload[$key];
+            if ($value === null) {
+                return false;
+            }
+            if (is_string($value) && trim($value) === '') {
+                return false;
+            }
+        }
+        return true;
     }
 }

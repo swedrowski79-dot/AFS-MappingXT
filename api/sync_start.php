@@ -14,11 +14,13 @@ try {
     // Auto-update is now handled in _bootstrap.php
     $updateResult = $GLOBALS['auto_update_result'] ?? null;
     
-    [$tracker, $evo, $mssql] = createSyncEnvironment($config, 'categories');
-    $summary = $evo->syncAll();
+    $service = new SyncService($config);
+    $result = $service->run();
+
     api_ok([
-        'status' => $tracker->getStatus(),
-        'summary' => $summary,
+        'status' => $result['status'] ?? [],
+        'summary' => $result['summary'] ?? [],
+        'duration_seconds' => $result['duration_seconds'] ?? 0,
         'github_update' => $updateResult,
     ]);
 } catch (AFS_SyncBusyException $e) {

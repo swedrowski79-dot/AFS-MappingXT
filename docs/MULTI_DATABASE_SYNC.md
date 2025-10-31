@@ -45,9 +45,8 @@ Configure multiple source-target sync pairs via environment variables.
 
 #### Primary Sync: AFS → EVO
 ```env
-SOURCE_MAPPING=mappings/afs.yml
-TARGET_MAPPING=mappings/evo.yml
 RULE_MAPPING=mappings/afs_evo.yml
+# Optional: SOURCE_MAPPING, SCHEMA_MAPPING (werden sonst aus dem Mapping abgeleitet)
 ```
 
 #### Secondary Sync: XT Orders → EVO

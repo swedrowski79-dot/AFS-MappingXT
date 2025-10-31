@@ -13,13 +13,20 @@ header_remove('Server');
 $rootDir = dirname(__DIR__);
 $configPath = $rootDir . '/config.php';
 $autoloadPath = $rootDir . '/autoload.php';
-if (!is_file($configPath) || !is_file($autoloadPath)) {
+try {
+    if (!is_file($configPath) || !is_file($autoloadPath)) {
+        throw new RuntimeException('Konfiguration oder Autoloader nicht gefunden.');
+    }
+    $config = require $configPath;
+    require $autoloadPath;
+} catch (Throwable $e) {
+    error_log('[bootstrap_web] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
     http_response_code(500);
-    echo '<h1>Fehler: System nicht korrekt eingerichtet.</h1>';
+    $detail = $e->getMessage() . ' in ' . ($e->getFile() ?? 'n/a') . ':' . ($e->getLine() ?? 0);
+    echo '<h1>Fehler: Konfiguration kann nicht geladen werden.</h1>';
+    echo '<p>' . htmlspecialchars($detail, ENT_QUOTES, 'UTF-8') . '</p>';
     exit;
 }
-$config = require $configPath;
-require $autoloadPath;
 
 // Optional security gate
 if (class_exists('SecurityValidator')) {

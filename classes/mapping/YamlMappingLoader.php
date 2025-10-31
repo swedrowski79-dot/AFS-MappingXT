@@ -12,17 +12,16 @@ final class YamlMappingLoader
         if ($text === false) {
             throw new RuntimeException('YAML-Datei konnte nicht gelesen werden: ' . $path);
         }
-        // Prefer native yaml extension when available
         if (function_exists('yaml_parse')) {
             $data = @yaml_parse($text);
-            if (is_array($data)) return $data;
+            if (is_array($data)) {
+                return $data;
+            }
         }
-        // Fallback: try JSON if the file actually is JSON
         $tryJson = json_decode($text, true);
         if (is_array($tryJson)) {
             return $tryJson;
         }
-        // Minimal YAML parser (supports: key: value, nested maps, lists '- ')
         return self::parseSimpleYaml($text);
     }
 
@@ -30,67 +29,78 @@ final class YamlMappingLoader
     {
         $lines = preg_split("/\r?\n/", $yaml) ?: [];
         $root = [];
-        $stack = [ [&$root, -1] ]; // [nodeRef, indent]
+        $stack = [ [ &$root, -1 ] ];
 
         foreach ($lines as $rawLine) {
-            if ($rawLine === '' || preg_match('/^\s*#/', $rawLine)) continue;
+            if ($rawLine === '' || preg_match('/^\s*#/', $rawLine)) {
+                continue;
+            }
             $line = rtrim($rawLine, "\r\n");
-            $indent = (int) (strlen($line) - strlen(ltrim($line, ' ')));
+            $indent = (int)(strlen($line) - strlen(ltrim($line, ' ')));
             $trim = ltrim($line, ' ');
-            // pop to correct level
-            while (count($stack) > 1 && $indent <= $stack[count($stack)-1][1]) {
+
+            while (count($stack) > 1 && $indent <= $stack[count($stack) - 1][1]) {
                 array_pop($stack);
             }
-            [$parent, $parentIndent] = &$stack[count($stack)-1];
+            [$parent, $parentIndent] = $stack[count($stack) - 1];
 
-            // list item
             if (strpos($trim, '- ') === 0) {
                 $item = substr($trim, 2);
-                if (!is_array($parent)) { $parent = []; }
-                // ensure parent is list (numeric)
+                if (!is_array($parent)) {
+                    $parent = [];
+                }
                 $parent[] = self::parseInline($item);
-                // If item ends with ':' create nested map
+                $stack[count($stack) - 1][0] = $parent;
                 if (substr($item, -1) === ':') {
                     $idx = count($parent) - 1;
                     $parent[$idx] = [];
-                    $stack[] = [&$parent[$idx], $indent];
+                    $stack[] = [ &$parent[$idx], $indent ];
                 }
-                unset($parent, $parentIndent);
                 continue;
             }
 
-            // key: value
-            if (preg_match('/^([A-Za-z0-9_\-.]+):\s*(.*)$/', $trim, $m)) {
-                $key = $m[1];
-                $val = $m[2];
-                if (!is_array($parent)) { $parent = []; }
+            if (preg_match('/^([A-Za-z0-9_\-.]+):\s*(.*)$/', $trim, $match)) {
+                $key = $match[1];
+                $val = $match[2];
+                if (!is_array($parent)) {
+                    $parent = [];
+                }
                 if ($val === '') {
                     $parent[$key] = [];
-                    $stack[] = [&$parent[$key], $indent];
+                    $stack[count($stack) - 1][0] = $parent;
+                    $stack[] = [ &$parent[$key], $indent ];
                 } else {
                     $parent[$key] = self::parseInline($val);
+                    $stack[count($stack) - 1][0] = $parent;
                 }
-                unset($parent, $parentIndent);
                 continue;
             }
-            // otherwise ignore unsupported constructs
         }
+
         return $root;
     }
 
-    private static function parseInline(string $val)
+    private static function parseInline(string $value)
     {
-        $val = trim($val);
-        if ($val === 'true') return true;
-        if ($val === 'false') return false;
-        if ($val === 'null' || $val === '~') return null;
-        if (is_numeric($val)) {
-            return strpos($val, '.') !== false ? (float)$val : (int)$val;
+        $value = trim($value);
+        if ($value === 'true') {
+            return true;
         }
-        // strip matching quotes
-        if ((str_starts_with($val, '"') && str_ends_with($val, '"')) || (str_starts_with($val, "'") && str_ends_with($val, "'"))) {
-            return substr($val, 1, -1);
+        if ($value === 'false') {
+            return false;
         }
-        return $val;
+        if ($value === 'null' || $value === '~') {
+            return null;
+        }
+        if (is_numeric($value)) {
+            return strpos($value, '.') !== false ? (float)$value : (int)$value;
+        }
+        if (
+            (str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+            (str_starts_with($value, "'") && str_ends_with($value, "'"))
+        ) {
+            return substr($value, 1, -1);
+        }
+        return $value;
     }
 }

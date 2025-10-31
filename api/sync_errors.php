@@ -21,8 +21,19 @@ if ($levelParam !== null) {
 }
 
 global $config;
-$tracker = createStatusTracker($config, 'categories');
+
+try {
+    $tracker = createStatusTracker($config, 'categories');
+    $entries = $tracker->getLogs($limit, $levels);
+} catch (Throwable $e) {
+    $entries = [[
+        'level' => 'error',
+        'message' => 'Statusdatenbank nicht verfügbar: ' . $e->getMessage(),
+        'context' => null,
+        'created_at' => date('c'),
+    ]];
+}
 
 api_ok([
-    'entries' => $tracker->getLogs($limit, $levels),
+    'entries' => $entries,
 ]);

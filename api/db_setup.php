@@ -11,7 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 global $config;
 
 try {
-    $result = runSetup($config);
+    $service = new SetupService();
+    $result = $service->run($config);
 
     try {
         $tracker = createStatusTracker($config, 'categories');
@@ -25,13 +26,8 @@ try {
     api_error($e->getMessage());
 }
 
-/**
- * Erstellt/aktualisiert die SQLite-Datenbanken.
- * Für evo.db wird – falls vorhanden – das Schema aus mappings/evo.yml abgeleitet.
- *
- * @return array<string,mixed>
- */
-function runSetup(array $config): array
+/* legacy code removed after refactor */
+/* legacy */ function _legacy_runSetup(array $config): array
 {
     $root = dirname(__DIR__);
     $scriptsDir = $root . '/scripts';
@@ -115,38 +111,73 @@ function runSetup(array $config): array
  */
 function applyEvoSchemaFromYaml(PDO $pdo, array $yaml): array
 {
-    $tables = $yaml['tables'] ?? [];
-    if (!is_array($tables)) {
-        throw new AFS_ConfigurationException('Ungültige evo.yml: Abschnitt "tables" fehlt.');
+    $definitions = [];
+
+    $entities = $yaml['entities'] ?? [];
+    if (is_array($entities)) {
+        foreach ($entities as $name => $definition) {
+            if (!is_array($definition)) {
+                continue;
+            }
+            $table = (string)($definition['table'] ?? $name);
+            $definitions[$table] = $definition;
+        }
+    }
+
+    $relationships = $yaml['relationships'] ?? [];
+    if (is_array($relationships)) {
+        foreach ($relationships as $name => $definition) {
+            if (!is_array($definition)) {
+                continue;
+            }
+            $table = (string)($definition['table'] ?? $name);
+            $definitions[$table] = $definition;
+        }
     }
 
     $created = [];
     $altered = [];
 
-    foreach ($tables as $tableName => $def) {
-        if (!is_array($def)) continue;
-        $fields = array_values(array_unique(array_map('strval', $def['fields'] ?? [])));
-        $pk = array_values(array_unique(array_map('strval', $def['keys'] ?? [])));
-        $bk = array_values(array_unique(array_map('strval', $def['business_key'] ?? [])));
+    if ($definitions === [] && isset($yaml['tables']) && is_array($yaml['tables'])) {
+        foreach ($yaml['tables'] as $tableName => $def) {
+            if (!is_array($def)) {
+                continue;
+            }
+            $fieldsList = $def['fields'] ?? [];
+            $fields = [];
+            if (is_array($fieldsList)) {
+                if (array_keys($fieldsList) === range(0, count($fieldsList) - 1)) {
+                    foreach ($fieldsList as $fieldName) {
+                        $fields[$fieldName] = [];
+                    }
+                } else {
+                    $fields = $fieldsList;
+                }
+            }
+            $definitions[$tableName] = [
+                'fields' => $fields,
+                'primary_key' => [],
+                'business_key' => normalizeList($def['business_key'] ?? []),
+                'unique_constraint' => normalizeList($def['keys'] ?? []),
+            ];
+        }
+    }
 
-        // Felder um PK/BK erweitern, damit vorhandene Spalten gesichert sind
-        $allCols = $fields;
-        foreach (array_merge($pk, $bk) as $c) {
-            if ($c !== '' && !in_array($c, $allCols, true)) $allCols[] = $c;
+    foreach ($definitions as $table => $definition) {
+        $fields = $definition['fields'] ?? [];
+        if (!is_array($fields) || $fields === []) {
+            continue;
         }
 
-        if (!tableExists($pdo, (string)$tableName)) {
-            createTableFromDef($pdo, (string)$tableName, $allCols, $pk, $bk);
-            $created[] = (string)$tableName;
+        if (!tableExists($pdo, $table)) {
+            createTableFromDefinition($pdo, $table, $definition);
+            $created[] = $table;
         } else {
-            $added = addMissingColumns($pdo, (string)$tableName, $allCols);
+            $added = addMissingColumnsFromDefinition($pdo, $table, $definition);
             if ($added) {
-                $altered[(string)$tableName] = $added;
+                $altered[$table] = $added;
             }
-            // Sichere Unique-Indizes für business_key, wenn angegeben
-            if ($bk) {
-                ensureUniqueIndex($pdo, (string)$tableName, $bk);
-            }
+            ensureUniqueIndexes($pdo, $table, $definition);
         }
     }
 
@@ -172,52 +203,111 @@ function tableExists(PDO $pdo, string $table): bool
  * Erzeugt eine Tabelle aus Spaltenliste und PK/BK.
  * Datentypen: INTEGER für ID und *_ID, sonst TEXT (konservativ).
  */
-function createTableFromDef(PDO $pdo, string $table, array $columns, array $pk, array $bk): void
+function createTableFromDefinition(PDO $pdo, string $table, array $definition): void
 {
-    $colDefs = [];
-    $haveExplicitPk = !empty($pk);
+    $fields = $definition['fields'] ?? [];
+    if (!is_array($fields)) {
+        return;
+    }
 
-    foreach ($columns as $col) {
-        $type = inferType($col, $haveExplicitPk);
-        // Wenn kein expliziter PK gesetzt ist und die Spalte genau "ID" heißt, Primärschlüssel verwenden
-        if (!$haveExplicitPk && strcasecmp($col, 'ID') === 0) {
-            $colDefs[] = quoteIdent($col) . ' INTEGER PRIMARY KEY AUTOINCREMENT';
-        } else {
-            $colDefs[] = quoteIdent($col) . ' ' . $type;
+    $primaryKey = normalizeList($definition['primary_key'] ?? []);
+    $businessKey = normalizeList($definition['business_key'] ?? $definition['unique_key'] ?? []);
+    $uniqueConstraint = normalizeList($definition['unique_constraint'] ?? []);
+    $foreignKeys = $definition['foreign_keys'] ?? [];
+
+    $columnParts = [];
+    $autoPrimaryColumns = [];
+
+    foreach ($fields as $columnName => $columnDef) {
+        if (is_int($columnName)) {
+            $columnName = (string)$columnDef;
+            $columnDef = [];
+        }
+        if (!is_array($columnDef)) {
+            $columnDef = [];
+        }
+        $columnParts[] = buildColumnDefinitionSql($columnName, $columnDef, $primaryKey, true, $autoPrimaryColumns, false);
+    }
+
+    $constraints = [];
+
+    if ($primaryKey && empty($autoPrimaryColumns)) {
+        $constraints[] = 'PRIMARY KEY (' . implode(', ', array_map('quoteIdent', $primaryKey)) . ')';
+    }
+
+    if ($uniqueConstraint) {
+        $constraints[] = 'UNIQUE (' . implode(', ', array_map('quoteIdent', $uniqueConstraint)) . ')';
+    }
+
+    if (is_array($foreignKeys)) {
+        foreach ($foreignKeys as $fk) {
+            if (!is_array($fk)) {
+                continue;
+            }
+            $columns = normalizeList($fk['column'] ?? $fk['columns'] ?? []);
+            $references = (string)($fk['references'] ?? '');
+            if ($columns === [] || $references === '') {
+                continue;
+            }
+            if (!str_contains($references, '.')) {
+                continue;
+            }
+            [$refTable, $refColumn] = array_map('trim', explode('.', $references, 2));
+            if ($refTable === '' || $refColumn === '') {
+                continue;
+            }
+            $constraint = sprintf(
+                'FOREIGN KEY (%s) REFERENCES %s(%s)',
+                implode(', ', array_map('quoteIdent', $columns)),
+                quoteIdent($refTable),
+                quoteIdent($refColumn)
+            );
+            if (!empty($fk['on_delete'])) {
+                $constraint .= ' ON DELETE ' . strtoupper((string)$fk['on_delete']);
+            }
+            if (!empty($fk['on_update'])) {
+                $constraint .= ' ON UPDATE ' . strtoupper((string)$fk['on_update']);
+            }
+            $constraints[] = $constraint;
         }
     }
 
-    $pkSql = '';
-    if ($haveExplicitPk) {
-        $pkQuoted = array_map('quoteIdent', $pk);
-        $pkSql = ', PRIMARY KEY (' . implode(', ', $pkQuoted) . ')';
-    }
-
-    $sql = 'CREATE TABLE IF NOT EXISTS ' . quoteIdent($table) . ' (' . implode(', ', $colDefs) . $pkSql . ')';
+    $sql = 'CREATE TABLE IF NOT EXISTS ' . quoteIdent($table) . ' ('
+        . implode(', ', array_merge($columnParts, $constraints)) . ')';
     $pdo->exec($sql);
 
-    // Business Key als Unique-Index absichern (falls vorhanden)
-    if ($bk) {
-        ensureUniqueIndex($pdo, $table, $bk);
-    }
+    ensureUniqueIndexes($pdo, $table, $definition);
 }
 
-/**
- * Ergänzt fehlende Spalten (TEXT/INTEGER konservativ), PK wird nicht verändert.
- *
- * @return array<int,string> hinzugefügte Spaltennamen
- */
-function addMissingColumns(PDO $pdo, string $table, array $columns): array
+function addMissingColumnsFromDefinition(PDO $pdo, string $table, array $definition): array
 {
-    $existing = currentColumns($pdo, $table);
-    $added = [];
-    foreach ($columns as $col) {
-        if (!isset($existing[$col])) {
-            $type = inferType($col, true);
-            $pdo->exec('ALTER TABLE ' . quoteIdent($table) . ' ADD COLUMN ' . quoteIdent($col) . ' ' . $type);
-            $added[] = $col;
-        }
+    $fields = $definition['fields'] ?? [];
+    if (!is_array($fields) || $fields === []) {
+        return [];
     }
+
+    $existing = currentColumns($pdo, $table);
+    $primaryKey = normalizeList($definition['primary_key'] ?? []);
+    $added = [];
+
+    foreach ($fields as $columnName => $columnDef) {
+        if (is_int($columnName)) {
+            $columnName = (string)$columnDef;
+            $columnDef = [];
+        }
+        if (isset($existing[$columnName])) {
+            continue;
+        }
+        if (!is_array($columnDef)) {
+            $columnDef = [];
+        }
+        $sql = buildColumnDefinitionSql($columnName, $columnDef, $primaryKey, false, $tmp = [], true);
+        $pdo->exec('ALTER TABLE ' . quoteIdent($table) . ' ADD COLUMN ' . $sql);
+        $added[] = $columnName;
+    }
+
+    ensureUniqueIndexes($pdo, $table, $definition);
+
     return $added;
 }
 
@@ -236,13 +326,94 @@ function currentColumns(PDO $pdo, string $table): array
     return $cols;
 }
 
-function inferType(string $column, bool $hasExplicitPk): string
+function normalizeList($value): array
 {
-    $c = strtolower($column);
-    if ($c === 'id' && !$hasExplicitPk) return 'INTEGER';
-    if (str_ends_with($c, '_id')) return 'INTEGER';
-    if (preg_match('/^(menge|anzahl|preis|rabatt|gewicht|betrag|nummer|laenge|breite|hoehe)$/i', $column)) return 'INTEGER';
-    return 'TEXT';
+    if ($value === null) {
+        return [];
+    }
+    if (is_array($value)) {
+        $result = [];
+        foreach ($value as $item) {
+            $item = trim((string)$item);
+            if ($item !== '') {
+                $result[] = $item;
+            }
+        }
+        return array_values(array_unique($result));
+    }
+    $value = trim((string)$value);
+    return $value === '' ? [] : [$value];
+}
+
+function mapSqliteType(?string $type): string
+{
+    $type = strtolower($type ?? '');
+    return match ($type) {
+        'int', 'integer', 'smallint', 'bigint', 'tinyint' => 'INTEGER',
+        'real', 'float', 'double', 'decimal', 'numeric' => 'REAL',
+        'bool', 'boolean' => 'INTEGER',
+        'blob' => 'BLOB',
+        default => 'TEXT',
+    };
+}
+
+function formatDefaultValue($value): string
+{
+    if ($value === null) {
+        return 'NULL';
+    }
+    if (is_bool($value)) {
+        return $value ? '1' : '0';
+    }
+    if (is_int($value) || is_float($value)) {
+        return (string)$value;
+    }
+    $str = (string)$value;
+    return "'" . str_replace("'", "''", $str) . "'";
+}
+
+function buildColumnDefinitionSql(string $column, array $definition, array $primaryKey, bool $allowPrimaryClause, array &$autoPrimaryColumns, bool $forAlter): string
+{
+    $type = mapSqliteType($definition['type'] ?? null);
+    $parts = [quoteIdent($column), $type];
+
+    $autoIncrement = !empty($definition['auto_increment']);
+    if ($autoIncrement && !$forAlter) {
+        $parts[] = 'PRIMARY KEY AUTOINCREMENT';
+        $autoPrimaryColumns[] = $column;
+    } elseif (!$forAlter && $allowPrimaryClause && in_array($column, $primaryKey, true) && count($primaryKey) === 1) {
+        $parts[] = 'PRIMARY KEY';
+    }
+
+    $nullable = true;
+    if (array_key_exists('nullable', $definition)) {
+        $nullable = (bool)$definition['nullable'];
+    } elseif (array_key_exists('required', $definition)) {
+        $nullable = !(bool)$definition['required'];
+    }
+
+    if (!$nullable && !$autoIncrement && !$forAlter) {
+        $parts[] = 'NOT NULL';
+    }
+
+    if (array_key_exists('default', $definition)) {
+        $parts[] = 'DEFAULT ' . formatDefaultValue($definition['default']);
+    }
+
+    return implode(' ', array_unique($parts));
+}
+
+function ensureUniqueIndexes(PDO $pdo, string $table, array $definition): void
+{
+    $businessKey = normalizeList($definition['business_key'] ?? $definition['unique_key'] ?? []);
+    if ($businessKey) {
+        ensureUniqueIndex($pdo, $table, $businessKey);
+    }
+
+    $uniqueConstraint = normalizeList($definition['unique_constraint'] ?? []);
+    if ($uniqueConstraint) {
+        ensureUniqueIndex($pdo, $table, $uniqueConstraint);
+    }
 }
 
 function ensureUniqueIndex(PDO $pdo, string $table, array $columns): void

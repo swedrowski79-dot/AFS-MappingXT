@@ -10,7 +10,16 @@ if (function_exists('set_time_limit')) {
 $configFile = $root . '/config.php';
 $autoloadFile = $root . '/autoload.php';
 
-if (!is_file($configFile) || !is_file($autoloadFile)) {
+try {
+    if (!is_file($configFile) || !is_file($autoloadFile)) {
+        throw new RuntimeException('Konfiguration oder Autoloader nicht gefunden.');
+    }
+
+    $config = require $configFile;
+    require_once $autoloadFile;
+} catch (Throwable $e) {
+    error_log('[bootstrap_api] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+
     http_response_code(500);
     header('Content-Type: application/json; charset=utf-8');
     header('X-Content-Type-Options: nosniff');
@@ -18,12 +27,11 @@ if (!is_file($configFile) || !is_file($autoloadFile)) {
     header('X-XSS-Protection: 1; mode=block');
     header_remove('X-Powered-By');
     header_remove('Server');
-    echo json_encode(['ok' => false, 'error' => 'System nicht korrekt eingerichtet.']);
+
+    $detail = $e->getMessage() . ' in ' . ($e->getFile() ?? 'n/a') . ':' . ($e->getLine() ?? 0);
+    echo json_encode(['ok' => false, 'error' => 'Konfiguration kann nicht geladen werden: ' . $detail]);
     exit;
 }
-
-$config = require $configFile;
-require_once $autoloadFile;
 
 function api_json(array $payload, int $status = 200): void
 {
@@ -177,6 +185,42 @@ function createSyncEnvironment(array $config, string $job = 'categories'): array
     $evo->setSourceConnection($mssql);
 
     return [$tracker, $evo, $mssql];
+}
+
+function createMappingOnlyEnvironment(array $config, string $job = 'categories'): array
+{
+    $tracker = createStatusTracker($config, $job);
+    $status = $tracker->getStatus();
+    if (($status['state'] ?? '') === 'running') {
+        throw new AFS_SyncBusyException('Synchronisation läuft bereits. Bitte warten.');
+    }
+    $pdo = createEvoPdo($config);
+    $mssql = createMssql($config);
+    try {
+        $mssql->scalar('SELECT 1');
+    } catch (Throwable $e) {
+        $mssql->close();
+        throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
+    }
+
+    $primary = $config['sync_mappings']['primary'] ?? [];
+    $sourcePath = isset($primary['source']) && is_string($primary['source']) && $primary['source'] !== ''
+        ? $primary['source'] : dirname(__DIR__) . '/mappings/afs.yml';
+    $schemaPath = isset($primary['schema']) && is_string($primary['schema']) && $primary['schema'] !== ''
+        ? $primary['schema'] : dirname(__DIR__) . '/mappings/evo.yml';
+    $rulesPath  = isset($primary['rules'])  && is_string($primary['rules'])  && $primary['rules']  !== ''
+        ? $primary['rules']  : dirname(__DIR__) . '/mappings/afs_evo.yml';
+
+    if (!is_file($sourcePath) || !is_file($schemaPath) || !is_file($rulesPath)) {
+        throw new AFS_ConfigurationException('Mapping-Dateien nicht gefunden: ' . json_encode([
+            'source' => $sourcePath,
+            'schema' => $schemaPath,
+            'rules'  => $rulesPath,
+        ], JSON_UNESCAPED_SLASHES));
+    }
+
+    $engine = MappingSyncEngine::fromFiles($sourcePath, $schemaPath, $rulesPath);
+    return [$tracker, $engine, $mssql, $pdo];
 }
 
 /**

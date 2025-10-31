@@ -19,12 +19,8 @@
     const btnStatusReset = document.getElementById('btn-status-reset');
     const btnRefresh = document.getElementById('btn-refresh');
     const btnClear = document.getElementById('btn-clear');
-    const btnDebug = document.getElementById('btn-debug-view');
     const btnSetup = document.getElementById('btn-setup');
     const btnMigrate = document.getElementById('btn-migrate');
-    const debugDb = document.getElementById('debug-db');
-    const debugTable = document.getElementById('debug-table');
-    const debugLimit = document.getElementById('debug-limit');
     const logList = document.getElementById('log-list');
     const logEmpty = document.getElementById('log-empty');
     const logsCount = document.getElementById('logs-count');
@@ -34,7 +30,15 @@
     const remoteServersList = document.getElementById('remote-servers-list');
     const databaseStatusList = document.getElementById('database-status-list');
 
-    btnStart.dataset.busy = '0';
+    // Optional debug controls (may be absent on this page)
+    const btnDebug = document.getElementById('btn-debug');
+    const debugDb = document.getElementById('debug-db');
+    const debugTable = document.getElementById('debug-table');
+    const debugLimit = document.getElementById('debug-limit');
+
+    if (btnStart) {
+      btnStart.dataset.busy = '0';
+    }
 
     let pollingTimer = null;
     let healthTimer = null;
@@ -89,8 +93,10 @@
     }
 
     function setState(state, message) {
-      stateEl.dataset.state = state;
-      stateEl.textContent = `Status: ${state}`;
+      if (stateEl) {
+        stateEl.dataset.state = state;
+        stateEl.textContent = `Status: ${state}`;
+      }
       if (message) {
         messageEl.textContent = message;
       }
@@ -103,8 +109,8 @@
       const displayMessage = message || (state === 'idle' ? 'Noch keine Synchronisation gestartet.' : '');
 
       setState(state, displayMessage);
-      progressEl.style.width = percent + '%';
-      numbersEl.textContent = `${processed} / ${total} (${percent}%)`;
+      if (progressEl) progressEl.style.width = percent + '%';
+      if (numbersEl) numbersEl.textContent = `${processed} / ${total} (${percent}%)`;
 
       if (completeStates.includes(state) && status.started_at && status.finished_at) {
         const started = new Date(status.started_at).getTime();
@@ -112,27 +118,31 @@
         if (!Number.isNaN(started) && !Number.isNaN(finished)) {
           durationEl.textContent = formatDuration((finished - started) / 1000);
         } else {
-          durationEl.textContent = '–';
+      if (durationEl) durationEl.textContent = '–';
         }
       } else {
         durationEl.textContent = '–';
       }
 
-      startedEl.textContent = formatDate(status.started_at ?? null);
-      updatedEl.textContent = formatDate(status.updated_at ?? null);
+      if (startedEl) startedEl.textContent = formatDate(status.started_at ?? null);
+      if (updatedEl) updatedEl.textContent = formatDate(status.updated_at ?? null);
 
-      if (stage) {
-        stageEl.hidden = false;
-        const stageLabel = stage.replace(/_/g, ' ');
-        stageEl.textContent = `Aktuelle Phase: ${stageLabel}`;
-      } else {
-        stageEl.hidden = true;
+      if (stageEl) {
+        if (stage) {
+          stageEl.hidden = false;
+          const stageLabel = stage.replace(/_/g, ' ');
+          stageEl.textContent = `Aktuelle Phase: ${stageLabel}`;
+        } else {
+          stageEl.hidden = true;
+        }
       }
 
-      if (btnStart.dataset.busy !== '1') {
-        btnStart.disabled = state === 'running';
+      if (btnStart) {
+        if (btnStart.dataset.busy !== '1') {
+          btnStart.disabled = state === 'running';
+        }
+        btnStart.title = state === 'running' ? 'Synchronisation läuft bereits' : '';
       }
-      btnStart.title = state === 'running' ? 'Synchronisation läuft bereits' : '';
     }
 
     function levelBadge(level) {
@@ -143,15 +153,23 @@
     }
 
     function renderLog(entries) {
-      logList.innerHTML = '';
-      logsCount.textContent = entries.length ? `${entries.length} Einträge` : '';
+      if (logList) {
+        logList.innerHTML = '';
+      }
+      if (logsCount) {
+        logsCount.textContent = entries.length ? `${entries.length} Einträge` : '';
+      }
 
       if (!entries.length) {
-        logEmpty.hidden = false;
+        if (logEmpty) {
+          logEmpty.hidden = false;
+        }
         return;
       }
 
-      logEmpty.hidden = true;
+      if (logEmpty) {
+        logEmpty.hidden = true;
+      }
 
       entries.forEach(entry => {
         const div = document.createElement('div');
@@ -227,21 +245,24 @@
           div.appendChild(details);
         }
 
-        logList.appendChild(div);
+        if (logList) {
+          logList.appendChild(div);
+        }
       });
     }
 
     function renderHealth(health) {
       const { sqlite = {}, mssql = {} } = health;
-      updateHealthItem(healthEvo, sqlite.evo ?? {});
-      updateHealthItem(healthStatus, sqlite.status ?? {});
-      updateHealthItem(healthMssql, mssql ?? {});
+      if (healthEvo) updateHealthItem(healthEvo, sqlite.evo ?? {});
+      if (healthStatus) updateHealthItem(healthStatus, sqlite.status ?? {});
+      if (healthMssql) updateHealthItem(healthMssql, mssql ?? {});
     }
 
     function updateHealthItem(element, data) {
+      if (!element) return; // element may be absent on some pages
       const ok = data.ok === true;
       const status = data.ok === true ? 'ok' : (data.ok === false ? 'error' : 'warning');
-      element.dataset.status = status;
+      if (element.dataset) { element.dataset.status = status; } else { element.setAttribute('data-status', status); }
       const stateSpan = element.querySelector('.state');
       if (stateSpan) {
         stateSpan.textContent = ok ? 'OK' : (data.message ? data.message : 'Prüfung fehlgeschlagen');
@@ -502,29 +523,33 @@
       }
     }
 
-    btnStart.addEventListener('click', async () => {
-      btnStart.dataset.busy = '1';
-      btnStart.disabled = true;
-      setState('running', 'Synchronisation gestartet...');
+    if (btnStart) {
+      btnStart.addEventListener('click', async () => {
+        btnStart.dataset.busy = '1';
+        btnStart.disabled = true;
+        setState('running', 'Synchronisation gestartet...');
 
-      try {
-        await fetchJson('sync_start.php', { method: 'POST' });
-        await Promise.all([refreshStatus(), refreshLog(), refreshDatabaseStatus()]);
-      } catch (err) {
-        setState('error', err.message);
-        await refreshLog();
-      } finally {
-        btnStart.dataset.busy = '0';
-        btnStart.disabled = stateEl.dataset.state === 'running';
-      }
-    });
+        try {
+          await fetchJson('sync_start.php', { method: 'POST' });
+          await Promise.all([refreshStatus(), refreshLog(), refreshDatabaseStatus()]);
+        } catch (err) {
+          setState('error', err.message);
+          await refreshLog();
+        } finally {
+          btnStart.dataset.busy = '0';
+          btnStart.disabled = stateEl.dataset.state === 'running';
+        }
+      });
+    }
 
-    btnRefresh.addEventListener('click', async () => {
-      await Promise.all([refreshStatus(), refreshLog(), refreshHealth(), refreshDatabaseStatus()]);
-      if (window.CONNECTIONS_REFRESH) {
-        try { await window.CONNECTIONS_REFRESH(); } catch {}
+    if (btnRefresh) {
+      btnRefresh.addEventListener('click', async () => {
+        await Promise.all([refreshStatus(), refreshLog(), refreshHealth(), refreshDatabaseStatus()]);
+        if (window.CONNECTIONS_REFRESH) {
+          try { await window.CONNECTIONS_REFRESH(); } catch {}
+        }
+      });
       }
-    });
 
     if (btnDebug) {
       btnDebug.addEventListener('click', () => {

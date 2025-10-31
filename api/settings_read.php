@@ -91,7 +91,7 @@ function getSettingCategories(): array
         'sync' => [
             'label' => '🔄 Multi-Database Sync',
             'description' => 'Konfiguration für mehrere Datenbank-Synchronisationen',
-            'keys' => ['SOURCE_MAPPING', 'TARGET_MAPPING', 'SOURCE_MAPPING_2', 'TARGET_MAPPING_2',
+            'keys' => ['RULE_MAPPING', 'SCHEMA_MAPPING', 'SOURCE_MAPPING', 'SOURCE_MAPPING_2', 'TARGET_MAPPING_2',
                        'SOURCE_MAPPING_3', 'TARGET_MAPPING_3', 'ORDERS_DB_PATH', 'ORDERS_DELTA_DB_PATH',
                        'SYNC_ENABLED_ACTIONS', 'SYNC_BIDIRECTIONAL'],
         ],
