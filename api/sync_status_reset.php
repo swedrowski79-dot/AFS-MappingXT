@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/_bootstrap.php';
@@ -24,6 +25,6 @@ try {
     api_ok([
         'status' => $tracker->getStatus(),
     ]);
-} catch (Throwable $e) {
+} catch (\Throwable $e) {
     api_error($e->getMessage());
 }

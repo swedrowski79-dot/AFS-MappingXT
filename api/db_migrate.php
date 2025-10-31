@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/_bootstrap.php';
@@ -10,27 +11,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 global $config;
 
 try {
-    $pdo = createEvoPdo($config);
-    $changes = runSchemaMigration($pdo);
+    $service = new MigrateService();
+    $changes = $service->run($config);
 
     try {
         $tracker = createStatusTracker($config, 'categories');
         $tracker->logInfo('Schema-Migration ausgeführt', $changes, 'maintenance');
-    } catch (Throwable $e) {
+    } catch (\Throwable $e) {
         // Wenn Status-Tracker fehlschlägt, Migration nicht abbrechen
     }
 
     api_ok(['changes' => $changes]);
-} catch (Throwable $e) {
+} catch (\Throwable $e) {
     api_error($e->getMessage());
 }
 
-/**
- * Führt dieselben Anpassungen wie scripts/migrate_update_columns.php aus.
- *
- * @return array<string,mixed>
- */
-function runSchemaMigration(PDO $pdo): array
+/* legacy code removed after refactor */
+/* legacy */ function _legacy_runSchemaMigration(PDO $pdo): array
 {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);

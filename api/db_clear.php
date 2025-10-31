@@ -12,13 +12,13 @@ global $config;
 try {
     $tracker = createStatusTracker($config, 'categories');
     $pdo = createEvoPdo($config);
-    $result = AFS_Evo_Reset::clear($pdo);
+    $result = EVO_Reset::clear($pdo);
 
     $tracker->logInfo('EVO-Datenbank geleert', ['tables' => $result], 'maintenance');
 
     api_ok(['tables' => $result]);
-} catch (Throwable $e) {
-    if (isset($tracker) && $tracker instanceof AFS_Evo_StatusTracker) {
+} catch (\Throwable $e) {
+    if (isset($tracker) && $tracker instanceof STATUS_Tracker) {
         $tracker->logError('Fehler beim Leeren der EVO-Datenbank', [
             'error' => $e->getMessage(),
         ], 'maintenance');

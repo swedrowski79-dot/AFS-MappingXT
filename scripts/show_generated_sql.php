@@ -1,8 +1,5 @@
 #!/usr/bin/env php
 <?php
-/**
- * Display generated SQL statements for documentation purposes
- */
 
 declare(strict_types=1);
 
@@ -10,52 +7,62 @@ require_once __DIR__ . '/../autoload.php';
 
 echo "=== Generated SQL Statements from Target Mapping ===\n\n";
 
-$mappingPath = __DIR__ . '/../mappings/target_sqlite.yml';
-$targetMapping = new AFS_TargetMappingConfig($mappingPath);
-$sqlBuilder = new AFS_SqlBuilder($targetMapping);
+$mappingPath = __DIR__ . '/../schemas/evo.yml';
+if (!is_file($mappingPath)) {
+    $legacy = __DIR__ . '/../mappings/evo.yml';
+    if (is_file($legacy)) {
+        $mappingPath = $legacy;
+    }
+}
+$mappingData = YamlMappingLoader::load($mappingPath);
+$targetMapper = TargetMapper::fromFile($mappingPath);
 
-echo "Mapping Version: " . $targetMapping->getVersion() . "\n";
+$version = $mappingData['version'] ?? 'n/a';
+echo "Mapping Version: {$version}\n";
 echo str_repeat('=', 80) . "\n\n";
 
-// Article UPSERT
-echo "1. Article UPSERT Statement:\n";
-echo str_repeat('-', 80) . "\n";
-$articleSql = $sqlBuilder->buildEntityUpsert('articles');
-echo $articleSql . "\n\n";
+$printUpsert = function(string $title, string $tableName) use ($targetMapper): void {
+    try {
+        $fields = $targetMapper->getFields($tableName);
+    } catch (Throwable $e) {
+        echo "⚠ Table {$tableName} not defined in mapping\n\n";
+        return;
+    }
+    if ($fields === []) {
+        echo "⚠ Table {$tableName} has no fields in mapping\n\n";
+        return;
+    }
+    $sql = $targetMapper->generateUpsertSql($tableName, $fields);
+    echo $title . "\n";
+    echo str_repeat('-', 80) . "\n";
+    echo $sql . "\n\n";
+};
 
-// Article Images Relationship
-echo "2. Article-Images Relationship UPSERT:\n";
-echo str_repeat('-', 80) . "\n";
-$imageRelSql = $sqlBuilder->buildRelationshipUpsert('article_images');
-echo $imageRelSql . "\n\n";
+$printDelete = function(string $title, string $tableName) use ($targetMapper): void {
+    try {
+        $keys = $targetMapper->getUniqueKeyColumns($tableName);
+    } catch (Throwable $e) {
+        echo "⚠ Table {$tableName} not defined in mapping\n\n";
+        return;
+    }
+    if ($keys === []) {
+        echo "⚠ Table {$tableName} has no key definition in mapping\n\n";
+        return;
+    }
+    $sql = $targetMapper->generateDeleteSql($tableName, $keys);
+    echo $title . "\n";
+    echo str_repeat('-', 80) . "\n";
+    echo $sql . "\n\n";
+};
 
-echo "3. Article-Images Relationship DELETE:\n";
-echo str_repeat('-', 80) . "\n";
-$imageDelSql = $sqlBuilder->buildRelationshipDelete('article_images', ['Artikel_ID', 'Bild_ID']);
-echo $imageDelSql . "\n\n";
-
-// Article Documents Relationship
-echo "4. Article-Documents Relationship UPSERT:\n";
-echo str_repeat('-', 80) . "\n";
-$docRelSql = $sqlBuilder->buildRelationshipUpsert('article_documents');
-echo $docRelSql . "\n\n";
-
-echo "5. Article-Documents Relationship DELETE:\n";
-echo str_repeat('-', 80) . "\n";
-$docDelSql = $sqlBuilder->buildRelationshipDelete('article_documents', ['Artikel_ID', 'Dokument_ID']);
-echo $docDelSql . "\n\n";
-
-// Article Attributes Relationship
-echo "6. Article-Attributes Relationship UPSERT:\n";
-echo str_repeat('-', 80) . "\n";
-$attrRelSql = $sqlBuilder->buildRelationshipUpsert('article_attributes');
-echo $attrRelSql . "\n\n";
-
-echo "7. Article-Attributes Relationship DELETE:\n";
-echo str_repeat('-', 80) . "\n";
-$attrDelSql = $sqlBuilder->buildRelationshipDelete('article_attributes', ['Artikel_ID', 'Attribute_ID']);
-echo $attrDelSql . "\n\n";
+$printUpsert('1. Artikel UPSERT Statement:', 'Artikel');
+$printUpsert('2. Artikel-Bilder Relationship UPSERT:', 'Artikel_Bilder');
+$printDelete('3. Artikel-Bilder Relationship DELETE:', 'Artikel_Bilder');
+$printUpsert('4. Dokument-Artikel Relationship UPSERT:', 'Document_Artikel');
+$printDelete('5. Dokument-Artikel Relationship DELETE:', 'Document_Artikel');
+$printUpsert('6. Artikel-Attribute Relationship UPSERT:', 'Artikel_Attribute');
+$printDelete('7. Artikel-Attribute Relationship DELETE:', 'Artikel_Attribute');
 
 echo str_repeat('=', 80) . "\n";
-echo "All SQL statements are now generated dynamically from target_sqlite.yml\n";
+echo "All SQL statements are now generated dynamically from evo.yml\n";
 echo "Any changes to the mapping will automatically update these statements.\n";

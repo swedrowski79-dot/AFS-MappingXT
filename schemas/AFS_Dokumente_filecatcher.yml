@@ -1,0 +1,62 @@
+version: 1
+connection: evo
+driver: filecatcher
+introspect: true
+
+# Quelle und Ziel
+source:
+  search_path: "srcFiles/Dokumente"     # Ordner, in dem nach Dokumenten gesucht wird
+  recursive: true
+  include_ext: ["pdf", "doc", "docx", "xls", "xlsx"]
+  follow_symlinks: false
+
+vault:
+  base_path: "files/Documents"           # Zielordner für Dokumente
+  filename_pattern: "{file_name}"
+  checksum:
+    algo: "mtime_size_xxh64"            # Hash aus Änderungsdatum + Dateigröße
+    encode: "hex"
+
+table:
+  name: file_vault
+  keys: [file_name]
+
+  fields:
+    - file_name
+    - checksum
+    - size
+    - mtime
+    - ext
+    - mime
+    - source_path
+    - stored_file
+    - stored_path
+    - stored_at
+    - change
+    - updated_at
+
+  logic:
+    map:
+      file_name:   "$src.file_name"
+      ext:         "$src.ext"
+      size:        "$src.size"
+      mtime:       "$src.mtime"
+      mime:        "$src.mime"
+      source_path: "$src.path"
+      checksum:    "$func.easy_checksum($src.mtime, $src.size)"
+      stored_file: "$func.vault_name('{file_name}')"
+      stored_path: ""
+    actions:
+      - type: file_copy
+        from: "$src.path"
+        to:   "$func.vault_path(stored_path, stored_file)"
+        only_when_changed: true
+    delta:
+      fields: [checksum, size, mime]
+    upsert:
+      insert: [file_name, checksum, size, mtime, ext, mime, source_path, stored_file, stored_path, stored_at, change, updated_at]
+      update: [checksum, size, mtime, ext, mime, source_path, stored_file, stored_path, stored_at, change, updated_at]
+    flags:
+      on_insert: { change: =1, stored_at: $func.now() }
+      on_update_when_delta_changed: { change: =1, stored_at: $func.now() }
+      on_update_when_no_change: { change: =0 }

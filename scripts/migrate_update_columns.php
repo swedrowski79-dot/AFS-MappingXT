@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+
 declare(strict_types=1);
 
 if (PHP_SAPI !== 'cli') {
@@ -48,6 +49,22 @@ if ($added === 0) {
 foreach (array_keys($targets) as $table) {
     if (columnExists($pdo, $table, 'update')) {
         $pdo->exec("UPDATE \"{$table}\" SET \"update\" = COALESCE(\"update\", 0)");
+    }
+}
+
+$relationshipColumns = [
+    'Artikel_Dokumente' => [
+        'XT_ARTIKEL_ID' => 'ALTER TABLE "Artikel_Dokumente" ADD COLUMN "XT_ARTIKEL_ID" INTEGER',
+        'XT_Dokument_ID' => 'ALTER TABLE "Artikel_Dokumente" ADD COLUMN "XT_Dokument_ID" INTEGER',
+    ],
+];
+
+foreach ($relationshipColumns as $table => $definitions) {
+    foreach ($definitions as $column => $statement) {
+        if (!columnExists($pdo, $table, $column)) {
+            $pdo->exec($statement);
+            fwrite(STDOUT, sprintf('Spalte "%s" zu %s hinzugefügt.' . PHP_EOL, $column, $table));
+        }
     }
 }
 

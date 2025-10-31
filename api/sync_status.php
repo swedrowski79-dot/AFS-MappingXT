@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/_bootstrap.php';
@@ -8,8 +9,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 global $config;
-$tracker = createStatusTracker($config, 'categories');
 
-api_ok([
-    'status' => $tracker->getStatus(),
-]);
+$service = new StatusService();
+$status = $service->get($config);
+api_ok(['status' => $status]);
+

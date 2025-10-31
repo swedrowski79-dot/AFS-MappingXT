@@ -21,6 +21,9 @@ if (!is_file($configPath)) {
 }
 $config = require $configPath;
 
+// Security check: If security is enabled, only allow CLI access from API context
+SecurityValidator::validateCliAccess($config, 'indexcli.php');
+
 /**
  * Very small option parser: command [--key=value] [--flag]
  */
@@ -85,6 +88,7 @@ Verfügbare Kommandos:
   log                 Protokollausgabe (alle Ebenen) – optional: --level=info|warning|error
   errors              Alias für "log --level=error"
   clear-errors        Protokoll leeren
+  update              Manuell nach Updates suchen und installieren
 
 Optionen:
   --job=NAME               Name des Sync-Jobs (Standard: categories)
@@ -96,26 +100,91 @@ Optionen:
   --document-dest=/pfad    Zielverzeichnis (optional)
   --max-errors=ZAHL        Maximale Logeinträge überschreibt config.php
   --limit=ZAHL             Anzahl Logeinträge bei log/errors (Standard 200)
+  --skip-update            GitHub-Update beim Start überspringen
 
 TXT;
     exit(0);
+}
+
+/**
+ * Check and perform GitHub update if enabled
+ */
+function checkGitHubUpdate(array $config, bool $skipUpdate = false): void
+{
+    if ($skipUpdate) {
+        return;
+    }
+    
+    $githubConfig = $config['github'] ?? [];
+    $autoUpdate = $githubConfig['auto_update'] ?? false;
+    $branch = $githubConfig['branch'] ?? '';
+    
+    if (!$autoUpdate) {
+        return;
+    }
+    
+    try {
+        $updater = new AFS_GitHubUpdater(__DIR__, $autoUpdate, $branch);
+        echo "Prüfe auf GitHub-Updates...\n";
+        
+        $result = $updater->checkAndUpdate();
+        
+        if ($result['checked']) {
+            $info = $result['info'];
+            if ($info['available'] ?? false) {
+                echo sprintf(
+                    "Updates verfügbar: %d Commit(s) hinter remote (%s -> %s)\n",
+                    $info['commits_behind'],
+                    $info['current_commit'],
+                    $info['remote_commit']
+                );
+                
+                if ($result['updated']) {
+                    echo "✓ Update erfolgreich durchgeführt.\n";
+                } else {
+                    echo "× Update nicht durchgeführt: " . ($result['message'] ?? 'Unbekannter Fehler') . "\n";
+                }
+            } else {
+                echo "✓ Anwendung ist auf dem neuesten Stand.\n";
+            }
+        }
+        echo "\n";
+    } catch (Throwable $e) {
+        // Don't fail on update errors, just warn
+        echo "Warnung: GitHub-Update fehlgeschlagen: " . $e->getMessage() . "\n\n";
+    }
 }
 
 $job = $args->getString('job') ?? 'categories';
 $maxErrorsCfg = $config['status']['max_errors'] ?? 200;
 $maxErrors = (int)($args->getString('max-errors', (string)$maxErrorsCfg));
 
-function createStatusTrackerCli(array $config, string $job, int $maxErrors): AFS_Evo_StatusTracker
+function createStatusTrackerCli(array $config, string $job, int $maxErrors): STATUS_Tracker
 {
     $statusDb = $config['paths']['status_db'] ?? (__DIR__ . '/db/status.db');
     if (!is_file($statusDb)) {
-        throw new RuntimeException("status.db nicht gefunden: {$statusDb}");
+        throw new AFS_DatabaseException("status.db nicht gefunden: {$statusDb}");
     }
-    return new AFS_Evo_StatusTracker($statusDb, $job, $maxErrors);
+    return new STATUS_Tracker($statusDb, $job, $maxErrors);
+}
+
+function createMappingLoggerCli(array $config): ?STATUS_MappingLogger
+{
+    $loggingConfig = $config['logging'] ?? [];
+    $enableFileLogging = $loggingConfig['enable_file_logging'] ?? true;
+    
+    if (!$enableFileLogging) {
+        return null;
+    }
+    
+    $logDir = $config['paths']['log_dir'] ?? (__DIR__ . '/logs');
+    $mappingVersion = $loggingConfig['mapping_version'] ?? '1.0.0';
+    
+    return new STATUS_MappingLogger($logDir, $mappingVersion);
 }
 
 /**
- * @return array{tracker:AFS_Evo_StatusTracker,evo:AFS_Evo,mssql:MSSQL}
+ * @return array{tracker:STATUS_Tracker,evo:EVO,mssql:MSSQL_Connection}
  */
 function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): array
 {
@@ -128,7 +197,7 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
 
     $dataDb = $config['paths']['data_db'] ?? (__DIR__ . '/db/evo.db');
     if (!is_file($dataDb)) {
-        throw new RuntimeException("SQLite-Datei nicht gefunden: {$dataDb}");
+        throw new AFS_DatabaseException("SQLite-Datei nicht gefunden: {$dataDb}");
     }
     $pdo = new PDO('sqlite:' . $dataDb);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -139,7 +208,7 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
     $port = (int)($mssqlCfg['port'] ?? 1433);
     $server = $host . ',' . $port;
 
-    $mssql = new MSSQL(
+    $mssql = new MSSQL_Connection(
         $server,
         (string)($mssqlCfg['username'] ?? ''),
         (string)($mssqlCfg['password'] ?? ''),
@@ -154,12 +223,15 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
         $mssql->scalar('SELECT 1');
     } catch (Throwable $e) {
         $mssql->close();
-        throw new RuntimeException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
+        throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
     }
 
-    $dataSource = new AFS_Get_Data($mssql);
+    $sourceMappingPath = $config['sync_mappings']['primary']['source'] ?? afs_prefer_path('afs.yml', 'schemas');
+    $dataSource = new AFS_Get_Data($mssql, is_string($sourceMappingPath) ? $sourceMappingPath : null);
     $afs = new AFS($dataSource, $config);
-    $evo = new AFS_Evo($pdo, $afs, $tracker, $config);
+    $logger = createMappingLoggerCli($config);
+    $evo = new EVO($pdo, $afs, $tracker, $config, $logger);
+    $evo->setSourceConnection($mssql);
 
     return [
         'tracker' => $tracker,
@@ -212,6 +284,49 @@ function printStatus(array $status): void
 }
 
 switch ($args->command) {
+    case 'update':
+        // Manual update command
+        try {
+            $githubConfig = $config['github'] ?? [];
+            $branch = $githubConfig['branch'] ?? '';
+            
+            $updater = new AFS_GitHubUpdater(__DIR__, true, $branch);
+            
+            echo "Prüfe auf GitHub-Updates...\n";
+            $result = $updater->checkAndUpdate();
+            
+            if ($result['checked']) {
+                $info = $result['info'];
+                if ($info['available'] ?? false) {
+                    echo sprintf(
+                        "Updates verfügbar: %d Commit(s) hinter remote (%s -> %s)\n",
+                        $info['commits_behind'],
+                        $info['current_commit'],
+                        $info['remote_commit']
+                    );
+                    
+                    if ($result['updated']) {
+                        echo "✓ Update erfolgreich durchgeführt.\n";
+                        exit(0);
+                    } else {
+                        $message = $result['message'] ?? 'Unbekannter Fehler';
+                        echo "× Update fehlgeschlagen: {$message}\n";
+                        if (isset($result['result']['output'])) {
+                            echo "Details: {$result['result']['output']}\n";
+                        }
+                        exit(1);
+                    }
+                } else {
+                    echo "✓ Anwendung ist bereits auf dem neuesten Stand.\n";
+                    exit(0);
+                }
+            }
+        } catch (Throwable $e) {
+            fwrite(STDERR, "Fehler beim Update: " . $e->getMessage() . "\n");
+            exit(1);
+        }
+        break;
+
     case 'status':
         $tracker = createStatusTrackerCli($config, $job, $maxErrors);
         $status = $tracker->getStatus();
@@ -264,6 +379,10 @@ switch ($args->command) {
         exit(0);
 
     case 'run':
+        // Check for updates at startup (unless --skip-update is set)
+        $skipUpdate = $args->getBool('skip-update', false);
+        checkGitHubUpdate($config, $skipUpdate);
+        
         $copyImages = $args->getBool('copy-images', false);
         $imageSource = $args->getString('image-source');
         $imageDest = $args->getString('image-dest');
@@ -367,7 +486,7 @@ switch ($args->command) {
                 fwrite(STDERR, $e->getMessage() . "\n");
                 exit(1);
             }
-            if (isset($tracker) && $tracker instanceof AFS_Evo_StatusTracker) {
+            if (isset($tracker) && $tracker instanceof STATUS_Tracker) {
                 $tracker->logError($e->getMessage(), ['exception' => get_class($e)], 'cli');
                 $tracker->fail($e->getMessage(), 'cli');
             }

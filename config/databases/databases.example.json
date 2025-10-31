@@ -1,0 +1,37 @@
+{
+  "connections": [
+    {
+      "id": "afs-mssql",
+      "title": "AFS MSSQL",
+      "type": "mssql",
+      "settings": {
+        "host": "127.0.0.1",
+        "port": 1433,
+        "database": "AFS_2018",
+        "username": "sa",
+        "password": "secret",
+        "encrypt": true,
+        "trust_server_certificate": false
+      },
+      "roles": ["AFS_MSSQL"]
+    },
+    {
+      "id": "afs-files",
+      "title": "AFS Dateien",
+      "type": "file",
+      "settings": {
+        "path": "/var/www/data"
+      },
+      "roles": ["AFS_FILES"]
+    },
+    {
+      "id": "evo-sqlite",
+      "title": "EVO SQLite",
+      "type": "sqlite",
+      "settings": {
+        "path": "db/evo.db"
+      },
+      "roles": ["EVO_MAIN"]
+    }
+  ]
+}

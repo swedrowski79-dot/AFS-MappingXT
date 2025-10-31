@@ -2,13 +2,13 @@
 
 ## Overview
 
-The AFS_Get_Data class has been refactored to read field mappings from `source_afs.yml` instead of using hardcoded SQL queries. This makes the system more maintainable and flexible.
+The AFS_Get_Data class has been refactored to read field mappings from `afs.yml` instead of using hardcoded SQL queries. This makes the system more maintainable and flexible.
 
 ## File Location
 
 The configuration file is located at:
 ```
-/mappings/source_afs.yml
+/schemas/afs.yml
 ```
 
 ## Configuration Structure
@@ -73,7 +73,7 @@ Artikel:
 
 To add a new field to an entity:
 
-1. Open `/mappings/source_afs.yml`
+1. Open `/schemas/afs.yml`
 2. Find the entity you want to modify
 3. Add a new field entry under `fields:`
 
@@ -176,7 +176,7 @@ The SQL is now generated automatically from the YAML configuration.
 ## Troubleshooting
 
 ### Error: "Configuration file not found"
-- Check that `/mappings/source_afs.yml` exists
+- Check that `/schemas/afs.yml` exists
 - Verify file permissions
 
 ### Error: "Failed to parse YAML"
