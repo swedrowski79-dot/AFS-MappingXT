@@ -196,13 +196,6 @@ function createMappingOnlyEnvironment(array $config, string $job = 'categories')
         throw new AFS_SyncBusyException('Synchronisation läuft bereits. Bitte warten.');
     }
     $pdo = createEvoPdo($config);
-    $mssql = createMssql($config);
-    try {
-        $mssql->scalar('SELECT 1');
-    } catch (Throwable $e) {
-        $mssql->close();
-        throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
-    }
 
     $primary = $config['sync_mappings']['primary'] ?? [];
 
@@ -225,8 +218,25 @@ function createMappingOnlyEnvironment(array $config, string $job = 'categories')
         ], JSON_UNESCAPED_SLASHES));
     }
 
+    $sourceConfig = YamlMappingLoader::load($sourcePath);
+    $driver = strtolower((string)($sourceConfig['driver'] ?? 'mssql'));
+
+    if ($driver === 'filedb') {
+        $projectRoot = $config['paths']['root'] ?? dirname(__DIR__);
+        $sourceConnection = FileDB_Connection::fromConfig($sourceConfig, $projectRoot);
+    } else {
+        $mssql = createMssql($config);
+        try {
+            $mssql->scalar('SELECT 1');
+        } catch (Throwable $e) {
+            $mssql->close();
+            throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
+        }
+        $sourceConnection = $mssql;
+    }
+
     $engine = MappingSyncEngine::fromFiles($sourcePath, $schemaPath, $rulesPath);
-    return [$tracker, $engine, $mssql, $pdo];
+    return [$tracker, $engine, $sourceConnection, $pdo];
 }
 
 /**

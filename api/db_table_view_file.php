@@ -35,7 +35,10 @@ $limit = $limitParam === 'all' ? null : (int)$limitParam;
 try {
     $conn = findConnectionById($connId);
     if (!$conn) throw new RuntimeException('Verbindung nicht gefunden');
-    if (($conn['type'] ?? '') !== 'file') throw new RuntimeException('Nur Dateipfad-Verbindungen werden unterstützt');
+    $connType = $conn['type'] ?? '';
+    if (!in_array($connType, ['file', 'filedb'], true)) {
+        throw new RuntimeException('Nur FileDB-Verbindungen werden unterstützt');
+    }
     $settings = is_array($conn['settings'] ?? null) ? $conn['settings'] : [];
     $basePath = (string)($settings['path'] ?? '');
     if ($basePath === '') throw new RuntimeException('Pfad fehlt');
@@ -86,7 +89,7 @@ try {
 
     // Render HTML
     $escapedTable = htmlspecialchars($table, ENT_QUOTES, 'UTF-8');
-    $connLabel = htmlspecialchars((string)($conn['title'] ?? $conn['id'] ?? 'Dateipfad'), ENT_QUOTES, 'UTF-8');
+    $connLabel = htmlspecialchars((string)($conn['title'] ?? $conn['id'] ?? 'FileDB'), ENT_QUOTES, 'UTF-8');
     $pageInputDisabled = $limit === null ? ' disabled' : '';
 
     ob_start();

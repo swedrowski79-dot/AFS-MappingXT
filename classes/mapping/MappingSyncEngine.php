@@ -39,9 +39,10 @@ class MappingSyncEngine
     /**
      * Führt den Sync für eine Entity aus.
      *
+     * @param object $sourceConnection MSSQL_Connection oder FileDB_Connection
      * @return array<string,int> Statistiken (processed, skipped, errors)
      */
-    public function syncEntity(string $entityName, MSSQL_Connection $sourceDb, PDO $targetDb): array
+    public function syncEntity(string $entityName, object $sourceConnection, PDO $targetDb): array
     {
         $entityConfig = $this->getEntityConfig($entityName);
         $compiledMap = $this->getCompiledMap($entityName, $entityConfig);
@@ -53,7 +54,7 @@ class MappingSyncEngine
 
         // Aktuell unterstützen wir nur 1:1-Tabellen-Bezug.
         $primarySource = $sourceTables[0];
-        $sourceRows = $this->sourceMapper->fetch($sourceDb, $primarySource);
+        $sourceRows = $this->sourceMapper->fetch($sourceConnection, $primarySource);
 
         $stats = [
             'processed' => 0,

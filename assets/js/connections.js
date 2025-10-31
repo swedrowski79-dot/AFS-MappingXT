@@ -43,7 +43,7 @@
 
   function formatConnectionDetails(connection) {
     const settings = (connection && connection.settings) ? connection.settings : {};
-    if (connection && connection.type === 'sqlite' && settings.path) {
+    if (connection && ((connection.type === 'sqlite') || connection.type === 'file' || connection.type === 'filedb') && settings.path) {
       return settings.path;
     }
     if (connection && (connection.type === 'mssql' || connection.type === 'mysql')) {

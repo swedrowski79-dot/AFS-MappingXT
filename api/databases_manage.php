@@ -7,7 +7,8 @@ const DATABASE_TYPES = [
     'mssql' => 'Microsoft SQL Server',
     'mysql' => 'MySQL / MariaDB',
     'sqlite' => 'SQLite',
-    'file' => 'Dateipfad',
+    'filedb' => 'FileDB (Datei-Datenbank)',
+    'file' => 'Dateipfad (Legacy)',
 ];
 
 function dbm_slugify(string $value): string
@@ -28,10 +29,14 @@ function dbm_mask_connection(array $connection): array
 {
     $masked = $connection;
     $type = $connection['type'] ?? '';
+    if ($type === 'file') {
+        $type = 'filedb';
+    }
     $settings = $connection['settings'] ?? [];
     if (!is_array($settings)) {
         $settings = [];
     }
+    $masked['type'] = $type;
     $masked['type_label'] = DATABASE_TYPES[$type] ?? $type;
 
     if (in_array($type, ['mssql', 'mysql'], true)) {
@@ -68,6 +73,9 @@ function dbm_normalise_connection(array $payload, ?array $existing, array $allCo
     }
     $title = trim((string)($payload['title'] ?? ($existing['title'] ?? '')));
     $type = $payload['type'] ?? ($existing['type'] ?? '');
+    if ($type === 'file') {
+        $type = 'filedb';
+    }
     $roles = $payload['roles'] ?? ($existing['roles'] ?? []);
     $settings = $payload['settings'] ?? ($existing['settings'] ?? []);
 
@@ -178,9 +186,10 @@ function dbm_validate_settings(string $type, array $settings, ?array $existing):
             break;
 
         case 'file':
+        case 'filedb':
             $clean['path'] = trim((string)($settings['path'] ?? ($existing['path'] ?? '')));
             if ($clean['path'] === '') {
-                api_error('Für Dateipfade ist ein Pfad erforderlich.', 422);
+                api_error('Für FileDB ist ein Basis-Pfad erforderlich.', 422);
             }
             break;
 

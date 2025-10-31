@@ -196,7 +196,7 @@
         } else if ((c.type === 'mssql' || c.type === 'mysql') && c.settings) {
           const host = c.settings.host || ''; const dbn = c.settings.database || '';
           if (host || dbn) label += ' · ' + [host, dbn].filter(Boolean).join(' · ');
-        } else if (c.type === 'file' && c.settings && c.settings.path) {
+        } else if ((c.type === 'file' || c.type === 'filedb') && c.settings && c.settings.path) {
           label += ' · ' + c.settings.path;
         }
         addOption('id:' + c.id, label);

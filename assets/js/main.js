@@ -442,7 +442,7 @@
 
         if (connection.type === 'sqlite' && connection.settings?.path) {
           lines.push(connection.settings.path);
-        } else if (connection.type === 'file' && connection.settings?.path) {
+        } else if ((connection.type === 'file' || connection.type === 'filedb') && connection.settings?.path) {
           lines.push(connection.settings.path);
         } else if (['mssql', 'mysql'].includes(connection.type) && connection.settings) {
           const host = connection.settings.host || '';

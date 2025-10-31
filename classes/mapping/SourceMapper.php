@@ -17,10 +17,13 @@ class SourceMapper
     private array $tables;
     /** @var array<string,array<int,array<string,mixed>>> */
     private array $cache = [];
+    private string $driver;
 
     public function __construct(array $config)
     {
         $this->config = $config;
+        $driver = strtolower((string)($config['driver'] ?? 'mssql'));
+        $this->driver = $driver === '' ? 'mssql' : $driver;
         $tables = $config['tables'] ?? [];
         $this->tables = is_array($tables) ? $tables : [];
     }
@@ -47,27 +50,42 @@ class SourceMapper
     /**
      * Lädt Daten für eine konfigurierte Tabelle.
      *
-     * @param MSSQL_Connection $connection
+     * @param object $connection MSSQL_Connection oder FileDB_Connection
      * @param string $tableName Logischer Tabellenname aus der YAML-Konfiguration (z. B. "Artikel")
      * @param bool $useCache    Optional bereits geladene Daten wiederverwenden
      *
      * @return array<int,array<string,mixed>>
      */
-    public function fetch(MSSQL_Connection $connection, string $tableName, bool $useCache = true): array
+    public function fetch(object $connection, string $tableName, bool $useCache = true): array
     {
         if ($useCache && isset($this->cache[$tableName])) {
             return $this->cache[$tableName];
         }
 
         $tableConfig = $this->getTableConfig($tableName);
-        $selectInfo = $this->buildSelect($tableConfig);
-        $rows = $connection->fetchAll($selectInfo['sql'], $selectInfo['params']);
+        if ($this->driver === 'filedb') {
+            if (!$connection instanceof FileDB_Connection) {
+                throw new RuntimeException('SourceMapper expects FileDB_Connection for driver filedb.');
+            }
+            $rows = $connection->fetchTable($tableName, $tableConfig);
+        } else {
+            if (!$connection instanceof MSSQL_Connection) {
+                throw new RuntimeException('SourceMapper expects MSSQL_Connection for SQL drivers.');
+            }
+            $selectInfo = $this->buildSelect($tableConfig);
+            $rows = $connection->fetchAll($selectInfo['sql'], $selectInfo['params']);
+        }
 
         if ($useCache) {
             $this->cache[$tableName] = $rows;
         }
 
         return $rows;
+    }
+
+    public function getDriver(): string
+    {
+        return $this->driver;
     }
 
     /**

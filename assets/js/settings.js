@@ -144,7 +144,7 @@
     if (v.includes('mysql') || v.includes('maria')) return 'mysql';
     if (v.includes('mssql') || v.includes('sql server') || v.includes('sqlserver')) return 'mssql';
     if (v.includes('sqlite')) return 'sqlite';
-    if (v.includes('file') || v.includes('pfad')) return 'file';
+    if (v.includes('file') || v.includes('pfad')) return 'filedb';
     return v;
   }
 
@@ -166,7 +166,7 @@
       { key: 'password', label: 'Passwort', type: 'password', placeholder: 'Leer lassen für unverändert', required: false }
     ],
     sqlite: [
-      { key: 'path', label: 'Dateipfad *', type: 'text', placeholder: 'z.B. db/evo.db', required: true }
+      { key: 'path', label: 'FileDB-Pfad *', type: 'text', placeholder: 'z.B. db/evo.db', required: true }
     ],
     file: [
       { key: 'path', label: 'Verzeichnis *', type: 'text', placeholder: 'z.B. /mnt/share/data', required: true }
@@ -783,7 +783,7 @@
         pathLine.textContent = `Pfad: ${connection.settings.path || ''}`;
         meta.appendChild(pathLine);
       }
-      if (connection.settings && connection.type === 'file') {
+      if (connection.settings && (connection.type === 'file' || connection.type === 'filedb')) {
         const pathLine = document.createElement('div');
         pathLine.textContent = `Pfad: ${connection.settings.path || ''}`;
         meta.appendChild(pathLine);

@@ -19,12 +19,12 @@ class DatabaseConfig
             'types' => ['mssql'],
         ],
         'AFS_FILES_IMAGES' => [
-            'label' => 'AFS · Artikel (Dateipfad)',
-            'types' => ['file'],
+            'label' => 'AFS · Artikel (FileDB)',
+            'types' => ['file', 'filedb'],
         ],
         'AFS_FILES_DOCUMENTS' => [
-            'label' => 'AFS · Warengruppen (Dateipfad)',
-            'types' => ['file'],
+            'label' => 'AFS · Warengruppen (FileDB)',
+            'types' => ['file', 'filedb'],
         ],
         'EVO_MAIN' => [
             'label' => 'EVO · Hauptdatenbank (SQLite)',
@@ -163,7 +163,8 @@ class DatabaseConfig
                 case 'sqlite':
                     return self::testSqlite($settings);
                 case 'file':
-                    return self::testFile($settings);
+                case 'filedb':
+                    return self::testFileDb($settings);
                 default:
                     return ['ok' => false, 'message' => 'Unbekannter Typ'];
             }
@@ -275,17 +276,19 @@ class DatabaseConfig
      * @param array<string,mixed> $settings
      * @return array{ok: bool, message: string}
      */
-    private static function testFile(array $settings): array
+    private static function testFileDb(array $settings): array
     {
         $path = $settings['path'] ?? null;
-        if (!$path) {
+        if ($path === null || trim((string)$path) === '') {
             return ['ok' => false, 'message' => 'Pfad nicht definiert'];
         }
         $fullPath = self::normalizePath($path);
-        if (!is_dir($fullPath) && !is_file($fullPath)) {
-            return ['ok' => false, 'message' => 'Pfad nicht gefunden: ' . $fullPath];
+        try {
+            new FileDB_Connection($fullPath);
+        } catch (Throwable $e) {
+            return ['ok' => false, 'message' => $e->getMessage()];
         }
-        return ['ok' => true, 'message' => 'Pfad erreichbar'];
+        return ['ok' => true, 'message' => 'FileDB erreichbar'];
     }
 
     private static function pruneBackups(): void

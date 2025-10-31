@@ -21,7 +21,7 @@ class SyncService
     public function run(): array
     {
         // createMappingOnlyEnvironment wird in api/_bootstrap.php definiert
-        [$tracker, $engine, $mssql, $pdo] = createMappingOnlyEnvironment($this->config, 'mapping');
+        [$tracker, $engine, $sourceConnection, $pdo] = createMappingOnlyEnvironment($this->config, 'mapping');
         $logger = createMappingLogger($this->config);
 
         $tracker->begin('mapping', 'Starte Synchronisation');
@@ -30,14 +30,14 @@ class SyncService
         $summary = [];
         // 1) Warengruppen (optional)
         try {
-            $wg = $engine->syncEntity('warengruppe', $mssql, $pdo);
+            $wg = $engine->syncEntity('warengruppe', $sourceConnection, $pdo);
             $summary['warengruppe'] = $wg;
             $tracker->logInfo('Warengruppen synchronisiert', $wg, 'warengruppen');
         } catch (Throwable $e) {
             // Entity ggf. nicht definiert – weiter mit Artikeln
         }
         // 2) Artikel
-        $art = $engine->syncEntity('artikel', $mssql, $pdo);
+        $art = $engine->syncEntity('artikel', $sourceConnection, $pdo);
         $summary['artikel'] = $art;
         $tracker->logInfo('Artikel synchronisiert', $art, 'artikel');
 
@@ -62,7 +62,7 @@ class SyncService
         ]);
 
         // Mssql-Verbindung schließen
-        if ($mssql instanceof MSSQL_Connection) {
+        if ($sourceConnection instanceof MSSQL_Connection) {
             $mssql->close();
         }
 
