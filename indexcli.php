@@ -226,7 +226,14 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
         throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
     }
 
-    $sourceMappingPath = $config['sync_mappings']['primary']['source'] ?? (__DIR__ . '/mappings/afs.yml');
+    $defaultSource = __DIR__ . '/schemas/afs.yml';
+    if (!is_file($defaultSource)) {
+        $legacy = __DIR__ . '/mappings/afs.yml';
+        if (is_file($legacy)) {
+            $defaultSource = $legacy;
+        }
+    }
+    $sourceMappingPath = $config['sync_mappings']['primary']['source'] ?? $defaultSource;
     $dataSource = new AFS_Get_Data($mssql, is_string($sourceMappingPath) ? $sourceMappingPath : null);
     $afs = new AFS($dataSource, $config);
     $logger = createMappingLoggerCli($config);

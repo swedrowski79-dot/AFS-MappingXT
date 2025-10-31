@@ -204,12 +204,29 @@ function createMappingOnlyEnvironment(array $config, string $job = 'categories')
     }
 
     $primary = $config['sync_mappings']['primary'] ?? [];
+    $projectRoot = dirname(__DIR__);
+
+    $defaultSource = $projectRoot . '/schemas/afs.yml';
+    if (!is_file($defaultSource) && is_file($projectRoot . '/mappings/afs.yml')) {
+        $defaultSource = $projectRoot . '/mappings/afs.yml';
+    }
+
+    $defaultSchema = $projectRoot . '/schemas/evo.yml';
+    if (!is_file($defaultSchema) && is_file($projectRoot . '/mappings/evo.yml')) {
+        $defaultSchema = $projectRoot . '/mappings/evo.yml';
+    }
+
+    $defaultRules = $projectRoot . '/mapping/afs_evo.yml';
+    if (!is_file($defaultRules) && is_file($projectRoot . '/mappings/afs_evo.yml')) {
+        $defaultRules = $projectRoot . '/mappings/afs_evo.yml';
+    }
+
     $sourcePath = isset($primary['source']) && is_string($primary['source']) && $primary['source'] !== ''
-        ? $primary['source'] : dirname(__DIR__) . '/mappings/afs.yml';
+        ? $primary['source'] : $defaultSource;
     $schemaPath = isset($primary['schema']) && is_string($primary['schema']) && $primary['schema'] !== ''
-        ? $primary['schema'] : dirname(__DIR__) . '/mappings/evo.yml';
+        ? $primary['schema'] : $defaultSchema;
     $rulesPath  = isset($primary['rules'])  && is_string($primary['rules'])  && $primary['rules']  !== ''
-        ? $primary['rules']  : dirname(__DIR__) . '/mappings/afs_evo.yml';
+        ? $primary['rules']  : $defaultRules;
 
     if (!is_file($sourcePath) || !is_file($schemaPath) || !is_file($rulesPath)) {
         throw new AFS_ConfigurationException('Mapping-Dateien nicht gefunden: ' . json_encode([
