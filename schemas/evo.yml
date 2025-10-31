@@ -1,0 +1,102 @@
+version: 1
+connection: evo
+introspect: true
+
+tables:
+  artikel:
+    keys: [model]
+    fields:
+      - afs_id           # Referenz auf AFS.Artikel (Artikel)
+      - model            # = AFS.Artikelnummer
+      - name
+      - ean
+      - description_html
+      - promo_html       # Werbetext1 → HTML
+      - note_html        # Bemerkung/Hinweis → HTML
+      - unit             # Einheit
+      - gross_weight     # Bruttogewicht
+      - price            # VK3 (Brutto)
+      - tax_class_id     # aus AFS.Umsatzsteuer gemappt
+      - stock            # Bestand
+      - status           # 1=online, 0=offline (aus AFS.Internet)
+      - change
+      - seo_slug
+      - source_hash
+      - updated_at
+
+  warengruppe:
+    keys: [cat_id]
+    fields:
+      - cat_id           # AFS.Warengruppe
+      - name
+      - level            # AFS.Ebene
+      - attachment       # AFS.Anhang
+      - status
+      - image            # Bild
+      - image_large      # Bild_gross
+      - description_html # Beschreibung → HTML
+      - change
+      - source_hash
+      - updated_at
+
+  bilder:
+    keys: [hash]         # dedupe per Datei-Hash
+    fields:
+      - image_id         # surrogate PK (Auto-Inc; introspektiert)
+      - file_name
+      - mime
+      - width
+      - height
+      - file_size
+      - status
+      - change
+      - upload          # ← NEU für Upload-Flag
+      - updated_at
+
+  artikel_bilder:
+    keys: [model, image_id]
+    fields:
+      - model
+      - image_id
+      - position
+      - status
+      - change
+      - updated_at
+
+  dokumente:
+    keys: [hash]
+    fields:
+      - doc_id
+      - file_name
+      - title
+      - kind            # AFS.Dokument.Art
+      - mime
+      - file_size
+      - status
+      - change
+      - upload          # ← NEU für Upload-Flag
+      - updated_at
+
+  artikel_dokumente:
+    keys: [model, doc_id]
+    fields:
+      - model
+      - doc_id
+      - status
+      - change
+      - updated_at
+
+  attribute:              # einfache Attribut-Stammtabelle (Name dedupliziert)
+    keys: [name]
+    fields:
+      - attribute_id
+      - name
+      - updated_at
+
+  artikel_attribute:      # M:N: Artikel ↔ Attribut (einfach: eine Value-Spalte)
+    keys: [model, attribute_id]
+    fields:
+      - model
+      - attribute_id
+      - value
+      - updated_at

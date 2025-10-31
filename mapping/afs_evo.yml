@@ -1,0 +1,162 @@
+version: 1
+
+# Mehrere Quellen (AFS DB, FileDB, FileCatcher) und ein Ziel (EVO)
+sources:
+  afs:
+    schema: "schemas/afs.yml"
+  afs_filedb:
+    schema: "schemas/afs-filedb.yml"
+  afs_bilder:
+    schema: "schemas/AFS_Bilder_filecatcher.yml"
+  afs_dokumente:
+    schema: "schemas/AFS_Dokumente_filecatcher.yml"
+
+# Ziel
+target:
+  evo:
+    schema: "schemas/evo.yml"
+
+entities:
+
+  artikel:
+    from: afs.Artikel
+    to:   evo.artikel
+
+    map:
+      evo.artikel.afs_id:            afs.Artikel.Artikel
+      evo.artikel.model:             afs.Artikel.Artikelnummer | trim
+      evo.artikel.name:              afs.Artikel.Bezeichnung | trim | null_if_empty
+      evo.artikel.ean:               afs.Artikel.EANNummer
+      evo.artikel.description_html:  $func.transform_rtf_to_html(afs.Artikel.Langtext)
+      evo.artikel.promo_html:        $func.transform_rtf_to_html(afs.Artikel.Werbetext1)
+      evo.artikel.note_html:         $func.transform_rtf_to_html(afs.Artikel.Bemerkung)
+      evo.artikel.unit:              afs.Artikel.Einheit
+      evo.artikel.gross_weight:      afs.Artikel.Bruttogewicht
+      evo.artikel.price:             afs.Artikel.VK3 | to_decimal | round(2)
+      evo.artikel.tax_class_id:      $func.tax_map(afs.Artikel.Umsatzsteuer)
+      evo.artikel.stock:             afs.Artikel.Bestand
+      evo.artikel.status:            $func.bool_to_int(afs.Artikel.Internet)
+      evo.artikel.seo_slug:          afs.Artikel.Bezeichnung | slugify
+      evo.artikel.change:            =0
+
+    delta:
+      fields: [name, ean, description_html, promo_html, note_html, unit, gross_weight, price, tax_class_id, stock, status, seo_slug]
+
+    flags:
+      on_insert:
+        evo.artikel.change: =1
+        evo.artikel.updated_at: $func.now()
+      on_update_when_delta_changed:
+        evo.artikel.change: =1
+        evo.artikel.updated_at: $func.now()
+      on_update_when_no_change:
+        evo.artikel.change: =0
+
+    orphan_policy:
+      scope: evo.artikel
+      match_key: [model]
+      actions:
+        - set:
+            evo.artikel.status: =0
+            evo.artikel.change: =1
+
+  warengruppe:
+    from: afs.Warengruppe
+    to:   evo.warengruppe
+
+    map:
+      evo.warengruppe.cat_id:           afs.Warengruppe.Warengruppe
+      evo.warengruppe.name:             afs.Warengruppe.Bezeichnung | trim | null_if_empty
+      evo.warengruppe.level:            afs.Warengruppe.Ebene
+      evo.warengruppe.attachment:       afs.Warengruppe.Anhang
+      evo.warengruppe.description_html: $func.transform_rtf_to_html(afs.Warengruppe.Beschreibung)
+      evo.warengruppe.status:           $func.bool_to_int(afs.Warengruppe.Internet)
+      evo.warengruppe.image:            afs.Warengruppe.Bild
+      evo.warengruppe.image_large:      afs.Warengruppe.Bild_gross
+      evo.warengruppe.change:           =0
+
+    delta:
+      fields: [name, level, attachment, description_html, status, image, image_large]
+
+    flags:
+      on_insert:
+        evo.warengruppe.change: =1
+        evo.warengruppe.updated_at: $func.now()
+      on_update_when_delta_changed:
+        evo.warengruppe.change: =1
+        evo.warengruppe.updated_at: $func.now()
+      on_update_when_no_change:
+        evo.warengruppe.change: =0
+
+  bilder:
+    from: afs_bilder.file_vault
+    to:   evo.bilder
+
+    map:
+      evo.bilder.file_name: file_vault.file_name
+      evo.bilder.mime:      file_vault.mime
+      evo.bilder.file_size: file_vault.size
+      evo.bilder.hash:      file_vault.checksum
+      evo.bilder.status:    =1
+      evo.bilder.change:    =0
+
+    delta:
+      fields: [file_name, mime, file_size]
+
+    flags:
+      on_insert:
+        evo.bilder.change:     =1
+        evo.bilder.upload:     =1
+        evo.bilder.updated_at: $func.now()
+      on_update_when_delta_changed:
+        evo.bilder.change:     =1
+        evo.bilder.upload:     =1
+        evo.bilder.updated_at: $func.now()
+      on_update_when_no_change:
+        evo.bilder.change:     =0
+
+    orphan_policy:
+      scope: evo.bilder
+      match_key: [hash]
+      actions:
+        - set:
+            evo.bilder.status: =0
+            evo.bilder.change: =1
+            # evo.bilder.upload: =0
+
+  dokumente:
+    from: afs_dokumente.file_vault
+    to:   evo.dokumente
+
+    map:
+      evo.dokumente.file_name: file_vault.file_name
+      evo.dokumente.mime:      file_vault.mime
+      evo.dokumente.file_size: file_vault.size
+      evo.dokumente.hash:      file_vault.checksum
+      evo.dokumente.kind:      =0
+      evo.dokumente.status:    =1
+      evo.dokumente.change:    =0
+
+    delta:
+      fields: [file_name, mime, file_size, kind]
+
+    flags:
+      on_insert:
+        evo.dokumente.change:     =1
+        evo.dokumente.upload:     =1
+        evo.dokumente.updated_at: $func.now()
+      on_update_when_delta_changed:
+        evo.dokumente.change:     =1
+        evo.dokumente.upload:     =1
+        evo.dokumente.updated_at: $func.now()
+      on_update_when_no_change:
+        evo.dokumente.change:     =0
+
+    orphan_policy:
+      scope: evo.dokumente
+      match_key: [hash]
+      actions:
+        - set:
+            evo.dokumente.status: =0
+            evo.dokumente.change: =1
+            # evo.dokumente.upload: =0
