@@ -1,0 +1,46 @@
+version: 1
+connection: afs_filedb
+driver: filedb
+introspect: true
+
+source:
+  base_path: "srcFiles/Data"            # relativer Pfad zu deinem Projektverzeichnis
+  encoding: "utf-8"
+  extension: ".txt"                     # jede Spalte = einzelne Textdatei
+  filename_case: "preserve"
+  sanitize_filenames: true
+  unknown_field_policy: "allow"
+
+tables:
+
+  Artikel:
+    # Struktur: srcFiles/Data/Artikel/<Artikelnummer>/*.txt
+    folder: "Artikel"
+    keys: [Artikelnummer]
+    fields:
+      - Meta_Title
+      - Meta_Description
+
+    delta:
+      per_record:
+        record_hash: "sha256(files)"    # Hash über alle Textdateien im Artikelordner
+      watermark:
+        use_mtime: true                 # Änderungszeitpunkt des Ordners
+      track:
+        state_file: ".delta.json"       # Lokale Delta-Verfolgung
+
+  Warengruppe:
+    # Struktur: srcFiles/Data/Warengruppe/<Warengruppenname>/*.txt
+    folder: "Warengruppe"
+    keys: [Warengruppenname]
+    fields:
+      - Meta_Title
+      - Meta_Description
+
+    delta:
+      per_record:
+        record_hash: "sha256(files)"
+      watermark:
+        use_mtime: true
+      track:
+        state_file: ".delta.json"
