@@ -41,6 +41,15 @@ class SyncService
         $summary['artikel'] = $art;
         $tracker->logInfo('Artikel synchronisiert', $art, 'artikel');
 
+        // 3) FileCatcher (Bilder & Dokumente)
+        $fileCatcherSummary = $this->runFileCatchers($pdo);
+        if ($fileCatcherSummary !== []) {
+            $summary['filecatcher'] = $fileCatcherSummary;
+            foreach ($fileCatcherSummary as $name => $stats) {
+                $tracker->logInfo(sprintf('FileCatcher %s abgeschlossen', $name), $stats, 'filecatcher');
+            }
+        }
+
         $overallDuration = microtime(true) - $overallStart;
         $totProcessed = (int)($summary['warengruppe']['processed'] ?? 0) + (int)($summary['artikel']['processed'] ?? 0);
         $totErrors = (int)($summary['warengruppe']['errors'] ?? 0) + (int)($summary['artikel']['errors'] ?? 0);
@@ -71,5 +80,31 @@ class SyncService
             'summary' => $summary,
             'duration_seconds' => $overallDuration,
         ];
+    }
+
+    /**
+     * @return array<string,array<string,int>>
+     */
+    private function runFileCatchers(PDO $pdo): array
+    {
+        $files = [
+            'bilder' => afs_prefer_path('AFS_Bilder_filecatcher.yml', 'schemas'),
+            'dokumente' => afs_prefer_path('AFS_Dokumente_filecatcher.yml', 'schemas'),
+        ];
+
+        $results = [];
+        foreach ($files as $name => $path) {
+            if (!is_string($path) || $path === '' || !is_file($path)) {
+                continue;
+            }
+            try {
+                $engine = FileCatcherEngine::fromFile($path, $this->config);
+                $stats = $engine->run($pdo);
+                $results[$name] = $stats;
+            } catch (Throwable $e) {
+                error_log(sprintf('[FileCatcher:%s] Fehler: %s', $name, $e->getMessage()));
+            }
+        }
+        return $results;
     }
 }

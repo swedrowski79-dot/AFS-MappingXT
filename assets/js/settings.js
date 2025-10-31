@@ -166,7 +166,10 @@
       { key: 'password', label: 'Passwort', type: 'password', placeholder: 'Leer lassen für unverändert', required: false }
     ],
     sqlite: [
-      { key: 'path', label: 'FileDB-Pfad *', type: 'text', placeholder: 'z.B. db/evo.db', required: true }
+      { key: 'path', label: 'Dateipfad *', type: 'text', placeholder: 'z.B. db/evo.db', required: true }
+    ],
+    filedb: [
+      { key: 'path', label: 'Verzeichnis *', type: 'text', placeholder: 'z.B. /mnt/share/data', required: true }
     ],
     file: [
       { key: 'path', label: 'Verzeichnis *', type: 'text', placeholder: 'z.B. /mnt/share/data', required: true }
