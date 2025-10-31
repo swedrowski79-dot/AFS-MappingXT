@@ -3,148 +3,100 @@ connection: evo
 introspect: true
 
 tables:
-
-  Artikel:
-    business_key: [Artikelnummer]
+  artikel:
+    keys: [model]
     fields:
-      - ID
-      - Artikelnummer
-      - Bezeichnung
-      - Bestand
-      - EANNummer
-      - Bild
-      - Preis
-      - Category
-      - Mindestmenge
-      - Master
-      - Masterartikelnummer
-      - Bruttogewicht
-      - Online
-      - Einheit
-      - Langtext
-      - Werbetext
-      - Benerkung
-      - Hinweis
-      - meta_title
-      - meta_description
-      - update
-      - change
-
-  Artikel_Plattfotm:
-    keys: [Evo_ID]
-    fields:
-      - ID
-      - Evo_ID
-      - AFS_ID
-      - XT_ID
-      - change
-
-  Bilder:
-    business_key: [hash]
-    fields:
-      - ID
-      - Bildname
-      - hash
-      - upload
-      - change
-
-  Bilder_Platform:
-    keys: [Evo_ID]
-    fields:
-      - ID
-      - Evo_ID
-      - XT_ID
-
-  Artikel_Bilder:
-    keys: [Artikel_ID, Bild_ID]
-    fields:
-      - ID
-      - Bild_ID
-      - Artikel_ID
-      - Bildnummer
-      - change
-
-  Attribute:
-    business_key: [Name]
-    fields:
-      - ID
-      - Name
-      - change
-
-  Attribute_Plattform:
-    keys: [Evo_ID]
-    fields:
-      - ID
-      - Evo_ID
-      - XT_ID
-      - change
-
-  Artikel_Attribute:
-    keys: [Artikel_ID, Attribute_ID, Attributenummer]
-    fields:
-      - ID
-      - Attribute_ID
-      - Artikel_ID
-      - Value
-      - Attributenummer
-      - Change
-
-  Documents:
-    business_key: [hash]
-    fields:
-      - ID
-      - Documentname
-      - hash
-      - upload
-      - change
-
-  Document_Artikel:
-    keys: [Document_ID, Artikel_ID]
-    fields:
-      - ID
-      - Document_ID
-      - Artikel_ID
-      - Change
-
-  Document_Platform:
-    keys: [Evo_ID]
-    fields:
-      - ID
-      - AFS_ID
-      - Evo_ID
-      - XT_ID
-
-  category:
-    keys: [ID]
-    fields:
-      - ID
-      - Parent_ID
+      - afs_id           # Referenz auf AFS.Artikel (Artikel)
+      - model            # = AFS.Artikelnummer
       - name
-      - online
-      - Bild
-      - description
-      - meta_title
-      - meta_description
+      - ean
+      - description_html
+      - promo_html       # Werbetext1 → HTML
+      - note_html        # Bemerkung/Hinweis → HTML
+      - unit             # Einheit
+      - gross_weight     # Bruttogewicht
+      - price            # VK3 (Brutto)
+      - tax_class_id     # aus AFS.Umsatzsteuer gemappt
+      - stock            # Bestand
+      - status           # 1=online, 0=offline (aus AFS.Internet)
       - change
+      - seo_slug
+      - source_hash
+      - updated_at
 
-  category_platform:
-    keys: [EVO_ID]
+  warengruppe:
+    keys: [cat_id]
     fields:
-      - ID
-      - AFS_ID
-      - EVO_ID
-      - XT_ID
+      - cat_id           # AFS.Warengruppe
+      - name
+      - level            # AFS.Ebene
+      - attachment       # AFS.Anhang
+      - status
+      - image            # Bild
+      - image_large      # Bild_gross
+      - description_html # Beschreibung → HTML
+      - change
+      - source_hash
+      - updated_at
 
-hints:
-  images:
-    master_table: Bilder
-    pivot_table: Artikel_Bilder
-    pivot_keys: [Artikel_ID, Bild_ID]
-    position_field: Bildnummer
-    master_business_key: [hash]
+  bilder:
+    keys: [hash]         # dedupe per Datei-Hash
+    fields:
+      - image_id         # surrogate PK (Auto-Inc; introspektiert)
+      - file_name
+      - mime
+      - width
+      - height
+      - file_size
+      - status
+      - change
+      - upload          # ← NEU für Upload-Flag
+      - updated_at
 
-  documents:
-    master_table: Documents
-    pivot_table: Document_Artikel
-    pivot_keys: [Document_ID, Artikel_ID]
-    master_business_key: [hash]
+  artikel_bilder:
+    keys: [model, image_id]
+    fields:
+      - model
+      - image_id
+      - position
+      - status
+      - change
+      - updated_at
+
+  dokumente:
+    keys: [hash]
+    fields:
+      - doc_id
+      - file_name
+      - title
+      - kind            # AFS.Dokument.Art
+      - mime
+      - file_size
+      - status
+      - change
+      - upload          # ← NEU für Upload-Flag
+      - updated_at
+
+  artikel_dokumente:
+    keys: [model, doc_id]
+    fields:
+      - model
+      - doc_id
+      - status
+      - change
+      - updated_at
+
+  attribute:              # einfache Attribut-Stammtabelle (Name dedupliziert)
+    keys: [name]
+    fields:
+      - attribute_id
+      - name
+      - updated_at
+
+  artikel_attribute:      # M:N: Artikel ↔ Attribut (einfach: eine Value-Spalte)
+    keys: [model, attribute_id]
+    fields:
+      - model
+      - attribute_id
+      - value
+      - updated_at
