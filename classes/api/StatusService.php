@@ -10,7 +10,7 @@ class StatusService
     public function get(array $config): array
     {
         try {
-            $tracker = createStatusTracker($config, 'mapping');
+            $tracker = createStatusTracker($config, 'categories');
             return $tracker->getStatus();
         } catch (Throwable $e) {
             return [

@@ -3,42 +3,42 @@
 
 declare(strict_types=1);
 
-$scriptDir = __DIR__;
-$dbDir = dirname(__DIR__) . '/db';
+require_once dirname(__DIR__) . '/autoload.php';
 
-if (!is_dir($dbDir)) {
-    mkdir($dbDir, 0777, true);
-    echo "Ordner 'db' wurde erstellt.\n";
+$configFile = dirname(__DIR__) . '/config.php';
+if (!is_file($configFile)) {
+    fwrite(STDERR, "config.php wurde nicht gefunden.\n");
+    exit(1);
 }
 
-$databases = [
-    'status.db' => 'create_status.sql',
-    'evo.db'    => 'create_evo.sql',
-];
+$config = require $configFile;
 
-foreach ($databases as $dbName => $sqlFile) {
-    $dbPath = $dbDir . '/' . $dbName;
-    $sqlPath = $scriptDir . '/' . $sqlFile;
+try {
+    $service = new SetupService();
+    $result = $service->run($config);
 
-    if (!file_exists($sqlPath)) {
-        echo "SQL-Datei nicht gefunden: $sqlPath\n";
-        continue;
-    }
+    foreach ($result as $name => $info) {
+        $path = $info['path'] ?? '(unbekannt)';
+        $created = !empty($info['created']);
+        printf(
+            "%s: %s (%s)\n",
+            strtoupper($name),
+            $path,
+            $created ? 'neu angelegt' : 'bereits vorhanden'
+        );
 
-    try {
-        $db = new PDO('sqlite:' . $dbPath);
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = file_get_contents($sqlPath);
-        if (!$sql || !trim($sql)) {
-            echo "SQL-Datei ist leer: $sqlPath\n";
-            continue;
+        if (!empty($info['tables_created'])) {
+            printf("  Tabellen angelegt: %s\n", implode(', ', (array)$info['tables_created']));
         }
-        $db->exec($sql);
-        echo "Datenbank '$dbName' erfolgreich eingerichtet.\n";
-    } catch (Throwable $e) {
-        echo "Fehler bei '$dbName': " . $e->getMessage() . "\n";
+        if (!empty($info['columns_added'])) {
+            foreach ($info['columns_added'] as $table => $columns) {
+                printf("  Neue Spalten in %s: %s\n", $table, implode(', ', (array)$columns));
+            }
+        }
     }
+
+    echo "Setup abgeschlossen.\n";
+} catch (Throwable $e) {
+    fwrite(STDERR, "Setup fehlgeschlagen: " . $e->getMessage() . "\n");
+    exit(1);
 }
-
-echo "Setup abgeschlossen.\n";
-

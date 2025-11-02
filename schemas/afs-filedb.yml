@@ -30,8 +30,8 @@ tables:
         state_file: ".delta.json"       # Lokale Delta-Verfolgung
 
   Warengruppe:
-    # Struktur: srcFiles/Data/Warengruppe/<Warengruppenname>/*.txt
-    folder: "Warengruppe"
+    # Struktur: srcFiles/Data/Warengruppen/<Warengruppenname>/*.txt
+    folder: "Warengruppen"
     keys: [Warengruppenname]
     fields:
       - Meta_Title

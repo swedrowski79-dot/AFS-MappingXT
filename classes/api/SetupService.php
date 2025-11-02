@@ -35,6 +35,9 @@ class SetupService
             throw new AFS_ConfigurationException("SQL-Datei ist leer oder nicht lesbar: {$statusSql}");
         }
         $pdoStatus->exec($initStatusSql);
+        if (!$statusWasPresent) {
+            @chmod($statusPath, 0666);
+        }
         $summary['status'] = ['path' => $statusPath, 'created' => !$statusWasPresent];
         // evo.db
         $evoPath = $config['paths']['data_db'] ?? ($dbDir . '/evo.db');
@@ -68,6 +71,9 @@ class SetupService
             $pdoEvo->exec($initEvoSql);
             $result = ['created' => !$evoWasPresent, 'tables_created' => []];
         }
+        if (!$evoWasPresent) {
+            @chmod($evoPath, 0666);
+        }
         $summary['evo'] = array_merge(['path' => $evoPath, 'created' => !$evoWasPresent], is_array($result) ? $result : []);
         return $summary;
     }
@@ -87,6 +93,43 @@ class SetupService
                 if (!is_array($definition)) continue;
                 $table = (string)($definition['table'] ?? $name);
                 $definitions[$table] = $definition;
+            }
+        }
+        if ($definitions === [] && isset($yaml['tables']) && is_array($yaml['tables'])) {
+            foreach ($yaml['tables'] as $tableName => $def) {
+                if (!is_array($def)) {
+                    continue;
+                }
+                $fieldsList = $def['fields'] ?? [];
+                $fields = [];
+                if (is_array($fieldsList)) {
+                    $isSequential = array_keys($fieldsList) === range(0, count($fieldsList) - 1);
+                    if ($isSequential) {
+                        foreach ($fieldsList as $fieldName) {
+                            $fieldName = trim((string)$fieldName);
+                            if ($fieldName === '') {
+                                continue;
+                            }
+                            $fields[$fieldName] = [];
+                        }
+                    } else {
+                        foreach ($fieldsList as $fieldName => $fieldDef) {
+                            $fieldName = trim((string)$fieldName);
+                            if ($fieldName === '') {
+                                continue;
+                            }
+                            $fields[$fieldName] = is_array($fieldDef) ? $fieldDef : [];
+                        }
+                    }
+                }
+                $definitions[(string)$tableName] = [
+                    'fields' => $fields,
+                    'primary_key' => $def['primary_key'] ?? [],
+                    'business_key' => $def['business_key'] ?? [],
+                    'unique_constraint' => $def['unique_constraint'] ?? ($def['keys'] ?? []),
+                    'explicit_unique' => $def['explicit_unique'] ?? [],
+                    'foreign_keys' => $def['foreign_keys'] ?? [],
+                ];
             }
         }
         $created = [];
@@ -168,7 +211,8 @@ class SetupService
             if (is_int($columnName)) { $columnName = (string)$columnDef; $columnDef = []; }
             if (isset($existing[$columnName])) continue;
             if (!is_array($columnDef)) { $columnDef = []; }
-            $sql = $this->buildColumnDefinitionSql($columnName, $columnDef, $primaryKey, false, $tmp = [], true);
+            $autoPkCollector = [];
+            $sql = $this->buildColumnDefinitionSql($columnName, $columnDef, $primaryKey, false, $autoPkCollector, true);
             $pdo->exec('ALTER TABLE ' . $this->quoteIdent($table) . ' ADD COLUMN ' . $sql);
             $added[] = $columnName;
         }
@@ -219,10 +263,28 @@ class SetupService
     }
     private function ensureUniqueIndexes(PDO $pdo, string $table, array $definition): void
     {
-        $keys = $this->normalizeList($definition['unique_constraint'] ?? []);
-        foreach ($keys as $i => $col) {
-            $idx = 'uniq_' . strtolower($table . '_' . $col);
-            $pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS ' . $this->quoteIdent($idx) . ' ON ' . $this->quoteIdent($table) . ' (' . $this->quoteIdent($col) . ')');
+        $seen = [];
+        $lists = [
+            $definition['unique_constraint'] ?? [],
+            $definition['explicit_unique'] ?? [],
+        ];
+        foreach ($lists as $candidate) {
+            $columns = $this->normalizeList($candidate);
+            foreach ($columns as $col) {
+                $key = strtolower($col);
+                if ($key === '' || isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $idx = 'uniq_' . strtolower($table . '_' . $col);
+                $pdo->exec(
+                    'CREATE UNIQUE INDEX IF NOT EXISTS '
+                    . $this->quoteIdent($idx)
+                    . ' ON '
+                    . $this->quoteIdent($table)
+                    . ' (' . $this->quoteIdent($col) . ')'
+                );
+            }
         }
     }
 }

@@ -45,23 +45,16 @@ class TransformRegistry
             return basename($val);
         });
 
-        // Convert RTF to HTML (simplified)
+        // Convert RTF to simplified HTML/text
         $this->register('rtf_to_html', function($value) {
-            if ($value === null || $value === '') {
-                return $value;
+            if ($value === null) {
+                return null;
             }
-            $val = (string)$value;
-            
-            if (strpos($val, '{\\rtf') !== false) {
-                // Remove RTF control words
-                $val = preg_replace('/\\\\[a-zA-Z]+-?\d* ?/', ' ', $val);
-                // Remove braces and backslashes
-                $val = str_replace(['{', '}', '\\'], '', $val);
-                // Reduce multiple spaces
-                $val = trim(preg_replace('/\s+/', ' ', $val));
+            $stringValue = (string)$value;
+            if ($stringValue === '') {
+                return '';
             }
-            
-            return $val;
+            return $this->convertRtfToHtml($stringValue);
         });
 
         // Remove HTML tags
@@ -89,6 +82,28 @@ class TransformRegistry
             }
             $standardized = strtr($trimmed, ['\\' => '/', '//' => '/']);
             return basename($standardized);
+        });
+
+        // Slugify (lowercase, hyphen separated)
+        $this->register('slugify', function($value) {
+            $str = strtolower(trim((string)$value));
+            if ($str === '') {
+                return '';
+            }
+            if (function_exists('iconv')) {
+                $converted = @iconv('UTF-8', 'ASCII//TRANSLIT', $str);
+                if ($converted !== false) {
+                    $str = $converted;
+                }
+            }
+            $str = preg_replace('/[^a-z0-9]+/', '-', $str ?? '') ?? '';
+            $str = trim($str, '-');
+            return $str;
+        });
+
+        $self = $this;
+        $this->register('transform_rtf_to_html', function($value) use ($self) {
+            return $self->apply('rtf_to_html', $value);
         });
 
         // Null wenn leerer String
@@ -203,5 +218,216 @@ class TransformRegistry
             ));
             return $value;
         }
+    }
+
+    /**
+     * Convert basic RTF markup to simplified HTML/text.
+     */
+    private function convertRtfToHtml(string $rtf): string
+    {
+        $trimmed = trim($rtf);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $hasRtfHeader = str_contains($trimmed, '{\\rtf');
+        if (!$hasRtfHeader) {
+            return $this->finalizeRtfPlainText($trimmed);
+        }
+
+        $encoding = $this->detectRtfEncoding($trimmed);
+        $rtf = $this->removeRtfGroups($trimmed, [
+            'fonttbl',
+            'colortbl',
+            'stylesheet',
+            'info',
+            'header',
+            'footer',
+            'generator',
+            'pict',
+        ]);
+
+        $rtf = $this->replaceSymbolicControls($rtf);
+        $rtf = $this->decodeRtfEntities($rtf, $encoding);
+
+        // Convert common paragraph/line/tab control words before stripping others
+        $rtf = preg_replace('/\\\\par[d]?/', "\n", $rtf) ?? $rtf;
+        $rtf = preg_replace('/\\\\line/', "\n", $rtf) ?? $rtf;
+        $rtf = preg_replace('/\\\\tab/', "\t", $rtf) ?? $rtf;
+        $rtf = preg_replace('/\\\\emdash/', '—', $rtf) ?? $rtf;
+        $rtf = preg_replace('/\\\\endash/', '–', $rtf) ?? $rtf;
+
+        // Remove remaining control words/backslashes
+        $rtf = preg_replace('/\\\\[a-zA-Z]+-?\d* ?/', ' ', $rtf) ?? $rtf;
+        $rtf = str_replace(['\\{', '\\}'], ['{', '}'], $rtf);
+        $rtf = str_replace(['{', '}', '\\'], '', $rtf);
+
+        return $this->finalizeRtfPlainText($rtf);
+    }
+
+    /**
+     * Remove RTF groups (e.g. font table, color table, optional groups).
+     *
+     * @param array<int,string> $keywords
+     */
+    private function removeRtfGroups(string $rtf, array $keywords): string
+    {
+        $length = strlen($rtf);
+        $result = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $char = $rtf[$i];
+            if ($char === '{') {
+                $j = $i + 1;
+                $skipGroup = false;
+
+                if ($j < $length && $rtf[$j] === '\\') {
+                    $j++;
+                    if ($j < $length && $rtf[$j] === '*') {
+                        $skipGroup = true;
+                    } else {
+                        $keyword = '';
+                        while ($j < $length && ctype_alpha($rtf[$j])) {
+                            $keyword .= $rtf[$j];
+                            $j++;
+                        }
+                        if ($keyword !== '' && in_array(strtolower($keyword), $keywords, true)) {
+                            $skipGroup = true;
+                        }
+                    }
+                }
+
+                if ($skipGroup) {
+                    $depth = 1;
+                    for ($k = $i + 1; $k < $length; $k++) {
+                        $token = $rtf[$k];
+                        if ($token === '{') {
+                            $depth++;
+                        } elseif ($token === '}') {
+                            $depth--;
+                            if ($depth === 0) {
+                                $i = $k;
+                                break;
+                            }
+                        }
+                    }
+                    continue;
+                }
+            }
+            $result .= $char;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Translate symbolic control words to plain text equivalents.
+     */
+    private function replaceSymbolicControls(string $rtf): string
+    {
+        $replacements = [
+            '\\~'        => ' ',
+            '\\_'        => '-',
+            '\\emdash'   => '—',
+            '\\endash'   => '–',
+            '\\lquote'   => '‘',
+            '\\rquote'   => '’',
+            '\\ldblquote'=> '“',
+            '\\rdblquote'=> '”',
+            '\\bullet'   => '•',
+        ];
+
+        return str_replace(array_keys($replacements), array_values($replacements), $rtf);
+    }
+
+    /**
+     * Decode hex and unicode escape sequences within the RTF payload.
+     */
+    private function decodeRtfEntities(string $rtf, string $encoding): string
+    {
+        $encoding = $encoding !== '' ? $encoding : 'CP1252';
+
+        $rtf = preg_replace('/\\\\uc\d+/', '', $rtf) ?? $rtf;
+
+        $rtf = preg_replace_callback(
+            '/\\\\\'([0-9a-fA-F]{2})/',
+            function(array $matches) use ($encoding): string {
+                $byte = chr(hexdec($matches[1]));
+                if (function_exists('mb_convert_encoding')) {
+                    $converted = @mb_convert_encoding($byte, 'UTF-8', $encoding);
+                    if ($converted !== false) {
+                        return $converted;
+                    }
+                }
+                if (function_exists('iconv')) {
+                    $converted = @iconv($encoding, 'UTF-8//IGNORE', $byte);
+                    if ($converted !== false) {
+                        return $converted;
+                    }
+                }
+                return $byte;
+            },
+            $rtf
+        ) ?? $rtf;
+
+        $rtf = preg_replace_callback(
+            '/\\\\u(-?\d+)\??/',
+            static function(array $matches): string {
+                $code = (int)$matches[1];
+                if ($code < 0) {
+                    $code += 65536;
+                }
+                if ($code === 0) {
+                    return '';
+                }
+                $entity = '&#' . $code . ';';
+                if (function_exists('mb_convert_encoding')) {
+                    $converted = @mb_convert_encoding($entity, 'UTF-8', 'HTML-ENTITIES');
+                    if ($converted !== false) {
+                        return $converted;
+                    }
+                }
+                return html_entity_decode($entity, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            },
+            $rtf
+        ) ?? $rtf;
+
+        return $rtf;
+    }
+
+    /**
+     * Final cleanup: collapse whitespace and normalize paragraph breaks.
+     */
+    private function finalizeRtfPlainText(string $text): string
+    {
+        $text = preg_replace("/\r\n?/", "\n", $text) ?? $text;
+        $text = preg_replace("/[ \t]+\n/", "\n", $text) ?? $text;
+        $text = preg_replace('/\n{3,}/', "\n\n", $text) ?? $text;
+        $text = preg_replace('/[ \t]{2,}/', ' ', $text) ?? $text;
+        $text = preg_replace('/^\s*[\w\s\-,.]+;/', '', $text) ?? $text;
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        $lines = array_map('trim', explode("\n", $text));
+        $lines = array_values(array_filter($lines, static fn(string $line): bool => $line !== ''));
+        if ($lines === []) {
+            return '';
+        }
+
+        return implode('<br>', $lines);
+    }
+
+    /**
+     * Detect declared ANSI code page within the RTF header.
+     */
+    private function detectRtfEncoding(string $rtf): string
+    {
+        if (preg_match('/\\\ansicpg(\d+)/i', $rtf, $matches)) {
+            return 'CP' . $matches[1];
+        }
+
+        return 'CP1252';
     }
 }

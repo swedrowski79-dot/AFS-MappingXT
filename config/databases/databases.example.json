@@ -18,7 +18,7 @@
     {
       "id": "afs-files",
       "title": "AFS Dateien",
-      "type": "file",
+      "type": "filedb",
       "settings": {
         "path": "/var/www/data"
       },

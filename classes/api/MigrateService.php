@@ -15,6 +15,7 @@ class MigrateService
         $changes = [
             'added_update_columns' => [],
             'added_meta_columns' => [],
+            'added_master_columns' => [],
             'normalized_update_flags' => false,
         ];
         $updateTargets = [
@@ -50,6 +51,26 @@ class MigrateService
                 if (!$this->columnExists($pdo, $table, $column)) {
                     $pdo->exec($stmt);
                     $changes['added_meta_columns'][] = "{$table}.{$column}";
+                }
+            }
+        }
+        $masterColumns = [
+            'artikel' => [
+                'is_master' => 'ALTER TABLE "artikel" ADD COLUMN is_master INTEGER',
+                'master_model' => 'ALTER TABLE "artikel" ADD COLUMN master_model TEXT',
+                'products_image' => 'ALTER TABLE "artikel" ADD COLUMN products_image TEXT',
+                'products_name' => 'ALTER TABLE "artikel" ADD COLUMN products_name TEXT',
+                'products_description' => 'ALTER TABLE "artikel" ADD COLUMN products_description TEXT',
+            ],
+            'category' => [
+                'description' => 'ALTER TABLE "category" ADD COLUMN description TEXT',
+            ],
+        ];
+        foreach ($masterColumns as $table => $defs) {
+            foreach ($defs as $column => $stmt) {
+                if (!$this->columnExists($pdo, $table, $column)) {
+                    $pdo->exec($stmt);
+                    $changes['added_master_columns'][] = "{$table}.{$column}";
                 }
             }
         }

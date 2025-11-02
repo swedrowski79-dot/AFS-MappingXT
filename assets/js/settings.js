@@ -144,7 +144,8 @@
     if (v.includes('mysql') || v.includes('maria')) return 'mysql';
     if (v.includes('mssql') || v.includes('sql server') || v.includes('sqlserver')) return 'mssql';
     if (v.includes('sqlite')) return 'sqlite';
-    if (v.includes('file') || v.includes('pfad')) return 'filedb';
+    if (v.includes('filedb')) return 'filedb';
+    if (v.includes('file')) return 'file';
     return v;
   }
 

@@ -23,24 +23,30 @@ entities:
     to:   evo.artikel
 
     map:
-      evo.artikel.afs_id:            afs.Artikel.Artikel
       evo.artikel.model:             afs.Artikel.Artikelnummer | trim
       evo.artikel.name:              afs.Artikel.Bezeichnung | trim | null_if_empty
       evo.artikel.ean:               afs.Artikel.EANNummer
       evo.artikel.description_html:  $func.transform_rtf_to_html(afs.Artikel.Langtext)
       evo.artikel.promo_html:        $func.transform_rtf_to_html(afs.Artikel.Werbetext1)
       evo.artikel.note_html:         $func.transform_rtf_to_html(afs.Artikel.Bemerkung)
-      evo.artikel.unit:              afs.Artikel.Einheit
-      evo.artikel.gross_weight:      afs.Artikel.Bruttogewicht
+      evo.artikel.unit:              afs.Artikel.Einheit | trim | null_if_empty
+      evo.artikel.gross_weight:      afs.Artikel.Bruttogewicht | to_decimal
       evo.artikel.price:             afs.Artikel.VK3 | to_decimal | round(2)
       evo.artikel.tax_class_id:      $func.tax_map(afs.Artikel.Umsatzsteuer)
-      evo.artikel.stock:             afs.Artikel.Bestand
+      evo.artikel.stock:             afs.Artikel.Bestand | to_int
       evo.artikel.status:            $func.bool_to_int(afs.Artikel.Internet)
+      evo.artikel.category:          afs.Artikel.Warengruppe
       evo.artikel.seo_slug:          afs.Artikel.Bezeichnung | slugify
+      evo.artikel.is_master:         $func.article_master_flag(afs.Artikel.Zusatzfeld07 | trim)
+      evo.artikel.master_model:      $func.article_master_number(afs.Artikel.Zusatzfeld07 | trim)
+      evo.artikel.products_image:    afs.Artikel.Bild1 | trim | null_if_empty
+      evo.artikel.products_name:     afs.Artikel.Bezeichnung | trim | null_if_empty
+      evo.artikel.products_description: $func.transform_rtf_to_html(afs.Artikel.Langtext)
+      evo.artikel.source_hash:       afs.Artikel.Update
       evo.artikel.change:            =0
 
     delta:
-      fields: [name, ean, description_html, promo_html, note_html, unit, gross_weight, price, tax_class_id, stock, status, seo_slug]
+      fields: [name, ean, description_html, promo_html, note_html, unit, gross_weight, price, tax_class_id, stock, status, category, seo_slug, is_master, master_model, products_image, products_name, products_description, source_hash]
 
     flags:
       on_insert:
@@ -60,33 +66,57 @@ entities:
             evo.artikel.status: =0
             evo.artikel.change: =1
 
-  warengruppe:
-    from: afs.Warengruppe
-    to:   evo.warengruppe
+  artikel_meta:
+    from: afs_filedb.Artikel
+    to:   evo.artikel
 
     map:
-      evo.warengruppe.cat_id:           afs.Warengruppe.Warengruppe
-      evo.warengruppe.name:             afs.Warengruppe.Bezeichnung | trim | null_if_empty
-      evo.warengruppe.level:            afs.Warengruppe.Ebene
-      evo.warengruppe.attachment:       afs.Warengruppe.Anhang
-      evo.warengruppe.description_html: $func.transform_rtf_to_html(afs.Warengruppe.Beschreibung)
-      evo.warengruppe.status:           $func.bool_to_int(afs.Warengruppe.Internet)
-      evo.warengruppe.image:            afs.Warengruppe.Bild
-      evo.warengruppe.image_large:      afs.Warengruppe.Bild_gross
-      evo.warengruppe.change:           =0
+      evo.artikel.model:            afs_filedb.Artikel.Artikelnummer | trim
+      evo.artikel.meta_title:       afs_filedb.Artikel.Meta_Title | trim | null_if_empty
+      evo.artikel.meta_description: afs_filedb.Artikel.Meta_Description | trim | null_if_empty
 
     delta:
-      fields: [name, level, attachment, description_html, status, image, image_large]
+      fields: [meta_title, meta_description]
 
     flags:
       on_insert:
-        evo.warengruppe.change: =1
-        evo.warengruppe.updated_at: $func.now()
+        evo.artikel.change: =1
+        evo.artikel.updated_at: $func.now()
       on_update_when_delta_changed:
-        evo.warengruppe.change: =1
-        evo.warengruppe.updated_at: $func.now()
+        evo.artikel.change: =1
+        evo.artikel.updated_at: $func.now()
+
+  warengruppe:
+    from: afs.Warengruppe
+    to:   evo.category
+
+    map:
+      evo.category.cat_id:           afs.Warengruppe.Warengruppe
+      evo.category.name:             afs.Warengruppe.Bezeichnung | trim | null_if_empty
+      evo.category.level:            afs.Warengruppe.Ebene
+      evo.category.attachment:       afs.Warengruppe.Anhang
+      evo.category.description_html: $func.transform_rtf_to_html(afs.Warengruppe.Beschreibung)
+      evo.category.description:      $func.transform_rtf_to_html(afs.Warengruppe.Beschreibung)
+      evo.category.status:           $func.bool_to_int(afs.Warengruppe.Internet)
+      evo.category.image:            afs.Warengruppe.Bild
+      evo.category.image_large:      afs.Warengruppe.Bild_gross
+      evo.category.meta_title:       $func.category_meta_title(afs.Warengruppe.Bezeichnung | trim, null)
+      evo.category.meta_description: $func.category_meta_description(afs.Warengruppe.Bezeichnung | trim, null)
+      evo.category.source_hash:      afs.Warengruppe.Update
+      evo.category.change:           =0
+
+    delta:
+      fields: [name, level, attachment, description_html, description, status, image, image_large, meta_title, meta_description, source_hash]
+
+    flags:
+      on_insert:
+        evo.category.change: =1
+        evo.category.updated_at: $func.now()
+      on_update_when_delta_changed:
+        evo.category.change: =1
+        evo.category.updated_at: $func.now()
       on_update_when_no_change:
-        evo.warengruppe.change: =0
+        evo.category.change: =0
 
   bilder:
     from: afs_bilder.file_vault
@@ -97,11 +127,14 @@ entities:
       evo.bilder.mime:      file_vault.mime
       evo.bilder.file_size: file_vault.size
       evo.bilder.hash:      file_vault.checksum
+      evo.bilder.stored_file: file_vault.stored_file
+      evo.bilder.stored_path: file_vault.stored_path
+      evo.bilder.stored_at:   file_vault.stored_at
       evo.bilder.status:    =1
       evo.bilder.change:    =0
 
     delta:
-      fields: [file_name, mime, file_size]
+      fields: [file_name, mime, file_size, stored_file, stored_path]
 
     flags:
       on_insert:
@@ -130,15 +163,19 @@ entities:
 
     map:
       evo.dokumente.file_name: file_vault.file_name
+      evo.dokumente.title:     file_vault.file_name | normalize_title
       evo.dokumente.mime:      file_vault.mime
       evo.dokumente.file_size: file_vault.size
       evo.dokumente.hash:      file_vault.checksum
+      evo.dokumente.stored_file: file_vault.stored_file
+      evo.dokumente.stored_path: file_vault.stored_path
+      evo.dokumente.stored_at:   file_vault.stored_at
       evo.dokumente.kind:      =0
       evo.dokumente.status:    =1
       evo.dokumente.change:    =0
 
     delta:
-      fields: [file_name, mime, file_size, kind]
+      fields: [file_name, title, mime, file_size, kind, stored_file, stored_path]
 
     flags:
       on_insert:

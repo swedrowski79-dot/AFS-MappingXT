@@ -11,11 +11,11 @@ source:
   follow_symlinks: false
 
 vault:
-  base_path: "files/Bilder"             # Zielordner für Bilder
+  base_path: "Files/Bilder"             # Zielordner für Bilder
   filename_pattern: "{file_name}"
   checksum:
-    algo: "mtime_size_xxh64"            # Hash aus Änderungsdatum + Dateigröße
-    encode: "hex"
+    algo: "mtime_size"                  # Nur Änderungsdatum + Dateigröße (keine Hash-Berechnung)
+    encode: "plain"
 
 table:
   name: file_vault
@@ -49,7 +49,7 @@ table:
     actions:
       - type: file_copy
         from: "$src.path"
-        to:   "$func.vault_path(stored_path, stored_file)"
+        to:   "$func.vault_path($row.stored_path, $row.stored_file)"
         only_when_changed: true
     delta:
       fields: [checksum, size, mime]

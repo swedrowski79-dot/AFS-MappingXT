@@ -21,7 +21,7 @@ class SyncService
     public function run(): array
     {
         // createMappingOnlyEnvironment wird in api/_bootstrap.php definiert
-        [$tracker, $engine, $sourceConnection, $pdo] = createMappingOnlyEnvironment($this->config, 'mapping');
+        [$tracker, $engine, $sourceConnections, $pdo] = createMappingOnlyEnvironment($this->config, 'categories');
         $logger = createMappingLogger($this->config);
 
         $tracker->begin('mapping', 'Starte Synchronisation');
@@ -30,16 +30,25 @@ class SyncService
         $summary = [];
         // 1) Warengruppen (optional)
         try {
-            $wg = $engine->syncEntity('warengruppe', $sourceConnection, $pdo);
+            $wg = $engine->syncEntity('warengruppe', $pdo);
             $summary['warengruppe'] = $wg;
             $tracker->logInfo('Warengruppen synchronisiert', $wg, 'warengruppen');
         } catch (Throwable $e) {
             // Entity ggf. nicht definiert – weiter mit Artikeln
         }
         // 2) Artikel
-        $art = $engine->syncEntity('artikel', $sourceConnection, $pdo);
+        $art = $engine->syncEntity('artikel', $pdo);
         $summary['artikel'] = $art;
         $tracker->logInfo('Artikel synchronisiert', $art, 'artikel');
+
+        // 2a) Artikel-Metadaten (FileDB)
+        try {
+            $artMeta = $engine->syncEntity('artikel_meta', $pdo);
+            $summary['artikel_meta'] = $artMeta;
+            $tracker->logInfo('Artikel-Metadaten aktualisiert', $artMeta, 'artikel_meta');
+        } catch (Throwable $e) {
+            $tracker->logWarning('Artikel-Metadaten nicht synchronisiert: ' . $e->getMessage(), [], 'artikel_meta');
+        }
 
         // 3) FileCatcher (Bilder & Dokumente)
         $fileCatcherSummary = $this->runFileCatchers($pdo);
@@ -48,11 +57,31 @@ class SyncService
             foreach ($fileCatcherSummary as $name => $stats) {
                 $tracker->logInfo(sprintf('FileCatcher %s abgeschlossen', $name), $stats, 'filecatcher');
             }
+
+            try {
+                $bilder = $engine->syncEntity('bilder', $pdo);
+                $summary['bilder'] = $bilder;
+                $tracker->logInfo('Bilder synchronisiert', $bilder, 'bilder');
+            } catch (Throwable $e) {
+                $tracker->logWarning('Bilder-Sync übersprungen: ' . $e->getMessage(), [], 'bilder');
+            }
+
+            try {
+                $dokumente = $engine->syncEntity('dokumente', $pdo);
+                $summary['dokumente'] = $dokumente;
+                $tracker->logInfo('Dokumente synchronisiert', $dokumente, 'dokumente');
+            } catch (Throwable $e) {
+                $tracker->logWarning('Dokumente-Sync übersprungen: ' . $e->getMessage(), [], 'dokumente');
+            }
         }
 
         $overallDuration = microtime(true) - $overallStart;
-        $totProcessed = (int)($summary['warengruppe']['processed'] ?? 0) + (int)($summary['artikel']['processed'] ?? 0);
-        $totErrors = (int)($summary['warengruppe']['errors'] ?? 0) + (int)($summary['artikel']['errors'] ?? 0);
+        $totProcessed = 0;
+        $totErrors = 0;
+        foreach (['warengruppe', 'artikel', 'artikel_meta', 'bilder', 'dokumente'] as $key) {
+            $totProcessed += (int)($summary[$key]['processed'] ?? 0);
+            $totErrors += (int)($summary[$key]['errors'] ?? 0);
+        }
         $tracker->logInfo('Synchronisation abgeschlossen', [
             'gesamt_verarbeitet' => $totProcessed,
             'gesamt_fehler' => $totErrors,
@@ -70,9 +99,11 @@ class SyncService
             'message' => sprintf('Mapping abgeschlossen (%ss)', number_format($overallDuration, 2)),
         ]);
 
-        // Mssql-Verbindung schließen
-        if ($sourceConnection instanceof MSSQL_Connection) {
-            $mssql->close();
+        // Datenquellen schließen (z. B. MSSQL)
+        foreach ($sourceConnections as $connection) {
+            if ($connection instanceof MSSQL_Connection) {
+                $connection->close();
+            }
         }
 
         return [

@@ -1,9 +1,6 @@
 <?php
 declare(strict_types=1);
 
-use PDO;
-use PDOStatement;
-
 /**
  * FileCatcherEngine
  *
@@ -28,6 +25,15 @@ final class FileCatcherEngine
     private array $tableConfig;
     /** @var array<string,mixed> */
     private array $logicConfig;
+    private int $dirMode;
+    private int $fileMode;
+
+    /** @var array<string,mixed> */
+    private array $rowCache = [];
+
+    private bool $rowCacheLoaded = false;
+
+    private string $rowCacheTable = '';
 
     /**
      * @param array<string,mixed> $config
@@ -73,8 +79,18 @@ final class FileCatcherEngine
             throw new InvalidArgumentException('filecatcher: "vault.base_path" ist erforderlich.');
         }
         $this->vaultBasePath = $this->resolvePath($basePath);
-        if (!is_dir($this->vaultBasePath) && !@mkdir($this->vaultBasePath, 0775, true) && !is_dir($this->vaultBasePath)) {
-            throw new RuntimeException('filecatcher: Zielpfad konnte nicht angelegt werden: ' . $this->vaultBasePath);
+        $this->dirMode = $this->parseMode($vault['dir_mode'] ?? null, 0777);
+        $this->fileMode = $this->parseMode($vault['file_mode'] ?? null, 0666);
+
+        $baseCreated = false;
+        if (!is_dir($this->vaultBasePath)) {
+            if (!@mkdir($this->vaultBasePath, $this->dirMode, true) && !is_dir($this->vaultBasePath)) {
+                throw new RuntimeException('filecatcher: Zielpfad konnte nicht angelegt werden: ' . $this->vaultBasePath);
+            }
+            $baseCreated = true;
+        }
+        if ($baseCreated) {
+            @chmod($this->vaultBasePath, $this->dirMode);
         }
         $this->filenamePattern = (string)($vault['filename_pattern'] ?? '{file_name}');
         $checksum = $vault['checksum'] ?? [];
@@ -123,6 +139,7 @@ final class FileCatcherEngine
             'skipped'   => 0,
             'copied'    => 0,
         ];
+        $copiedExamples = [];
 
         $keys = $this->normalizeKeys($this->tableConfig['keys'] ?? []);
         if ($keys === []) {
@@ -140,45 +157,75 @@ final class FileCatcherEngine
 
         $tableName = (string)$this->tableConfig['name'];
         $upsertStatement = $this->prepareUpsertStatement($pdo, $tableName, $keys, $insertColumns, $updateColumns);
+        $this->ensureRowCache($pdo, $tableName, $keys);
 
-        foreach ($files as $file) {
-            $summary['processed']++;
+        $startedTransaction = false;
+        if (!$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTransaction = true;
+        }
 
-            try {
-                $context = [
-                    'src' => $file,
-                ];
+        try {
+            foreach ($files as $file) {
+                $summary['processed']++;
 
-                $existing = $this->loadExistingRow($pdo, $tableName, $keys, $file);
-                if ($existing !== null) {
-                    $context['existing'] = $existing;
+                try {
+                    $context = [
+                        'src' => $file,
+                    ];
+
+                    $existing = $this->loadExistingRow($tableName, $keys, $file);
+                    if ($existing !== null) {
+                        $context['existing'] = $existing;
+                    }
+
+                    $row = $this->buildRow($context);
+                    $deltaChanged = $this->hasDeltaChanged($context, $row, $existing);
+
+                    $this->applyFlags($row, $deltaChanged, $existing !== null);
+                    $row['updated_at'] = $row['updated_at'] ?? $this->now();
+
+                    $this->executeUpsert($upsertStatement, $row, $insertColumns, $updateColumns);
+                    $this->storeRowInCache($row, $existing, $keys);
+
+                    if ($existing === null) {
+                        $summary['inserted']++;
+                        $deltaChanged = true;
+                    } elseif ($deltaChanged) {
+                        $summary['updated']++;
+                    } else {
+                        $summary['unchanged']++;
+                    }
+
+                    $actionResult = $this->performActions($row, $deltaChanged, $file);
+                    if (is_array($actionResult)) {
+                        $summary['copied'] += $actionResult['count'];
+                        foreach ($actionResult['paths'] as $copiedPath) {
+                            if (count($copiedExamples) < 5) {
+                                $copiedExamples[] = $copiedPath;
+                            }
+                        }
+                    } else {
+                        $summary['copied'] += (int)$actionResult;
+                    }
+                } catch (Throwable $e) {
+                    $summary['skipped']++;
+                    error_log('[FileCatcher] ' . $e->getMessage());
                 }
-
-                $row = $this->buildRow($context);
-                $deltaChanged = $this->hasDeltaChanged($context, $row, $existing);
-
-                $this->applyFlags($row, $deltaChanged, $existing !== null);
-                $row['updated_at'] = $row['updated_at'] ?? $this->now();
-
-                $this->executeUpsert($upsertStatement, $row, $insertColumns, $updateColumns);
-
-                if ($existing === null) {
-                    $summary['inserted']++;
-                    $deltaChanged = true;
-                } elseif ($deltaChanged) {
-                    $summary['updated']++;
-                } else {
-                    $summary['unchanged']++;
-                }
-
-                $copiedCount = $this->performActions($row, $deltaChanged, $file);
-                if ($copiedCount > 0) {
-                    $summary['copied'] += $copiedCount;
-                }
-            } catch (Throwable $e) {
-                $summary['skipped']++;
-                error_log('[FileCatcher] ' . $e->getMessage());
             }
+
+            if ($startedTransaction) {
+                $pdo->commit();
+            }
+        } catch (Throwable $e) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+
+        if ($copiedExamples !== []) {
+            $summary['copied_examples'] = $copiedExamples;
         }
 
         return $summary;
@@ -343,27 +390,20 @@ final class FileCatcherEngine
     /**
      * @param array<string,mixed> $file
      */
-    private function loadExistingRow(PDO $pdo, string $table, array $keys, array $file): ?array
+    private function loadExistingRow(string $table, array $keys, array $file): ?array
     {
-        $conditions = [];
-        $params = [];
-        foreach ($keys as $key) {
-            $value = $this->resolveKeyValue($key, $file);
-            $conditions[] = $this->quoteIdentifier($key) . ' = :' . $key;
-            $params[':' . $key] = $value;
+        if ($keys === []) {
+            return null;
         }
-        $sql = sprintf(
-            'SELECT * FROM %s WHERE %s',
-            $this->quoteIdentifier($table),
-            implode(' AND ', $conditions)
-        );
-        $stmt = $pdo->prepare($sql);
-        if ($stmt === false) {
-            throw new RuntimeException('filecatcher: SELECT vorbereiten fehlgeschlagen: ' . $sql);
+        $values = $this->resolveKeyValues($keys, $file, null);
+        if ($values === null) {
+            return null;
         }
-        $stmt->execute($params);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row === false ? null : $row;
+        $cacheKey = $this->buildCacheKey($keys, $values);
+        if ($cacheKey === null) {
+            return null;
+        }
+        return $this->rowCache[$cacheKey] ?? null;
     }
 
     /**
@@ -390,13 +430,14 @@ final class FileCatcherEngine
      * @param array<string,mixed> $row
      * @param array<string,mixed> $file
      */
-    private function performActions(array $row, bool $deltaChanged, array $file): int
+    private function performActions(array $row, bool $deltaChanged, array $file): array
     {
         $actions = $this->logicConfig['actions'] ?? [];
         if (!is_array($actions) || $actions === []) {
-            return 0;
+            return ['count' => 0, 'paths' => []];
         }
         $copied = 0;
+        $paths = [];
         foreach ($actions as $action) {
             if (!is_array($action)) {
                 continue;
@@ -406,9 +447,6 @@ final class FileCatcherEngine
                 continue;
             }
             $onlyWhenChanged = (bool)($action['only_when_changed'] ?? false);
-            if ($onlyWhenChanged && !$deltaChanged) {
-                continue;
-            }
             $context = [
                 'row' => $row,
                 'src' => $file,
@@ -418,16 +456,38 @@ final class FileCatcherEngine
             if (!is_string($from) || $from === '' || !is_string($to) || $to === '') {
                 continue;
             }
+            if ($onlyWhenChanged && !$deltaChanged && file_exists($to)) {
+                continue;
+            }
             $destinationDir = dirname($to);
-            if (!is_dir($destinationDir) && !@mkdir($destinationDir, 0775, true) && !is_dir($destinationDir)) {
-                throw new RuntimeException('filecatcher: Zielordner konnte nicht angelegt werden: ' . $destinationDir);
+            $dirCreated = false;
+            if (!is_dir($destinationDir)) {
+                if (!@mkdir($destinationDir, $this->dirMode, true) && !is_dir($destinationDir)) {
+                    throw new RuntimeException('filecatcher: Zielordner konnte nicht angelegt werden: ' . $destinationDir);
+                }
+                $dirCreated = true;
+            }
+            if ($dirCreated) {
+                @chmod($destinationDir, $this->dirMode);
+            }
+            if (file_exists($to)) {
+                if (!is_writable($to)) {
+                    @chmod($to, $this->fileMode | 0200);
+                }
+                if (!@unlink($to) && file_exists($to)) {
+                    throw new RuntimeException(sprintf('filecatcher: Ziel konnte nicht überschrieben werden (%s)', $to));
+                }
             }
             if (!@copy($from, $to)) {
                 throw new RuntimeException(sprintf('filecatcher: Kopieren fehlgeschlagen (%s -> %s)', $from, $to));
             }
+            @chmod($to, $this->fileMode);
             $copied++;
+            if (count($paths) < 5) {
+                $paths[] = $to;
+            }
         }
-        return $copied;
+        return ['count' => $copied, 'paths' => $paths];
     }
 
     private function resolvePath(string $path): string
@@ -439,20 +499,6 @@ final class FileCatcherEngine
             return $path;
         }
         return $this->projectRoot . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR);
-    }
-
-    /**
-     * @param array<string,mixed> $file
-     */
-    private function resolveKeyValue(string $key, array $file)
-    {
-        if ($key === 'file_name') {
-            return $file['file_name'] ?? null;
-        }
-        if (array_key_exists($key, $file)) {
-            return $file[$key];
-        }
-        throw new RuntimeException('filecatcher: Schlüssel "' . $key . '" nicht im Dateikontext verfügbar.');
     }
 
     /**
@@ -592,6 +638,11 @@ final class FileCatcherEngine
         $size = (string)($args[1] ?? '');
         $algo = strtolower((string)($this->checksumConfig['algo'] ?? 'sha256'));
         $data = $mtime . '|' . $size;
+
+        if ($algo === 'mtime_size') {
+            return $data;
+        }
+
         if ($algo === 'mtime_size_xxh64' && in_array('xxh64', hash_algos(), true)) {
             return hash('xxh64', $data);
         }
@@ -632,7 +683,7 @@ final class FileCatcherEngine
     private function funcVaultPath(array $args, array $context): string
     {
         $storedPath = trim((string)($args[0] ?? ''));
-        $storedFile = (string)($args[1] ?? '');
+       $storedFile = (string)($args[1] ?? '');
         if ($storedFile === '') {
             $storedFile = $this->buildVaultFilename($context, $context['row'] ?? []);
         }
@@ -641,6 +692,158 @@ final class FileCatcherEngine
             ? $base . DIRECTORY_SEPARATOR . ltrim($storedPath, DIRECTORY_SEPARATOR)
             : $base;
         return $destinationDir . DIRECTORY_SEPARATOR . $storedFile;
+    }
+
+    /**
+     * @param array<int,string> $keys
+     */
+    private function ensureRowCache(PDO $pdo, string $table, array $keys): void
+    {
+        if ($keys === [] || ($this->rowCacheLoaded && $this->rowCacheTable === $table)) {
+            return;
+        }
+
+        $this->rowCache = [];
+        $this->rowCacheTable = $table;
+
+        $sql = sprintf('SELECT * FROM %s', $this->quoteIdentifier($table));
+        $stmt = $pdo->query($sql, PDO::FETCH_ASSOC);
+        if ($stmt === false) {
+            throw new RuntimeException('filecatcher: SELECT fehlgeschlagen: ' . $sql);
+        }
+
+        foreach ($stmt as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $values = $this->resolveKeyValues($keys, $row, null);
+            if ($values === null) {
+                continue;
+            }
+            $cacheKey = $this->buildCacheKey($keys, $values);
+            if ($cacheKey !== null) {
+                $this->rowCache[$cacheKey] = $row;
+            }
+        }
+
+        $this->rowCacheLoaded = true;
+    }
+
+    /**
+     * @param array<int,string> $keys
+     * @param array<string,mixed> $primary
+     * @param array<string,mixed>|null $fallback
+     * @return array<string,mixed>|null
+     */
+    private function resolveKeyValues(array $keys, array $primary, ?array $fallback): ?array
+    {
+        $values = [];
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $primary)) {
+                $value = $primary[$key];
+            } elseif ($fallback !== null && array_key_exists($key, $fallback)) {
+                $value = $fallback[$key];
+            } else {
+                return null;
+            }
+            if ($value === null) {
+                return null;
+            }
+            $values[$key] = $value;
+        }
+        return $values;
+    }
+
+    /**
+     * @param array<int,string> $keys
+     * @param array<string,mixed> $values
+     */
+    private function buildCacheKey(array $keys, array $values): ?string
+    {
+        if ($keys === []) {
+            return null;
+        }
+        $parts = [];
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $values)) {
+                return null;
+            }
+            $parts[] = $key . ':' . $this->serializeCacheValue($values[$key]);
+        }
+        return implode('|', $parts);
+    }
+
+    private function serializeCacheValue($value): string
+    {
+        if ($value === null) {
+            return 'null';
+        }
+        if (is_scalar($value)) {
+            return (string)$value;
+        }
+        return md5(serialize($value));
+    }
+
+    /**
+     * @param array<int,string> $keys
+     * @param array<string,mixed> $row
+     * @param array<string,mixed>|null $existing
+     */
+    private function storeRowInCache(array $row, ?array $existing, array $keys): void
+    {
+        if ($keys === []) {
+            return;
+        }
+
+        $source = $row;
+        if ($existing !== null) {
+            foreach ($existing as $column => $value) {
+                if (!array_key_exists($column, $source)) {
+                    $source[$column] = $value;
+                }
+            }
+        }
+
+        $values = $this->resolveKeyValues($keys, $source, null);
+        if ($values === null) {
+            return;
+        }
+
+        $cacheKey = $this->buildCacheKey($keys, $values);
+        if ($cacheKey === null) {
+            return;
+        }
+
+        if (!array_key_exists($cacheKey, $this->rowCache)) {
+            $this->rowCache[$cacheKey] = $existing !== null ? $existing : [];
+        }
+
+        foreach ($row as $column => $value) {
+            $this->rowCache[$cacheKey][$column] = $value;
+        }
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function parseMode($value, int $default): int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed === '') {
+                return $default;
+            }
+            if (preg_match('/^[0-7]{3,4}$/', $trimmed)) {
+                return intval($trimmed, 8);
+            }
+            if (ctype_digit($trimmed)) {
+                return (int)$trimmed;
+            }
+        }
+        return $default;
     }
 
     private function now(): string

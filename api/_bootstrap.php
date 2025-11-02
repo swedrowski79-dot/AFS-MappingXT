@@ -195,48 +195,108 @@ function createMappingOnlyEnvironment(array $config, string $job = 'categories')
     if (($status['state'] ?? '') === 'running') {
         throw new AFS_SyncBusyException('Synchronisation läuft bereits. Bitte warten.');
     }
+
     $pdo = createEvoPdo($config);
 
     $primary = $config['sync_mappings']['primary'] ?? [];
+    $manifestPath = isset($primary['rules']) && is_string($primary['rules']) && $primary['rules'] !== ''
+        ? $primary['rules']
+        : afs_prefer_path('afs_evo.yml', 'mapping');
 
-    $defaultSource = afs_prefer_path('afs.yml', 'schemas');
-    $defaultSchema = afs_prefer_path('evo.yml', 'schemas');
-    $defaultRules = afs_prefer_path('afs_evo.yml', 'mapping');
-
-    $sourcePath = isset($primary['source']) && is_string($primary['source']) && $primary['source'] !== ''
-        ? $primary['source'] : $defaultSource;
-    $schemaPath = isset($primary['schema']) && is_string($primary['schema']) && $primary['schema'] !== ''
-        ? $primary['schema'] : $defaultSchema;
-    $rulesPath  = isset($primary['rules'])  && is_string($primary['rules'])  && $primary['rules']  !== ''
-        ? $primary['rules']  : $defaultRules;
-
-    if (!is_file($sourcePath) || !is_file($schemaPath) || !is_file($rulesPath)) {
-        throw new AFS_ConfigurationException('Mapping-Dateien nicht gefunden: ' . json_encode([
-            'source' => $sourcePath,
-            'schema' => $schemaPath,
-            'rules'  => $rulesPath,
-        ], JSON_UNESCAPED_SLASHES));
+    if (!is_file($manifestPath)) {
+        throw new AFS_ConfigurationException('Mapping-Manifest nicht gefunden: ' . $manifestPath);
     }
 
-    $sourceConfig = YamlMappingLoader::load($sourcePath);
-    $driver = strtolower((string)($sourceConfig['driver'] ?? 'mssql'));
+    $manifest = YamlMappingLoader::load($manifestPath);
+    $projectRoot = $config['paths']['root'] ?? dirname(__DIR__);
 
-    if ($driver === 'filedb') {
-        $projectRoot = $config['paths']['root'] ?? dirname(__DIR__);
-        $sourceConnection = FileDB_Connection::fromConfig($sourceConfig, $projectRoot);
-    } else {
-        $mssql = createMssql($config);
-        try {
-            $mssql->scalar('SELECT 1');
-        } catch (Throwable $e) {
-            $mssql->close();
-            throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
+    $sourcesManifest = $manifest['sources'] ?? [];
+    if (!is_array($sourcesManifest)) {
+        $sourcesManifest = [];
+    }
+
+    $sourceDefinitions = [];
+    $sharedConnections = [];
+    $connectionsToClose = [];
+
+    foreach ($sourcesManifest as $sourceId => $sourceInfo) {
+        if (!is_array($sourceInfo)) {
+            continue;
         }
-        $sourceConnection = $mssql;
+        $schemaRef = (string)($sourceInfo['schema'] ?? '');
+        if ($schemaRef === '') {
+            continue;
+        }
+        $schemaPath = str_starts_with($schemaRef, '/') || preg_match('#^[A-Za-z]:[\\/]#', $schemaRef)
+            ? $schemaRef
+            : $projectRoot . '/' . ltrim($schemaRef, '/');
+        if (!is_file($schemaPath)) {
+            throw new AFS_ConfigurationException(sprintf('Schema-Datei für Quelle "%s" nicht gefunden (%s).', $sourceId, $schemaPath));
+        }
+
+        $schema = YamlMappingLoader::load($schemaPath);
+        $driver = strtolower((string)($schema['driver'] ?? 'mssql'));
+
+        switch ($driver) {
+            case 'mssql':
+                if (!isset($sharedConnections['__mssql'])) {
+                    $mssql = createMssql($config);
+                    try {
+                        $mssql->scalar('SELECT 1');
+                    } catch (Throwable $e) {
+                        $mssql->close();
+                        throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e);
+                    }
+                    $sharedConnections['__mssql'] = $mssql;
+                    $connectionsToClose[] = $mssql;
+                }
+                $sourceDefinitions[$sourceId] = [
+                    'type' => 'mapper',
+                    'mapper' => SourceMapper::fromFile($schemaPath),
+                    'connection' => $sharedConnections['__mssql'],
+                ];
+                break;
+
+            case 'filedb':
+                $connection = FileDB_Connection::fromConfig($schema, $projectRoot);
+                $sourceDefinitions[$sourceId] = [
+                    'type' => 'mapper',
+                    'mapper' => SourceMapper::fromFile($schemaPath),
+                    'connection' => $connection,
+                ];
+                break;
+
+            case 'filecatcher':
+                $sourceDefinitions[$sourceId] = [
+                    'type' => 'filecatcher',
+                ];
+                break;
+
+            default:
+                throw new RuntimeException(sprintf('Unbekannter Treiber "%s" für Quelle "%s".', $driver, $sourceId));
+        }
     }
 
-    $engine = MappingSyncEngine::fromFiles($sourcePath, $schemaPath, $rulesPath);
-    return [$tracker, $engine, $sourceConnection, $pdo];
+    $targetsManifest = $manifest['target'] ?? [];
+    if (!is_array($targetsManifest) || $targetsManifest === []) {
+        throw new RuntimeException('Manifest enthält kein target-Objekt.');
+    }
+    $targetEntry = reset($targetsManifest);
+    if (!is_array($targetEntry) || empty($targetEntry['schema'])) {
+        throw new RuntimeException('Target-Konfiguration unvollständig (schema fehlt).');
+    }
+    $targetSchemaRef = (string)$targetEntry['schema'];
+    $targetSchemaPath = str_starts_with($targetSchemaRef, '/') || preg_match('#^[A-Za-z]:[\\/]#', $targetSchemaRef)
+        ? $targetSchemaRef
+        : $projectRoot . '/' . ltrim($targetSchemaRef, '/');
+    if (!is_file($targetSchemaPath)) {
+        throw new AFS_ConfigurationException('Target-Schema nicht gefunden: ' . $targetSchemaPath);
+    }
+    $targetMapper = TargetMapper::fromFile($targetSchemaPath);
+
+    $engine = new MappingSyncEngine($sourceDefinitions, $targetMapper, $manifest);
+
+    return [$tracker, $engine, $connectionsToClose, $pdo];
 }
 
 /**

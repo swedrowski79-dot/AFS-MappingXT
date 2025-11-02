@@ -15,7 +15,8 @@ tables:
         Mandant: { eq: 1 }
         Art: { lt: 255 }
         Artikelnummer: { not_null: true }
-
+        Internet: {eq : 1}
+   
     # Alle relevanten Felder wie von dir geliefert
     fields:
       - Artikel
@@ -69,6 +70,7 @@ tables:
       table: Warengruppe
       default_filter:
         Mandant: { eq: 1 }
+        Internet: { eq: 1 }
       on_update_column: Update   # laut deiner Angabe onUpdate="Update"
 
     fields:

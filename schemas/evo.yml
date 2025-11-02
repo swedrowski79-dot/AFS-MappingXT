@@ -4,27 +4,45 @@ introspect: true
 
 tables:
   artikel:
-    keys: [model]
+    keys: [id]
+    business_key: [model]
+    explicit_unique: [model]
+    unique_constraint: [model]
     fields:
-      - afs_id           # Referenz auf AFS.Artikel (Artikel)
-      - model            # = AFS.Artikelnummer
-      - name
-      - ean
-      - description_html
-      - promo_html       # Werbetext1 → HTML
-      - note_html        # Bemerkung/Hinweis → HTML
-      - unit             # Einheit
-      - gross_weight     # Bruttogewicht
-      - price            # VK3 (Brutto)
-      - tax_class_id     # aus AFS.Umsatzsteuer gemappt
-      - stock            # Bestand
-      - status           # 1=online, 0=offline (aus AFS.Internet)
-      - change
-      - seo_slug
-      - source_hash
-      - updated_at
+      - id                # surrogate PK (Auto-Inc; introspektiert)
+      - model             # = AFS.Artikelnummer
+      - name              # = AFS.Bezeichnung1
+      - ean               # EAN
+      - description_html  # Beschreibung → HTML
+      - promo_html        # Werbetext1 → HTML
+      - note_html         # Bemerkung/Hinweis → HTML
+      - unit              # Einheit
+      - gross_weight      # Bruttogewicht
+      - price             # VK3 (Brutto)
+      - tax_class_id      # aus AFS.Umsatzsteuer gemappt
+      - stock             # Bestand
+      - status            # 1=online, 0=offline (aus AFS.Internet)
+      - meta_title        # Meta-Titel
+      - meta_description  # Meta-Beschreibung
+      - change            # artikel.change
+      - category          # Warengruppe oder category
+      - is_master         # Flag ob Artikel ein Master ist
+      - master_model      # Zugehörige Master-Artikelnummer
+      - products_image    # Hauptbild (AFS Bild1)
+      - products_name     # Produktname (Kompatibilität)
+      - products_description # Produktbeschreibung (Langtext)
+      - seo_slug          # SEO-freundlicher URL-Slug
+      - source_hash       # Hash aller Quellfelder
+      - updated_at        # artikel.updated_at
 
-  warengruppe:
+  artikel_system:
+    keys: [id]
+    fields:
+      - id                # artikel.id in EVO
+      - afs_id            # artikel_id in AFS
+      - xt_id             # artikel.id in XT
+
+  category:
     keys: [cat_id]
     fields:
       - cat_id           # AFS.Warengruppe
@@ -35,68 +53,138 @@ tables:
       - image            # Bild
       - image_large      # Bild_gross
       - description_html # Beschreibung → HTML
+      - description      # Beschreibung (Text/HTML)
+      - meta_description # Meta-Beschreibung
+      - meta_title       # Meta-Titel
       - change
       - source_hash
       - updated_at
 
+  category_system:
+    keys: [id]
+    fields:
+      - id              # category.id in EVO
+      - afs_id          # category.cat_id in AFS
+      - xt_id           # category.id in XT
+      
   bilder:
     keys: [hash]         # dedupe per Datei-Hash
     fields:
       - image_id         # surrogate PK (Auto-Inc; introspektiert)
-      - file_name
-      - mime
-      - width
-      - height
-      - file_size
-      - status
-      - change
-      - upload          # ← NEU für Upload-Flag
-      - updated_at
+      - file_name        # Dateiname
+      - mime             # MIME-Typ
+      - file_size        # Dateigröße
+      - hash             # Dateihash
+      - stored_file 
+      - stored_path
+      - stored_at
+      - status        # bilder.status
+      - change        # bilder.change
+      - upload        # Upload-Flag
+      - updated_at    # bilder.updated_at
+
+  bilder_system:
+    keys: [id]
+    fields:
+      - id            # bilder.id in EVO
+      - xt_id         # bilder.image_id in XT
 
   artikel_bilder:
-    keys: [model, image_id]
+    keys: [id, image_id]
     fields:
-      - model
-      - image_id
-      - position
-      - status
-      - change
-      - updated_at
+      - id              # artikel.id
+      - image_id        # artikel.model + artikel_bilder.image_id
+      - position        # Sortierreihenfolge
+      - status          # artikel_bilder.status
+      - change          # artikel_bilder.change
+      - updated_at      # artikel_bilder.updated_at
+
+    artikel_bilder_system:
+      keys: [id]
+      fields:
+        - id              # artikel_bilder.id in EVO
+        - xt_id           # artikel_bilder.image_id in XT
 
   dokumente:
     keys: [hash]
     fields:
-      - doc_id
-      - file_name
-      - title
-      - kind            # AFS.Dokument.Art
-      - mime
-      - file_size
-      - status
-      - change
-      - upload          # ← NEU für Upload-Flag
-      - updated_at
+      - doc_id        # surrogate PK (Auto-Inc; introspektiert)
+      - file_name     # Dateiname
+      - title         # Dokumenttitel
+      - kind          # AFS.Dokument.Art
+      - mime          # MIME-Typ
+      - file_size     # Dateigröße
+      - hash          # Dateihash
+      - stored_file
+      - stored_path
+      - stored_at
+      - status        # dokumente.status
+      - change        # dokumente.change
+      - upload        # ← NEU für Upload-Flag
+      - updated_at    # dokumente.updated_at
+
+  dokumente_system:
+    keys: [id]
+    fields:
+      - id          # dokumente.id in EVO
+      - xt_id       # dokumente.doc_id in XT
 
   artikel_dokumente:
-    keys: [model, doc_id]
+    keys: [id, doc_id]
     fields:
-      - model
-      - doc_id
-      - status
-      - change
-      - updated_at
+      - id          # artikel.id
+      - doc_id      # artikel.doc_id
+      - status      # artikel_dokumente.status
+      - change      # artikel_dokumente.change
+      - updated_at  # artikel_dokumente.updated_at
+
+  artikel_dokumente_system:
+    keys: [id]
+    fields:
+      - id             # artikel_dokumente.id in EVO
+      - xt_id          # artikel_dokumente.doc_id in XT
+
+  file_vault:
+    keys: [file_name]
+    fields:
+      - file_name     # eindeutiger Dateiname im Vault
+      - checksum      # Dateiprüfziffer
+      - md5           # MD5-Hash
+      - size          # Dateigröße
+      - mtime         # Änderungsdatum
+      - ext           # Dateiendung
+      - mime          # MIME-Typ
+      - source_path
+      - stored_file
+      - stored_path   
+      - stored_at     
+      - change        # Datei geändert am              
+      - updated_at    # Datei aktualisiert am
 
   attribute:              # einfache Attribut-Stammtabelle (Name dedupliziert)
     keys: [name]
     fields:
-      - attribute_id
-      - name
-      - updated_at
+      - attribute_id  # attribute_id in EVO(Auto-Inc; introspektiert)
+      - name          # Attributname
+      - updated_at    # Attribut aktualisiert am
+
+  attribute_system:
+    keys: [id]
+    fields:
+      - id         # attribute.id in EVO
+      - xt_id      # attribute.attribute_id in XT
 
   artikel_attribute:      # M:N: Artikel ↔ Attribut (einfach: eine Value-Spalte)
-    keys: [model, attribute_id]
+    keys: [id, attribute_id]
     fields:
-      - model
-      - attribute_id
-      - value
-      - updated_at
+      - id            # artikel.id
+      - attribute_id  # attribute.attribute_id
+      - status        # artikel_attribute.status
+      - value         # Attributwert
+      - updated_at    # Attribut aktualisiert am
+
+  artikel_attribute_system:
+    keys: [id]
+    fields:
+      - id         # artikel_attribute.id in EVO
+      - xt_id      # artikel_attribute.attribute_id in XT

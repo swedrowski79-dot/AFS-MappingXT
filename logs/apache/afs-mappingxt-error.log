@@ -1,0 +1,136 @@
+[Fri Oct 31 14:48:53.706715 2025] [proxy:error] [pid 10:tid 55] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:48:53.707288 2025] [proxy_fcgi:error] [pid 10:tid 55] [client 172.18.0.1:57194] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:48:53.706784 2025] [proxy:error] [pid 3224:tid 3230] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:48:53.708263 2025] [proxy_fcgi:error] [pid 3224:tid 3230] [client 172.18.0.1:57176] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:48:53.706720 2025] [proxy:error] [pid 10:tid 17] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:48:53.708741 2025] [proxy_fcgi:error] [pid 10:tid 17] [client 172.18.0.1:57178] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:48:53.707071 2025] [proxy:error] [pid 3224:tid 3231] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:48:53.709563 2025] [proxy_fcgi:error] [pid 3224:tid 3231] [client 172.18.0.1:57180] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:49:14.738080 2025] [proxy:error] [pid 3224:tid 3234] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:49:14.738469 2025] [proxy_fcgi:error] [pid 3224:tid 3234] [client 127.0.0.1:44906] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:49:43.300638 2025] [proxy:error] [pid 3224:tid 3232] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:49:43.301080 2025] [proxy_fcgi:error] [pid 3224:tid 3232] [client 127.0.0.1:57954] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:49:53.868615 2025] [proxy:error] [pid 3224:tid 3235] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:49:53.868638 2025] [proxy:error] [pid 10:tid 22] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:49:53.869793 2025] [proxy_fcgi:error] [pid 10:tid 22] [client 172.18.0.1:50238] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:49:53.869350 2025] [proxy:error] [pid 3224:tid 3238] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:49:53.870757 2025] [proxy_fcgi:error] [pid 3224:tid 3238] [client 172.18.0.1:50210] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:49:53.869421 2025] [proxy_fcgi:error] [pid 3224:tid 3235] [client 172.18.0.1:50252] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:49:53.869921 2025] [proxy:error] [pid 3224:tid 3236] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:49:53.871828 2025] [proxy_fcgi:error] [pid 3224:tid 3236] [client 172.18.0.1:50212] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:50:11.846678 2025] [proxy:error] [pid 3224:tid 3240] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:11.846935 2025] [proxy_fcgi:error] [pid 3224:tid 3240] [client 127.0.0.1:34424] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:50:30.600340 2025] [proxy:error] [pid 3224:tid 3242] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:30.600738 2025] [proxy_fcgi:error] [pid 3224:tid 3242] [client 172.18.0.1:33746] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:50:30.600339 2025] [proxy:error] [pid 10:tid 31] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:30.601293 2025] [proxy_fcgi:error] [pid 10:tid 31] [client 172.18.0.1:33768] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:50:30.600339 2025] [proxy:error] [pid 10:tid 28] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:30.602127 2025] [proxy_fcgi:error] [pid 10:tid 28] [client 172.18.0.1:33744] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:50:30.600931 2025] [proxy:error] [pid 3224:tid 3243] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:30.602991 2025] [proxy_fcgi:error] [pid 3224:tid 3243] [client 172.18.0.1:33748] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:50:32.296809 2025] [proxy:error] [pid 10:tid 33] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:32.297013 2025] [proxy:error] [pid 3224:tid 3245] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:32.297279 2025] [proxy_fcgi:error] [pid 3224:tid 3245] [client 172.18.0.1:33770] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:50:32.297015 2025] [proxy_fcgi:error] [pid 10:tid 33] [client 172.18.0.1:33780] AH01079: failed to make connection to backend: localhost, referer: http://10.0.1.82:8080/
+[Fri Oct 31 14:50:34.100403 2025] [proxy:error] [pid 10:tid 49] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:34.100653 2025] [proxy_fcgi:error] [pid 10:tid 49] [client 172.18.0.1:33784] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:50:37.015920 2025] [proxy:error] [pid 3224:tid 3249] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:37.016191 2025] [proxy_fcgi:error] [pid 3224:tid 3249] [client 172.18.0.1:33788] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:50:40.388885 2025] [proxy:error] [pid 10:tid 51] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:50:40.389134 2025] [proxy_fcgi:error] [pid 10:tid 51] [client 127.0.0.1:34006] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:51:08.938566 2025] [proxy:error] [pid 3224:tid 3227] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:51:08.938780 2025] [proxy_fcgi:error] [pid 3224:tid 3227] [client 127.0.0.1:54606] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:51:37.499072 2025] [proxy:error] [pid 3224:tid 3228] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:51:37.499465 2025] [proxy_fcgi:error] [pid 3224:tid 3228] [client 127.0.0.1:59274] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:52:06.057029 2025] [proxy:error] [pid 10:tid 44] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:52:06.057327 2025] [proxy_fcgi:error] [pid 10:tid 44] [client 127.0.0.1:34506] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:52:34.589704 2025] [proxy:error] [pid 3224:tid 3230] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:52:34.589945 2025] [proxy_fcgi:error] [pid 3224:tid 3230] [client 127.0.0.1:36578] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:53:03.150656 2025] [proxy:error] [pid 10:tid 48] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:53:03.150922 2025] [proxy_fcgi:error] [pid 10:tid 48] [client 127.0.0.1:37894] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:53:31.725500 2025] [proxy:error] [pid 3224:tid 3229] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:53:31.725763 2025] [proxy_fcgi:error] [pid 3224:tid 3229] [client 127.0.0.1:60346] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:54:00.310482 2025] [proxy:error] [pid 3224:tid 3231] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:54:00.310843 2025] [proxy_fcgi:error] [pid 3224:tid 3231] [client 127.0.0.1:50918] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:54:28.875588 2025] [proxy:error] [pid 3224:tid 3233] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:54:28.875921 2025] [proxy_fcgi:error] [pid 3224:tid 3233] [client 127.0.0.1:39348] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:54:57.428164 2025] [proxy:error] [pid 3224:tid 3234] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:54:57.428486 2025] [proxy_fcgi:error] [pid 3224:tid 3234] [client 127.0.0.1:58124] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:55:25.990547 2025] [proxy:error] [pid 3224:tid 3232] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:55:25.990941 2025] [proxy_fcgi:error] [pid 3224:tid 3232] [client 127.0.0.1:51264] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:55:54.544849 2025] [proxy:error] [pid 3224:tid 3238] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:55:54.545161 2025] [proxy_fcgi:error] [pid 3224:tid 3238] [client 127.0.0.1:42900] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:56:23.115480 2025] [proxy:error] [pid 10:tid 15] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:56:23.115821 2025] [proxy_fcgi:error] [pid 10:tid 15] [client 127.0.0.1:35498] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:56:51.676227 2025] [proxy:error] [pid 3224:tid 3235] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:56:51.676481 2025] [proxy_fcgi:error] [pid 3224:tid 3235] [client 127.0.0.1:56454] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:57:20.266965 2025] [proxy:error] [pid 3224:tid 3236] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:57:20.267222 2025] [proxy_fcgi:error] [pid 3224:tid 3236] [client 127.0.0.1:57590] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:57:48.835305 2025] [proxy:error] [pid 3224:tid 3239] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:57:48.835555 2025] [proxy_fcgi:error] [pid 3224:tid 3239] [client 127.0.0.1:44324] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:58:17.708578 2025] [proxy:error] [pid 3224:tid 3237] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:58:17.708799 2025] [proxy_fcgi:error] [pid 3224:tid 3237] [client 127.0.0.1:58238] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:58:46.301037 2025] [proxy:error] [pid 3224:tid 3240] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:58:46.301276 2025] [proxy_fcgi:error] [pid 3224:tid 3240] [client 127.0.0.1:59188] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:59:14.877632 2025] [proxy:error] [pid 3224:tid 3242] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:59:14.877918 2025] [proxy_fcgi:error] [pid 3224:tid 3242] [client 127.0.0.1:38558] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 14:59:43.457418 2025] [proxy:error] [pid 3224:tid 3244] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 14:59:43.458107 2025] [proxy_fcgi:error] [pid 3224:tid 3244] [client 127.0.0.1:40226] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:00:12.081315 2025] [proxy:error] [pid 3224:tid 3243] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:00:12.081633 2025] [proxy_fcgi:error] [pid 3224:tid 3243] [client 127.0.0.1:50198] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:00:40.675573 2025] [proxy:error] [pid 3224:tid 3246] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:00:40.675909 2025] [proxy_fcgi:error] [pid 3224:tid 3246] [client 127.0.0.1:45388] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:01:09.311120 2025] [proxy:error] [pid 3224:tid 3245] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:01:09.311405 2025] [proxy_fcgi:error] [pid 3224:tid 3245] [client 127.0.0.1:55372] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:01:37.885011 2025] [proxy:error] [pid 3224:tid 3247] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:01:37.885292 2025] [proxy_fcgi:error] [pid 3224:tid 3247] [client 127.0.0.1:60968] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:02:06.442748 2025] [proxy:error] [pid 3224:tid 3248] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:02:06.443065 2025] [proxy_fcgi:error] [pid 3224:tid 3248] [client 127.0.0.1:50840] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:02:35.041968 2025] [proxy:error] [pid 3224:tid 3249] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:02:35.042406 2025] [proxy_fcgi:error] [pid 3224:tid 3249] [client 127.0.0.1:32978] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:03:03.631075 2025] [proxy:error] [pid 3224:tid 3250] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:03:03.631384 2025] [proxy_fcgi:error] [pid 3224:tid 3250] [client 127.0.0.1:50326] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:03:32.198766 2025] [proxy:error] [pid 3224:tid 3227] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:03:32.199081 2025] [proxy_fcgi:error] [pid 3224:tid 3227] [client 127.0.0.1:48854] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:04:00.789630 2025] [proxy:error] [pid 3224:tid 3226] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:04:00.789944 2025] [proxy_fcgi:error] [pid 3224:tid 3226] [client 127.0.0.1:46814] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:04:29.365410 2025] [proxy:error] [pid 3224:tid 3228] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:04:29.365691 2025] [proxy_fcgi:error] [pid 3224:tid 3228] [client 127.0.0.1:55730] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:04:57.923292 2025] [proxy:error] [pid 3224:tid 3230] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:04:57.923707 2025] [proxy_fcgi:error] [pid 3224:tid 3230] [client 127.0.0.1:58844] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:05:26.490111 2025] [proxy:error] [pid 10:tid 50] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:05:26.490356 2025] [proxy_fcgi:error] [pid 10:tid 50] [client 127.0.0.1:44496] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:05:55.049184 2025] [proxy:error] [pid 3224:tid 3229] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:05:55.049459 2025] [proxy_fcgi:error] [pid 3224:tid 3229] [client 127.0.0.1:56954] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:06:22.243222 2025] [proxy:error] [pid 3224:tid 3231] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:06:22.243498 2025] [proxy_fcgi:error] [pid 3224:tid 3231] [client 127.0.0.1:42828] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:06:50.816274 2025] [proxy:error] [pid 3224:tid 3234] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:06:50.816650 2025] [proxy_fcgi:error] [pid 3224:tid 3234] [client 127.0.0.1:57832] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:07:19.366028 2025] [proxy:error] [pid 3224:tid 3232] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:07:19.366409 2025] [proxy_fcgi:error] [pid 3224:tid 3232] [client 127.0.0.1:53070] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:07:47.911298 2025] [proxy:error] [pid 3224:tid 3238] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:07:47.911557 2025] [proxy_fcgi:error] [pid 3224:tid 3238] [client 127.0.0.1:43032] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:08:16.473980 2025] [proxy:error] [pid 3224:tid 3235] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:08:16.474255 2025] [proxy_fcgi:error] [pid 3224:tid 3235] [client 127.0.0.1:49046] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:08:45.050773 2025] [proxy:error] [pid 3224:tid 3236] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:08:45.051309 2025] [proxy_fcgi:error] [pid 3224:tid 3236] [client 127.0.0.1:41382] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:09:13.635246 2025] [proxy:error] [pid 3224:tid 3239] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:09:13.635590 2025] [proxy_fcgi:error] [pid 3224:tid 3239] [client 127.0.0.1:58272] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:09:42.210192 2025] [proxy:error] [pid 3224:tid 3237] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:09:42.210486 2025] [proxy_fcgi:error] [pid 3224:tid 3237] [client 127.0.0.1:52612] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:10:10.793056 2025] [proxy:error] [pid 3224:tid 3241] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:10:10.793339 2025] [proxy_fcgi:error] [pid 3224:tid 3241] [client 127.0.0.1:48670] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:10:39.350913 2025] [proxy:error] [pid 3224:tid 3240] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:10:39.351327 2025] [proxy_fcgi:error] [pid 3224:tid 3240] [client 127.0.0.1:41896] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:11:07.890813 2025] [proxy:error] [pid 3224:tid 3242] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:11:07.891093 2025] [proxy_fcgi:error] [pid 3224:tid 3242] [client 127.0.0.1:43136] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:11:36.433059 2025] [proxy:error] [pid 3224:tid 3244] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:11:36.433426 2025] [proxy_fcgi:error] [pid 3224:tid 3244] [client 127.0.0.1:41788] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:12:05.027523 2025] [proxy:error] [pid 3224:tid 3243] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:12:05.027828 2025] [proxy_fcgi:error] [pid 3224:tid 3243] [client 127.0.0.1:47698] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:12:33.633118 2025] [proxy:error] [pid 3224:tid 3246] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:12:33.633362 2025] [proxy_fcgi:error] [pid 3224:tid 3246] [client 127.0.0.1:41180] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:13:02.201970 2025] [proxy:error] [pid 3224:tid 3245] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:13:02.202229 2025] [proxy_fcgi:error] [pid 3224:tid 3245] [client 127.0.0.1:52196] AH01079: failed to make connection to backend: localhost
+[Fri Oct 31 15:13:30.824269 2025] [proxy:error] [pid 10:tid 53] (2)No such file or directory: AH02454: FCGI: attempt to connect to Unix domain socket /run/php/php-fpm.sock (localhost:8000) failed
+[Fri Oct 31 15:13:30.824542 2025] [proxy_fcgi:error] [pid 10:tid 53] [client 127.0.0.1:43258] AH01079: failed to make connection to backend: localhost
