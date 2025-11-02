@@ -76,7 +76,10 @@ try {
             $connections = [];
             foreach ($data['connections'] as $connection) {
                 $masked = dbm_mask_connection($connection);
-                $masked['status'] = DatabaseConfig::testConnection($connection);
+                $masked['status'] = [
+                    'ok' => null,
+                    'message' => 'Remote-Verbindung – Prüfung erfolgt auf dem Zielsystem.',
+                ];
                 $masked['remote_server'] = [
                     'name' => $remote['name'] ?? '',
                     'url' => $remote['url'] ?? '',

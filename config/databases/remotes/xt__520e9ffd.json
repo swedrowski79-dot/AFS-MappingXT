@@ -1,0 +1,33 @@
+{
+    "server": {
+        "name": "XT",
+        "url": "http://10.0.1.82/afs",
+        "database": "",
+        "note": "Konfiguration für Remote-Server \"XT\" (auf Hauptserver gespeichert)",
+        "updated_at": "2025-11-02T14:36:54+01:00",
+        "stored_on": "main"
+    },
+    "connections": [
+        {
+            "id": "xt",
+            "title": "XT",
+            "type": "mysql",
+            "roles": [
+                "XT_MYSQL"
+            ],
+            "settings": {
+                "host": "localhost",
+                "port": 3306,
+                "database": "shop",
+                "username": "shop",
+                "password": "dornbach"
+            },
+            "remote_server": {
+                "name": "XT",
+                "url": "http://10.0.1.82/afs",
+                "note": "Verbindung gehört zum Remote-Server \"XT\""
+            },
+            "scope": "remote"
+        }
+    ]
+}

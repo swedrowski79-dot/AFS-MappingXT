@@ -77,7 +77,10 @@ if (!empty($payload['id'])) {
     api_error('Es wurde keine Verbindung angegeben.', 400);
 }
 
-$result = DatabaseConfig::testConnection($connection);
+$result = [
+    'ok' => null,
+    'message' => 'Remote-Verbindung – Test wird direkt auf dem Remote-Server durchgeführt.',
+];
 
 api_ok([
     'status' => $result,
