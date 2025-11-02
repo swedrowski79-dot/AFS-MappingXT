@@ -1,12 +1,210 @@
 version: 1
 connection: xt
 description: >
-  Remote XT-Commerce Schema. Wird schrittweise befüllt. Die Spalten lassen sich
-  über scripts/export_remote_table.php automatisiert auslesen, sobald der Remote-Server
-  das Introspektions-API ausliefert.
+  Remote XT-Commerce Schema. Diese Datei wird schrittweise erweitert. Die Tabellen
+  werden direkt vom Remote-Server introspektiert (scripts/export_remote_table.php).
 
 tables:
   xt_media:
     source:
       table: xt_media
-    fields: []
+    fields:
+      - id
+      - file
+      - type
+      - class
+      - download_status
+      - status
+      - owner
+      - date_added
+      - last_modified
+      - max_dl_count
+      - max_dl_days
+      - total_downloads
+      - copyright_holder
+      - external_id
+
+  xt_media_description:
+    source:
+      table: xt_media_description
+    fields:
+      - id
+      - language_code
+      - media_name
+      - media_description
+
+  xt_media_gallery:
+    source:
+      table: xt_media_gallery
+    fields:
+      - mg_id
+      - parent_id
+      - sort_order
+      - class
+      - status
+      - u_id
+
+  xt_media_link:
+    source:
+      table: xt_media_link
+    fields:
+      - ml_id
+      - m_id
+      - link_id
+      - class
+      - type
+      - sort_order
+
+  xt_media_to_media_gallery:
+    source:
+      table: xt_media_to_media_gallery
+    fields:
+      - ml_id
+      - m_id
+      - mg_id
+
+  xt_categories:
+    source:
+      table: xt_categories
+    fields:
+      - categories_id
+      - external_id
+      - permission_id
+      - categories_owner
+      - categories_image
+      - categories_left
+      - categories_right
+      - categories_level
+      - parent_id
+      - categories_status
+      - categories_template
+      - listing_template
+      - sort_order
+      - products_sorting
+      - products_sorting2
+      - top_category
+      - start_page_category
+      - date_added
+      - last_modified
+      - category_custom_link
+      - category_custom_link_type
+      - category_custom_link_id
+      - google_product_cat
+
+  xt_categories_description:
+    source:
+      table: xt_categories_description
+    fields:
+      - categories_id
+      - language_code
+      - categories_name
+      - categories_heading_title
+      - categories_description
+      - categories_description_bottom
+      - categories_store_id
+
+  xt_products:
+    source:
+      table: xt_products
+    fields:
+      - products_id
+      - external_id
+      - permission_id
+      - products_owner
+      - products_ean
+      - products_quantity
+      - show_stock
+      - products_average_quantity
+      - products_shippingtime
+      - products_shippingtime_nostock
+      - products_model
+      - products_master_flag
+      - products_master_model
+      - ms_open_first_slave
+      - ms_show_slave_list
+      - ms_filter_slave_list
+      - ms_filter_slave_list_hide_on_product
+      - products_image_from_master
+      - ms_load_masters_free_downloads
+      - ms_load_masters_main_img
+      - load_mains_imgs
+      - sum_quantity_for_graduated_price
+      - products_keywords_from_master
+      - products_short_description_from_master
+      - products_description_from_master
+      - products_option_template
+      - products_option_list_template
+      - products_option_master_price
+      - products_master_slave_order
+      - products_mpn
+      - price_flag_graduated_all
+      - price_flag_graduated_1
+      - price_flag_graduated_2
+      - price_flag_graduated_3
+      - price_flag_graduated_4
+      - products_sort
+      - products_image
+      - products_price
+      - date_added
+      - last_modified
+      - date_available
+      - products_weight
+      - products_condition
+      - products_status
+      - products_tax_class_id
+      - product_template
+      - product_list_template
+      - manufacturers_id
+      - products_ordered
+      - products_transactions
+      - products_fsk18
+      - products_vpe
+      - products_vpe_status
+      - products_vpe_value
+      - products_unit
+      - products_average_rating
+      - products_rating_count
+      - products_digital
+      - flag_has_specials
+      - products_serials
+      - total_downloads
+      - group_discount_allowed
+      - google_product_cat
+      - products_canonical_master
+
+  xt_products_description:
+    source:
+      table: xt_products_description
+    fields:
+      - products_id
+      - language_code
+      - reload_st
+      - products_name
+      - products_description
+      - products_short_description
+      - products_keywords
+      - products_url
+      - products_store_id
+
+  xt_products_to_categories:
+    source:
+      table: xt_products_to_categories
+    fields:
+      - products_id
+      - categories_id
+      - master_link
+      - store_id
+
+  xt_seo_url:
+    source:
+      table: xt_seo_url
+    fields:
+      - url_md5
+      - url_text
+      - language_code
+      - link_type
+      - link_id
+      - meta_title
+      - meta_description
+      - meta_keywords
+      - store_id

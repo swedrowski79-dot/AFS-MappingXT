@@ -73,6 +73,20 @@ class SyncService
             } catch (Throwable $e) {
                 $tracker->logWarning('Dokumente-Sync übersprungen: ' . $e->getMessage(), [], 'dokumente');
             }
+
+            try {
+                $mssqlConnection = $this->extractMssqlConnection($sourceConnections);
+                if ($mssqlConnection instanceof MSSQL_Connection) {
+                    $mediaLinkService = new MediaLinkService($pdo, $mssqlConnection);
+                    $mediaSummary = $mediaLinkService->sync();
+                    if ($mediaSummary !== []) {
+                        $summary['media_links'] = $mediaSummary;
+                        $tracker->logInfo('Medien-Verknüpfungen aktualisiert', $mediaSummary, 'media_links');
+                    }
+                }
+            } catch (Throwable $e) {
+                $tracker->logWarning('Medien-Verknüpfungen übersprungen: ' . $e->getMessage(), [], 'media_links');
+            }
         }
 
         $overallDuration = microtime(true) - $overallStart;
@@ -111,6 +125,19 @@ class SyncService
             'summary' => $summary,
             'duration_seconds' => $overallDuration,
         ];
+    }
+
+    /**
+     * @param array<int,mixed> $connections
+     */
+    private function extractMssqlConnection(array $connections): ?MSSQL_Connection
+    {
+        foreach ($connections as $connection) {
+            if ($connection instanceof MSSQL_Connection) {
+                return $connection;
+            }
+        }
+        return null;
     }
 
     /**

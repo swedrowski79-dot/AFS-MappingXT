@@ -126,15 +126,18 @@ entities:
       evo.bilder.file_name: file_vault.file_name
       evo.bilder.mime:      file_vault.mime
       evo.bilder.file_size: file_vault.size
-      evo.bilder.hash:      file_vault.checksum
-      evo.bilder.stored_file: file_vault.stored_file
-      evo.bilder.stored_path: file_vault.stored_path
-      evo.bilder.stored_at:   file_vault.stored_at
+      evo.bilder.hash:      $func.image_guard(file_vault.mime, file_vault.checksum)
+      evo.bilder.stored_file: $func.image_guard(file_vault.mime, file_vault.stored_file)
+      evo.bilder.stored_path: $func.image_guard(file_vault.mime, file_vault.stored_path)
+      evo.bilder.stored_at:   $func.image_guard(file_vault.mime, file_vault.stored_at)
       evo.bilder.status:    =1
       evo.bilder.change:    =0
+      evo.bilder.media_type: file_vault.art_type | to_int
+      evo.bilder.art_id:     file_vault.art_id | trim | null_if_empty
+      evo.bilder.cat_id:     file_vault.cat_id | trim | null_if_empty
 
     delta:
-      fields: [file_name, mime, file_size, stored_file, stored_path]
+      fields: [file_name, mime, file_size, stored_file, stored_path, media_type, art_id, cat_id]
 
     flags:
       on_insert:
@@ -166,7 +169,7 @@ entities:
       evo.dokumente.title:     file_vault.file_name | normalize_title
       evo.dokumente.mime:      file_vault.mime
       evo.dokumente.file_size: file_vault.size
-      evo.dokumente.hash:      file_vault.checksum
+      evo.dokumente.hash:      $func.document_guard(file_vault.mime, file_vault.checksum)
       evo.dokumente.stored_file: file_vault.stored_file
       evo.dokumente.stored_path: file_vault.stored_path
       evo.dokumente.stored_at:   file_vault.stored_at

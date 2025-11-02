@@ -34,6 +34,9 @@ table:
     - stored_at
     - change
     - updated_at
+    - art_type
+    - art_id
+    - cat_id
 
   logic:
     map:
@@ -46,6 +49,9 @@ table:
       checksum:    "$func.easy_checksum($src.mtime, $src.size)"
       stored_file: "$func.vault_name('{file_name}')"
       stored_path: ""
+      art_type:    "$func.media_detect_type($src.path)"
+      art_id:      "$func.media_extract_article($src.path)"
+      cat_id:      "$func.media_extract_category($src.path)"
     actions:
       - type: file_copy
         from: "$src.path"
@@ -54,8 +60,8 @@ table:
     delta:
       fields: [checksum, size, mime]
     upsert:
-      insert: [file_name, checksum, size, mtime, ext, mime, source_path, stored_file, stored_path, stored_at, change, updated_at]
-      update: [checksum, size, mtime, ext, mime, source_path, stored_file, stored_path, stored_at, change, updated_at]
+      insert: [file_name, checksum, size, mtime, ext, mime, source_path, stored_file, stored_path, stored_at, change, updated_at, art_type, art_id, cat_id]
+      update: [checksum, size, mtime, ext, mime, source_path, stored_file, stored_path, stored_at, change, updated_at, art_type, art_id, cat_id]
     flags:
       on_insert: { change: =1, stored_at: $func.now() }
       on_update_when_delta_changed: { change: =1, stored_at: $func.now() }

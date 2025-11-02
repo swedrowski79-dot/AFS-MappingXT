@@ -82,12 +82,25 @@ tables:
       - change        # bilder.change
       - upload        # Upload-Flag
       - updated_at    # bilder.updated_at
+      - media_type    # 1 = Artikelbild, 2 = Warengruppenbild
+      - art_id        # Artikelnummer/Bildzuordnung
+      - cat_id        # Warengruppen-ID/Bildzuordnung
 
   bilder_system:
     keys: [id]
     fields:
       - id            # bilder.id in EVO
       - xt_id         # bilder.image_id in XT
+
+  category_bilder:
+    keys: [cat_id, image_id, image_type]
+    fields:
+      - cat_id
+      - image_id
+      - image_type
+      - status
+      - change
+      - updated_at
 
   artikel_bilder:
     keys: [id, image_id]

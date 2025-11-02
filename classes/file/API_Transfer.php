@@ -22,6 +22,8 @@ class API_Transfer
     private ?STATUS_MappingLogger $logger;
     private array $transferResults = [];
     private ?SQLite_Connection $db = null;
+    private ?array $imageColumnMap = null;
+    private ?array $documentColumnMap = null;
 
     public function __construct(array $config, ?STATUS_MappingLogger $logger = null, ?SQLite_Connection $db = null)
     {
@@ -373,18 +375,47 @@ class API_Transfer
             throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
         }
 
-        $sql = 'SELECT ID, Bildname, md5 FROM Bilder WHERE uploaded = 0 ORDER BY ID';
+        $map = $this->getImageColumnMap();
+
+        $idExpr = $map['id'] === 'rowid' ? 'rowid' : $this->db->quoteIdent($map['id']);
+        $filenameExpr = $this->db->quoteIdent($map['filename']);
+        $storedFileExpr = $map['stored_file']
+            ? $this->db->quoteIdent($map['stored_file'])
+            : $filenameExpr;
+        $storedPathExpr = $map['stored_path']
+            ? $this->db->quoteIdent($map['stored_path'])
+            : "''";
+        $hashExpr = $map['hash'] ? $this->db->quoteIdent($map['hash']) : "''";
+        $table = $this->db->quoteIdent($map['table']);
+        $flagExpr = $this->db->quoteIdent($map['flag']);
+
+        $sql = sprintf(
+            'SELECT %s AS id, %s AS filename, %s AS stored_file, %s AS stored_path, %s AS hash
+             FROM %s
+             WHERE %s = :pending
+             ORDER BY %s',
+            $idExpr,
+            $filenameExpr,
+            $storedFileExpr,
+            $storedPathExpr,
+            $hashExpr,
+            $table,
+            $flagExpr,
+            $idExpr
+        );
+
+        $rows = $this->db->fetchAll($sql, [':pending' => $map['flag_pending']]);
         $result = [];
-        
-        $stmt = $this->db->query($sql);
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        foreach ($rows as $row) {
             $result[] = [
-                'id' => (int)$row['ID'],
-                'filename' => (string)$row['Bildname'],
-                'md5' => $row['md5'] ?? null,
+                'id' => (int)$row['id'],
+                'filename' => (string)$row['filename'],
+                'stored_file' => $row['stored_file'] !== '' ? (string)$row['stored_file'] : (string)$row['filename'],
+                'stored_path' => (string)($row['stored_path'] ?? ''),
+                'hash' => $row['hash'] ?? null,
             ];
         }
-        
+
         return $result;
     }
 
@@ -399,19 +430,52 @@ class API_Transfer
             throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
         }
 
-        $sql = 'SELECT ID, Titel, Dateiname, md5 FROM Dokumente WHERE uploaded = 0 ORDER BY ID';
+        $map = $this->getDocumentColumnMap();
+
+        $idExpr = $map['id'] === 'rowid' ? 'rowid' : $this->db->quoteIdent($map['id']);
+        $titleExpr = $this->db->quoteIdent($map['title']);
+        $filenameExpr = $map['filename']
+            ? $this->db->quoteIdent($map['filename'])
+            : "''";
+        $storedFileExpr = $map['stored_file']
+            ? $this->db->quoteIdent($map['stored_file'])
+            : $filenameExpr;
+        $storedPathExpr = $map['stored_path']
+            ? $this->db->quoteIdent($map['stored_path'])
+            : "''";
+        $hashExpr = $map['hash'] ? $this->db->quoteIdent($map['hash']) : "''";
+        $table = $this->db->quoteIdent($map['table']);
+        $flagExpr = $this->db->quoteIdent($map['flag']);
+
+        $sql = sprintf(
+            'SELECT %s AS id, %s AS title, %s AS filename, %s AS stored_file, %s AS stored_path, %s AS hash
+             FROM %s
+             WHERE %s = :pending
+             ORDER BY %s',
+            $idExpr,
+            $titleExpr,
+            $filenameExpr,
+            $storedFileExpr,
+            $storedPathExpr,
+            $hashExpr,
+            $table,
+            $flagExpr,
+            $idExpr
+        );
+
+        $rows = $this->db->fetchAll($sql, [':pending' => $map['flag_pending']]);
         $result = [];
-        
-        $stmt = $this->db->query($sql);
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        foreach ($rows as $row) {
             $result[] = [
-                'id' => (int)$row['ID'],
-                'title' => (string)$row['Titel'],
-                'filename' => $row['Dateiname'] ?? null,
-                'md5' => $row['md5'] ?? null,
+                'id' => (int)$row['id'],
+                'title' => (string)$row['title'],
+                'filename' => $row['filename'] !== '' ? (string)$row['filename'] : null,
+                'stored_file' => $row['stored_file'] !== '' ? (string)$row['stored_file'] : ((string)$row['filename'] ?: (string)$row['title']),
+                'stored_path' => (string)($row['stored_path'] ?? ''),
+                'md5' => $row['hash'] ?? null,
             ];
         }
-        
+
         return $result;
     }
 
@@ -427,9 +491,13 @@ class API_Transfer
             throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
         }
 
-        $sql = 'UPDATE Bilder SET uploaded = 1 WHERE ID = ?';
-        $rowsAffected = $this->db->execute($sql, [$imageId]);
-        
+        $map = $this->getImageColumnMap();
+        $table = $this->db->quoteIdent($map['table']);
+        $flagExpr = $this->db->quoteIdent($map['flag']);
+        $idExpr = $map['id'] === 'rowid' ? 'rowid' : $this->db->quoteIdent($map['id']);
+        $sql = sprintf('UPDATE %s SET %s = :cleared WHERE %s = :id', $table, $flagExpr, $idExpr);
+        $rowsAffected = $this->db->execute($sql, [':cleared' => $map['flag_cleared'], ':id' => $imageId]);
+
         return $rowsAffected > 0;
     }
 
@@ -445,10 +513,176 @@ class API_Transfer
             throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
         }
 
-        $sql = 'UPDATE Dokumente SET uploaded = 1 WHERE ID = ?';
-        $rowsAffected = $this->db->execute($sql, [$documentId]);
-        
+        $map = $this->getDocumentColumnMap();
+        $table = $this->db->quoteIdent($map['table']);
+        $flagExpr = $this->db->quoteIdent($map['flag']);
+        $idExpr = $map['id'] === 'rowid' ? 'rowid' : $this->db->quoteIdent($map['id']);
+        $sql = sprintf('UPDATE %s SET %s = :cleared WHERE %s = :id', $table, $flagExpr, $idExpr);
+        $rowsAffected = $this->db->execute($sql, [':cleared' => $map['flag_cleared'], ':id' => $documentId]);
+
         return $rowsAffected > 0;
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function getImageColumnMap(): array
+    {
+        if ($this->db === null) {
+            throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
+        }
+        if ($this->imageColumnMap !== null) {
+            return $this->imageColumnMap;
+        }
+
+        $configMap = $this->transferConfig['pusher']['images'] ?? null;
+        $tableName = is_array($configMap) && !empty($configMap['table'])
+            ? (string)$configMap['table']
+            : 'bilder';
+
+        if (is_array($configMap)) {
+            $map = $this->mapFromPusherConfig($configMap, [
+                'id' => 'id_column',
+                'filename' => 'filename_column',
+                'stored_file' => 'stored_file_column',
+                'stored_path' => 'stored_path_column',
+                'hash' => 'hash_column',
+                'flag' => 'flag_column',
+            ]);
+            $map['table'] = $tableName;
+            return $this->imageColumnMap = $map;
+        }
+
+        $columns = $this->loadTableInfo($tableName);
+        $map = $this->buildColumnMap($columns, [
+            'id' => ['id', 'image_id'],
+            'filename' => ['file_name', 'bildname', 'filename'],
+            'stored_file' => ['stored_file', 'file_name', 'bildname'],
+            'stored_path' => ['stored_path', 'path', 'dir'],
+            'hash' => ['hash', 'md5'],
+            'flag' => ['upload', 'uploaded'],
+        ]);
+        $map['id'] = $map['id'] ?? 'rowid';
+        $map['flag'] = $map['flag'] ?? 'upload';
+        if ($map['flag'] === 'upload') {
+            $map['flag_pending'] = 1;
+            $map['flag_cleared'] = 0;
+        } else {
+            $map['flag_pending'] = 0;
+            $map['flag_cleared'] = 1;
+        }
+        $map['table'] = $tableName;
+        return $this->imageColumnMap = $map;
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function getDocumentColumnMap(): array
+    {
+        if ($this->db === null) {
+            throw new AFS_ConfigurationException('Datenbank-Verbindung nicht verfügbar');
+        }
+        if ($this->documentColumnMap !== null) {
+            return $this->documentColumnMap;
+        }
+
+        $configMap = $this->transferConfig['pusher']['documents'] ?? null;
+        $tableName = is_array($configMap) && !empty($configMap['table'])
+            ? (string)$configMap['table']
+            : 'dokumente';
+
+        if (is_array($configMap)) {
+            $map = $this->mapFromPusherConfig($configMap, [
+                'id' => 'id_column',
+                'title' => 'title_column',
+                'filename' => 'filename_column',
+                'stored_file' => 'stored_file_column',
+                'stored_path' => 'stored_path_column',
+                'hash' => 'hash_column',
+                'flag' => 'flag_column',
+            ]);
+            $map['table'] = $tableName;
+            $map['title'] = $map['title'] ?? 'title';
+            return $this->documentColumnMap = $map;
+        }
+
+        $columns = $this->loadTableInfo($tableName);
+        $map = $this->buildColumnMap($columns, [
+            'id' => ['id', 'doc_id'],
+            'title' => ['title', 'titel'],
+            'filename' => ['file_name', 'dateiname', 'filename'],
+            'stored_file' => ['stored_file', 'file_name', 'dateiname'],
+            'stored_path' => ['stored_path', 'path', 'dir'],
+            'hash' => ['hash', 'md5'],
+            'flag' => ['upload', 'uploaded'],
+        ]);
+        $map['id'] = $map['id'] ?? 'rowid';
+        $map['flag'] = $map['flag'] ?? 'upload';
+        if ($map['flag'] === 'upload') {
+            $map['flag_pending'] = 1;
+            $map['flag_cleared'] = 0;
+        } else {
+            $map['flag_pending'] = 0;
+            $map['flag_cleared'] = 1;
+        }
+        $map['title'] = $map['title'] ?? 'title';
+        $map['table'] = $tableName;
+        return $this->documentColumnMap = $map;
+    }
+
+    /**
+     * @param array<int,array<string,mixed>> $columns
+     * @param array<string,array<int,string>> $candidates
+     * @return array<string,string|null>
+     */
+    private function buildColumnMap(array $columns, array $candidates): array
+    {
+        $map = [];
+        foreach ($candidates as $key => $names) {
+            $map[$key] = $this->findColumn($columns, $names);
+        }
+        return $map;
+    }
+
+    private function mapFromPusherConfig(array $config, array $keys): array
+    {
+        $map = [];
+        foreach ($keys as $target => $configKey) {
+            $value = $config[$configKey] ?? null;
+            $map[$target] = is_string($value) && $value !== '' ? $value : null;
+        }
+        $map['id'] = $map['id'] ?? 'rowid';
+        $map['flag'] = $map['flag'] ?? 'upload';
+        $map['flag_pending'] = isset($config['flag_pending']) ? (int)$config['flag_pending'] : ($map['flag'] === 'upload' ? 1 : 0);
+        $map['flag_cleared'] = isset($config['flag_cleared']) ? (int)$config['flag_cleared'] : ($map['flag'] === 'upload' ? 0 : 1);
+        return $map;
+    }
+
+    private function loadTableInfo(string $table): array
+    {
+        $quoted = '"' . str_replace('"', '""', $table) . '"';
+        return $this->db->fetchAll('PRAGMA table_info(' . $quoted . ')');
+    }
+
+    /**
+     * @param array<int,array<string,mixed>> $columns
+     * @param array<int,string> $candidates
+     */
+    private function findColumn(array $columns, array $candidates): ?string
+    {
+        $lowerCandidates = array_map('strtolower', $candidates);
+        foreach ($columns as $column) {
+            $name = (string)($column['name'] ?? '');
+            if ($name === '') {
+                continue;
+            }
+            $lower = strtolower($name);
+            if (in_array($lower, $lowerCandidates, true)) {
+                return $name;
+            }
+        }
+        return null;
     }
 
     /**
@@ -476,8 +710,36 @@ class API_Transfer
         $target = $dirConfig['target'];
 
         // Get image info from database
-        $sql = 'SELECT ID, Bildname, md5 FROM Bilder WHERE ID = ? AND uploaded = 0';
-        $image = $this->db->fetchOne($sql, [$imageId]);
+        $map = $this->getImageColumnMap();
+        $table = $this->db->quoteIdent($map['table']);
+        $idExpr = $map['id'] === 'rowid' ? 'rowid' : $this->db->quoteIdent($map['id']);
+        $filenameExpr = $this->db->quoteIdent($map['filename']);
+        $storedFileExpr = $map['stored_file']
+            ? $this->db->quoteIdent($map['stored_file'])
+            : $filenameExpr;
+        $storedPathExpr = $map['stored_path']
+            ? $this->db->quoteIdent($map['stored_path'])
+            : "''";
+        $flagExpr = $this->db->quoteIdent($map['flag']);
+
+        $sql = sprintf(
+            'SELECT %s AS id, %s AS filename, %s AS stored_file, %s AS stored_path
+             FROM %s
+             WHERE %s = :id AND %s = :pending
+             LIMIT 1',
+            $idExpr,
+            $filenameExpr,
+            $storedFileExpr,
+            $storedPathExpr,
+            $table,
+            $idExpr,
+            $flagExpr
+        );
+
+        $image = $this->db->fetchOne($sql, [
+            ':id' => $imageId,
+            ':pending' => $map['flag_pending'],
+        ]);
 
         if (!$image) {
             return [
@@ -487,9 +749,12 @@ class API_Transfer
             ];
         }
 
-        $filename = (string)$image['Bildname'];
-        $sourcePath = $source . DIRECTORY_SEPARATOR . $filename;
-        $targetPath = $target . DIRECTORY_SEPARATOR . $filename;
+        $filename = (string)$image['filename'];
+        $storedFile = (string)($image['stored_file'] ?? $filename);
+        $storedPath = trim((string)($image['stored_path'] ?? ''), DIRECTORY_SEPARATOR);
+        $relativePath = $storedPath !== '' ? $storedPath . DIRECTORY_SEPARATOR . $storedFile : $storedFile;
+        $sourcePath = rtrim($source, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $relativePath;
+        $targetPath = rtrim($target, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $relativePath;
 
         if (!file_exists($sourcePath)) {
             return [
@@ -543,7 +808,7 @@ class API_Transfer
         $result = [
             'success' => true,
             'image_id' => $imageId,
-            'filename' => $filename,
+            'filename' => $storedFile,
             'size' => $fileSize,
             'duration' => round($duration, 3),
             'timestamp' => date('Y-m-d H:i:s'),
@@ -579,8 +844,39 @@ class API_Transfer
         $target = $dirConfig['target'];
 
         // Get document info from database
-        $sql = 'SELECT ID, Titel, Dateiname, md5 FROM Dokumente WHERE ID = ? AND uploaded = 0';
-        $document = $this->db->fetchOne($sql, [$documentId]);
+        $map = $this->getDocumentColumnMap();
+        $table = $this->db->quoteIdent($map['table']);
+        $idExpr = $map['id'] === 'rowid' ? 'rowid' : $this->db->quoteIdent($map['id']);
+        $titleExpr = $this->db->quoteIdent($map['title']);
+        $filenameExpr = $map['filename']
+            ? $this->db->quoteIdent($map['filename'])
+            : "''";
+        $storedFileExpr = $map['stored_file']
+            ? $this->db->quoteIdent($map['stored_file'])
+            : $filenameExpr;
+        $storedPathExpr = $map['stored_path']
+            ? $this->db->quoteIdent($map['stored_path'])
+            : "''";
+        $flagExpr = $this->db->quoteIdent($map['flag']);
+
+        $sql = sprintf(
+            'SELECT %s AS id, %s AS title, %s AS filename, %s AS stored_file, %s AS stored_path
+             FROM %s
+             WHERE %s = :id AND %s = :pending
+             LIMIT 1',
+            $idExpr,
+            $titleExpr,
+            $filenameExpr,
+            $storedFileExpr,
+            $storedPathExpr,
+            $table,
+            $idExpr,
+            $flagExpr
+        );
+        $document = $this->db->fetchOne($sql, [
+            ':id' => $documentId,
+            ':pending' => $map['flag_pending'],
+        ]);
 
         if (!$document) {
             return [
@@ -590,8 +886,8 @@ class API_Transfer
             ];
         }
 
-        $filename = $document['Dateiname'] ?? $document['Titel'];
-        if (empty($filename)) {
+        $filename = $document['filename'] !== '' ? (string)$document['filename'] : (string)$document['title'];
+        if ($filename === '') {
             return [
                 'success' => false,
                 'error' => 'Dateiname nicht gefunden',
@@ -599,13 +895,11 @@ class API_Transfer
             ];
         }
 
-        // Ensure PDF extension
-        if (!str_contains($filename, '.')) {
-            $filename .= '.pdf';
-        }
-
-        $sourcePath = $source . DIRECTORY_SEPARATOR . $filename;
-        $targetPath = $target . DIRECTORY_SEPARATOR . $filename;
+        $storedFile = (string)($document['stored_file'] ?? $filename);
+        $storedPath = trim((string)($document['stored_path'] ?? ''), DIRECTORY_SEPARATOR);
+        $relativePath = $storedPath !== '' ? $storedPath . DIRECTORY_SEPARATOR . $storedFile : $storedFile;
+        $sourcePath = rtrim($source, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $relativePath;
+        $targetPath = rtrim($target, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $relativePath;
 
         if (!file_exists($sourcePath)) {
             return [
@@ -659,8 +953,8 @@ class API_Transfer
         $result = [
             'success' => true,
             'document_id' => $documentId,
-            'title' => (string)$document['Titel'],
-            'filename' => $filename,
+            'title' => $document['title'] ?? $filename,
+            'filename' => $storedFile,
             'size' => $fileSize,
             'duration' => round($duration, 3),
             'timestamp' => date('Y-m-d H:i:s'),

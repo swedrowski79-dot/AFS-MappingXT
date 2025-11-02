@@ -323,6 +323,7 @@ $config = [
         'log_transfers' => filter_var(getenv('DATA_TRANSFER_LOG_TRANSFERS') ?: 'true', FILTER_VALIDATE_BOOLEAN),
     ],
 
+
     // ============================================================================
     // Remote Server Configuration
     // Configure remote/slave servers to monitor their status
@@ -353,6 +354,15 @@ $config = [
         'allow_insecure' => filter_var(getenv('REMOTE_SERVER_ALLOW_INSECURE') ?: 'false', FILTER_VALIDATE_BOOLEAN),
     ],
 ];
+
+$filepusherPath = afs_prefer_path('filepusher.yml', 'schemas');
+if (is_string($filepusherPath) && $filepusherPath !== '' && is_file($filepusherPath)) {
+    try {
+        $config['data_transfer']['pusher'] = YamlMappingLoader::load($filepusherPath);
+    } catch (Throwable $e) {
+        // Ignore YAML loading errors to avoid breaking configuration
+    }
+}
 
 foreach ($config['sync_mappings'] as &$mappingConfig) {
     if (!is_array($mappingConfig)) {

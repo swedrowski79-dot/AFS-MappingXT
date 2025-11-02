@@ -241,10 +241,112 @@ class MappingExpressionEvaluator
                 return $this->determineMasterFlag($args[0] ?? null);
             case 'article_master_number':
                 return $this->determineMasterNumber($args[0] ?? null);
+            case 'media_detect_type':
+                return $this->detectMediaType($args[0] ?? null);
+            case 'media_extract_article':
+                return $this->extractMediaArticleId($args[0] ?? null);
+            case 'media_extract_category':
+                return $this->extractMediaCategoryId($args[0] ?? null);
+            case 'image_guard':
+                return $this->guardImageValue($args[0] ?? null, $args[1] ?? null);
+            case 'document_guard':
+                return $this->guardDocumentValue($args[0] ?? null, $args[1] ?? null);
             default:
                 $value = $args[0] ?? null;
                 return $this->transformRegistry->apply($name, $value);
         }
+    }
+
+    private function normalizeMediaPath($value): string
+    {
+        $path = (string)$value;
+        $path = str_replace('\\', '/', $path);
+        $path = preg_replace('#/+#', '/', $path ?? '') ?? '';
+        return trim($path, '/');
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function detectMediaType($value): int
+    {
+        $info = $this->extractMediaInfo($value);
+        return $info['type'];
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function extractMediaArticleId($value): ?string
+    {
+        $info = $this->extractMediaInfo($value);
+        return $info['article'] !== '' ? $info['article'] : null;
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function extractMediaCategoryId($value): ?string
+    {
+        $info = $this->extractMediaInfo($value);
+        return $info['category'] !== '' ? $info['category'] : null;
+    }
+
+    /**
+     * @param mixed $value
+     * @return array{type:int,article:string,category:string}
+     */
+    private function extractMediaInfo($value): array
+    {
+        $path = $this->normalizeMediaPath($value);
+        if ($path === '') {
+            return ['type' => 0, 'article' => '', 'category' => ''];
+        }
+        $segments = explode('/', $path);
+        $type = 0;
+        $article = '';
+        $category = '';
+
+        $count = count($segments);
+        for ($i = 0; $i < $count; $i++) {
+            $segment = strtolower($segments[$i]);
+            if ($segment === 'artikel' && $i + 1 < $count) {
+                $candidate = trim($segments[$i + 1]);
+                if ($candidate !== '') {
+                    $article = $candidate;
+                    $type = 1;
+                    break;
+                }
+            }
+            if ($segment === 'warengruppen' && $i + 1 < $count) {
+                $candidate = trim($segments[$i + 1]);
+                if ($candidate !== '') {
+                    $category = $candidate;
+                    $type = $type === 1 ? 1 : 2;
+                    // nicht breaken um ggf. Artikel später zu finden
+                }
+            }
+        }
+
+        return ['type' => $type, 'article' => $article, 'category' => $category];
+    }
+
+    private function guardImageValue($mime, $value)
+    {
+        $mime = strtolower(trim((string)$mime));
+        if ($mime !== '' && !str_starts_with($mime, 'image/')) {
+            return null;
+        }
+        return $value;
+    }
+
+    private function guardDocumentValue($mime, $value)
+    {
+        $mime = strtolower(trim((string)$mime));
+        if ($mime !== '' && str_starts_with($mime, 'image/')) {
+            return null;
+        }
+        return $value;
     }
 
     private function mapTaxClass($value): int

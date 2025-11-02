@@ -170,3 +170,20 @@ CREATE INDEX IF NOT EXISTS ix_category_imported_hash ON category(last_imported_h
 CREATE INDEX IF NOT EXISTS ix_category_update ON category("update") WHERE "update" = 1;
 CREATE INDEX IF NOT EXISTS ix_category_xtid ON category(xtid);
 CREATE INDEX IF NOT EXISTS ix_category_online ON category(online);
+
+-- Erweiterungen für Medientransfer
+ALTER TABLE bilder ADD COLUMN media_type INTEGER DEFAULT 0;
+ALTER TABLE bilder ADD COLUMN art_id TEXT;
+ALTER TABLE bilder ADD COLUMN cat_id TEXT;
+ALTER TABLE bilder ADD COLUMN image_id TEXT;
+ALTER TABLE dokumente ADD COLUMN doc_id TEXT;
+
+CREATE TABLE IF NOT EXISTS category_bilder (
+    cat_id TEXT NOT NULL,
+    image_id TEXT NOT NULL,
+    image_type INTEGER NOT NULL DEFAULT 1,
+    status INTEGER NOT NULL DEFAULT 1,
+    change INTEGER NOT NULL DEFAULT 1,
+    updated_at TEXT,
+    PRIMARY KEY (cat_id, image_id, image_type)
+);
