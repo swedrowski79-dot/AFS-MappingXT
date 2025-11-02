@@ -14,8 +14,16 @@ try {
     // Auto-update is now handled in _bootstrap.php
     $updateResult = $GLOBALS['auto_update_result'] ?? null;
     
+    $raw = file_get_contents('php://input') ?: '';
+    $body = $raw !== '' ? json_decode($raw, true) : [];
+    $mapping = is_array($body) && isset($body['mapping']) && is_string($body['mapping']) ? $body['mapping'] : null;
+
+    if ($mapping === null || $mapping === '') {
+        api_error('Kein Mapping angegeben', 400);
+    }
+
     $service = new SyncService($config);
-    $result = $service->run();
+    $result = $service->run($mapping);
 
     api_ok([
         'status' => $result['status'] ?? [],
@@ -24,7 +32,13 @@ try {
         'github_update' => $updateResult,
     ]);
 } catch (AFS_SyncBusyException $e) {
-    api_error($e->getMessage(), 409);
+    try {
+        $tracker = createStatusTracker($config, 'categories');
+        $status = $tracker->getStatus();
+        api_json(['ok' => false, 'error' => $e->getMessage(), 'data' => ['status' => $status]], 409);
+    } catch (Throwable $te) {
+        api_error($e->getMessage(), 409);
+    }
 } catch (\Throwable $e) {
     if (isset($tracker)) {
         $tracker->logError($e->getMessage(), ['endpoint' => 'sync_start'], 'api');

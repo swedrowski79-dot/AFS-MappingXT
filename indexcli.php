@@ -83,7 +83,7 @@ Aufruf:
   php indexcli.php [command] [--option=value]
 
 Verfügbare Kommandos:
-  run                 Kompletten Synchronisationslauf starten (Standard)
+  run                 Mapping starten (erfordert --mapping)
   status              Aktuellen Status aus status.db anzeigen
   log                 Protokollausgabe (alle Ebenen) – optional: --level=info|warning|error
   errors              Alias für "log --level=error"
@@ -92,11 +92,12 @@ Verfügbare Kommandos:
 
 Optionen:
   --job=NAME               Name des Sync-Jobs (Standard: categories)
+  --mapping=/pfad.yml      Mapping-Manifest (YML) auswählen (überschreibt Standard)
   --copy-images[=1|0]      Bilddateien mitkopieren (Standard: 0)
   --image-source=/pfad     Quellverzeichnis für Bilder (erforderlich bei --copy-images)
   --image-dest=/pfad       Zielverzeichnis (optional)
   --copy-documents[=1|0]   Dokumentdateien mitkopieren (Standard: 0)
-  --document-source=/pfad  Quellverzeichnis für Dokumente (erforderlich bei --copy-documents)
+  --document-source=/pfad  Quellverzeichnis (erforderlich bei --copy-documents)
   --document-dest=/pfad    Zielverzeichnis (optional)
   --max-errors=ZAHL        Maximale Logeinträge überschreibt config.php
   --limit=ZAHL             Anzahl Logeinträge bei log/errors (Standard 200)
@@ -156,6 +157,7 @@ function checkGitHubUpdate(array $config, bool $skipUpdate = false): void
 }
 
 $job = $args->getString('job') ?? 'categories';
+$mappingOverride = $args->getString('mapping');
 $maxErrorsCfg = $config['status']['max_errors'] ?? 200;
 $maxErrors = (int)($args->getString('max-errors', (string)$maxErrorsCfg));
 
@@ -238,6 +240,142 @@ function createSyncEnvironmentCli(array $config, string $job, int $maxErrors): a
         'evo' => $evo,
         'mssql' => $mssql,
     ];
+}
+
+function createMappingOnlyEnvironmentCli(array $config, string $job, int $maxErrors, ?string $manifestOverride = null): array
+{
+    $tracker = createStatusTrackerCli($config, $job, $maxErrors);
+    $status = $tracker->getStatus();
+    if (($status['state'] ?? '') === 'running') {
+        throw new AFS_SyncBusyException('Es läuft bereits eine Synchronisation.');
+    }
+
+    $dataDb = $config['paths']['data_db'] ?? (__DIR__ . '/db/evo.db');
+    if (!is_file($dataDb)) {
+        throw new AFS_DatabaseException("SQLite-Datei nicht gefunden: {$dataDb}");
+    }
+    $pdo = new PDO('sqlite:' . $dataDb);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+    $primary = $config['sync_mappings']['primary'] ?? [];
+    $manifestPath = isset($primary['rules']) && is_string($primary['rules']) && $primary['rules'] !== ''
+        ? $primary['rules']
+        : afs_prefer_path('afs_evo.yml', 'mapping');
+
+    if (is_string($manifestOverride) && $manifestOverride !== '') {
+        $candidate = afs_config_resolve_path($manifestOverride);
+        $manifestPath = is_file($candidate) ? $candidate : $manifestOverride;
+    }
+
+    if (!is_file($manifestPath)) {
+        throw new AFS_ConfigurationException('Mapping-Manifest nicht gefunden: ' . $manifestPath);
+    }
+
+    $manifest = YamlMappingLoader::load($manifestPath);
+    $projectRoot = $config['paths']['root'] ?? __DIR__;
+
+    $sourcesManifest = $manifest['sources'] ?? [];
+    if (!is_array($sourcesManifest)) {
+        $sourcesManifest = [];
+    }
+
+    $sourceDefinitions = [];
+    $sharedConnections = [];
+    $connectionsToClose = [];
+
+    foreach ($sourcesManifest as $sourceId => $sourceInfo) {
+        if (!is_array($sourceInfo)) continue;
+        $schemaRef = (string)($sourceInfo['schema'] ?? '');
+        if ($schemaRef === '') continue;
+        $schemaPath = (str_starts_with($schemaRef, '/') || preg_match('#^[A-Za-z]:[\\/]#', $schemaRef))
+            ? $schemaRef
+            : $projectRoot . '/' . ltrim($schemaRef, '/');
+        if (!is_file($schemaPath)) {
+            throw new AFS_ConfigurationException(sprintf('Schema-Datei für Quelle "%s" nicht gefunden (%s).', $sourceId, $schemaPath));
+        }
+
+        $schema = YamlMappingLoader::load($schemaPath);
+        $driver = strtolower((string)($schema['driver'] ?? 'mssql'));
+
+        switch ($driver) {
+            case 'mssql':
+                if (!isset($sharedConnections['__mssql'])) {
+                    $mssqlCfg = $config['mssql'] ?? [];
+                    $host = $mssqlCfg['host'] ?? 'localhost';
+                    $port = (int)($mssqlCfg['port'] ?? 1433);
+                    $server = $host . ',' . $port;
+                    $mssql = new MSSQL_Connection(
+                        $server,
+                        (string)($mssqlCfg['username'] ?? ''),
+                        (string)($mssqlCfg['password'] ?? ''),
+                        (string)($mssqlCfg['database'] ?? ''),
+                        [
+                            'encrypt' => $mssqlCfg['encrypt'] ?? true,
+                            'trust_server_certificate' => $mssqlCfg['trust_server_certificate'] ?? false,
+                            'appname' => $mssqlCfg['appname'] ?? 'AFS-Sync',
+                        ]
+                    );
+                    try { $mssql->scalar('SELECT 1'); } catch (Throwable $e) { $mssql->close(); throw new AFS_DatabaseException('MSSQL-Verbindung fehlgeschlagen: ' . $e->getMessage(), 0, $e); }
+                    $sharedConnections['__mssql'] = $mssql;
+                    $connectionsToClose[] = $mssql;
+                }
+                $sourceDefinitions[$sourceId] = [
+                    'type' => 'mapper',
+                    'mapper' => SourceMapper::fromFile($schemaPath),
+                    'connection' => $sharedConnections['__mssql'],
+                ];
+                break;
+
+            case 'filedb':
+                $connection = FileDB_Connection::fromConfig($schema, $projectRoot);
+                $sourceDefinitions[$sourceId] = [
+                    'type' => 'mapper',
+                    'mapper' => SourceMapper::fromFile($schemaPath),
+                    'connection' => $connection,
+                ];
+                break;
+
+            case 'sqlite':
+                $dbPath = $config['paths']['data_db'] ?? (__DIR__ . '/db/evo.db');
+                $connection = new SQLite_Connection($dbPath);
+                $sourceDefinitions[$sourceId] = [
+                    'type' => 'mapper',
+                    'mapper' => SourceMapper::fromFile($schemaPath),
+                    'connection' => $connection,
+                ];
+                $connectionsToClose[] = $connection;
+                break;
+
+            case 'filecatcher':
+                $sourceDefinitions[$sourceId] = [ 'type' => 'filecatcher' ];
+                break;
+
+            default:
+                throw new RuntimeException(sprintf('Unbekannter Treiber "%s" für Quelle "%s".', $driver, $sourceId));
+        }
+    }
+
+    $targetsManifest = $manifest['target'] ?? [];
+    if (!is_array($targetsManifest) || $targetsManifest === []) {
+        throw new RuntimeException('Manifest enthält kein target-Objekt.');
+    }
+    $targetEntry = reset($targetsManifest);
+    if (!is_array($targetEntry) || empty($targetEntry['schema'])) {
+        throw new RuntimeException('Target-Konfiguration unvollständig (schema fehlt).');
+    }
+    $targetSchemaRef = (string)$targetEntry['schema'];
+    $targetSchemaPath = (str_starts_with($targetSchemaRef, '/') || preg_match('#^[A-Za-z]:[\\/]#', $targetSchemaRef))
+        ? $targetSchemaRef
+        : $projectRoot . '/' . ltrim($targetSchemaRef, '/');
+    if (!is_file($targetSchemaPath)) {
+        throw new AFS_ConfigurationException('Target-Schema nicht gefunden: ' . $targetSchemaPath);
+    }
+    $targetMapper = TargetMapper::fromFile($targetSchemaPath);
+
+    $engine = new MappingSyncEngine($sourceDefinitions, $targetMapper, $manifest);
+
+    return [ 'tracker' => $tracker, 'engine' => $engine, 'connections' => $connectionsToClose, 'pdo' => $pdo ];
 }
 
 function printStatus(array $status): void
@@ -382,20 +520,71 @@ switch ($args->command) {
         // Check for updates at startup (unless --skip-update is set)
         $skipUpdate = $args->getBool('skip-update', false);
         checkGitHubUpdate($config, $skipUpdate);
-        
-        $copyImages = $args->getBool('copy-images', false);
-        $imageSource = $args->getString('image-source');
-        $imageDest = $args->getString('image-dest');
-        $copyDocuments = $args->getBool('copy-documents', false);
-        $documentSource = $args->getString('document-source');
-        $documentDest = $args->getString('document-dest');
-
-        if ($copyImages && $imageSource === null) {
-            fwrite(STDERR, "Für --copy-images muss --image-source angegeben werden.\n");
-            exit(1);
-        }
 
         try {
+            if ($mappingOverride) {
+                // Mapping-only Lauf mit Manifest
+                $env = createMappingOnlyEnvironmentCli($config, $job, $maxErrors, $mappingOverride);
+                /** @var STATUS_Tracker $tracker */
+                $tracker = $env['tracker'];
+                /** @var MappingSyncEngine $engine */
+                $engine = $env['engine'];
+                /** @var PDO $pdo */
+                $pdo = $env['pdo'];
+                $connections = $env['connections'];
+
+                echo "Starte Mapping: {$mappingOverride}\n";
+                $tracker->begin('mapping', 'CLI-Start');
+                $overallStart = microtime(true);
+
+                $totalSteps = 8; $done = 0;
+                $summary = [];
+                // Warengruppen
+                $tracker->advance('warengruppen', ['message' => 'Synchronisiere Warengruppen...', 'total' => $totalSteps, 'processed' => $done]);
+                try { $summary['warengruppe'] = $engine->syncEntity('warengruppe', $pdo); } catch (Throwable $e) {}
+                $done++; $tracker->advance('warengruppen', ['processed' => $done, 'total' => $totalSteps]);
+                // Artikel
+                $tracker->advance('artikel', ['message' => 'Synchronisiere Artikel...', 'total' => $totalSteps, 'processed' => $done]);
+                $summary['artikel'] = $engine->syncEntity('artikel', $pdo);
+                $done++; $tracker->advance('artikel', ['processed' => $done, 'total' => $totalSteps]);
+                // Artikel-Meta
+                $tracker->advance('artikel_meta', ['message' => 'Aktualisiere Artikel-Metadaten...', 'total' => $totalSteps, 'processed' => $done]);
+                try { $summary['artikel_meta'] = $engine->syncEntity('artikel_meta', $pdo); } catch (Throwable $e) {}
+                $done++; $tracker->advance('artikel_meta', ['processed' => $done, 'total' => $totalSteps]);
+                // Filecatcher + Media
+                $tracker->advance('filecatcher', ['message' => 'Analysiere Mediendateien...', 'total' => $totalSteps, 'processed' => $done]);
+                $done++; $tracker->advance('filecatcher', ['processed' => $done, 'total' => $totalSteps]);
+                foreach (['media_bilder','media_dokumente','media_relation_bilder','media_relation_dokumente'] as $entity) {
+                    $tracker->advance($entity, ['message' => 'Synchronisiere ' . $entity . '...', 'total' => $totalSteps, 'processed' => $done]);
+                    try { $summary[$entity] = $engine->syncEntity($entity, $pdo); } catch (Throwable $e) {}
+                    $done++; $tracker->advance($entity, ['processed' => $done, 'total' => $totalSteps]);
+                }
+
+                $duration = microtime(true) - $overallStart;
+                $tracker->complete(['message' => sprintf('Mapping abgeschlossen (%.2fs)', $duration)]);
+
+                echo "\nSynchronisation abgeschlossen.\n";
+                echo str_repeat('=', 48) . "\n";
+                printStatus($tracker->getStatus());
+
+                // Verbindungen schließen
+                foreach ($connections as $conn) { if ($conn instanceof MSSQL_Connection) { $conn->close(); } }
+                exit(0);
+            }
+
+            // Fallback: Legacy Vollsync
+            $copyImages = $args->getBool('copy-images', false);
+            $imageSource = $args->getString('image-source');
+            $imageDest = $args->getString('image-dest');
+            $copyDocuments = $args->getBool('copy-documents', false);
+            $documentSource = $args->getString('document-source');
+            $documentDest = $args->getString('document-dest');
+
+            if ($copyImages && $imageSource === null) {
+                fwrite(STDERR, "Für --copy-images muss --image-source angegeben werden.\n");
+                exit(1);
+            }
+
             $env = createSyncEnvironmentCli($config, $job, $maxErrors);
             $tracker = $env['tracker'];
             $evo = $env['evo'];
@@ -410,74 +599,6 @@ switch ($args->command) {
 
             $status = $tracker->getStatus();
             printStatus($status);
-
-            echo "\nDetails:\n";
-            if (isset($summary['bilder'])) {
-                echo sprintf(" - Bilder importiert: %d\n", count($summary['bilder']));
-            }
-            if (isset($summary['bilder_copy'])) {
-                $copy = $summary['bilder_copy'];
-                echo sprintf(
-                    " - Bilder kopiert: %d (fehlend: %d, Fehler: %d)\n",
-                    count($copy['copied'] ?? []),
-                    count($copy['missing'] ?? []),
-                    count($copy['failed'] ?? [])
-                );
-            }
-            if (isset($summary['dokumente'])) {
-                echo sprintf(" - Dokumente importiert: %d\n", count($summary['dokumente']));
-            }
-            if (isset($summary['attribute'])) {
-                echo sprintf(" - Attribute importiert: %d\n", count($summary['attribute']));
-            }
-            if (isset($summary['warengruppen'])) {
-                $cat = $summary['warengruppen'];
-                echo sprintf(
-                    " - Warengruppen: %d eingefügt, %d aktualisiert, %d Parent-Links gesetzt\n",
-                    $cat['inserted'] ?? 0,
-                    $cat['updated'] ?? 0,
-                    $cat['parent_set'] ?? 0
-                );
-            }
-            if (isset($summary['artikel'])) {
-                $art = $summary['artikel'];
-                echo sprintf(
-                    " - Artikel: %d verarbeitet, %d neu, %d aktualisiert, %d offline gesetzt\n",
-                    $art['processed'] ?? 0,
-                    $art['inserted'] ?? 0,
-                    $art['updated'] ?? 0,
-                    $art['deactivated'] ?? 0
-                );
-                echo sprintf(
-                    "   └ Bilder-Verknüpfungen: %d · Dokument-Verknüpfungen: %d · Attribute-Verknüpfungen: %d\n",
-                    $art['images'] ?? 0,
-                    $art['documents'] ?? 0,
-                    $art['attributes'] ?? 0
-                );
-            }
-            if (array_key_exists('delta', $summary)) {
-                if (!empty($summary['delta'])) {
-                    $deltaRows = array_sum($summary['delta']);
-                    echo " - Delta-Export: {$deltaRows} Datensätze\n";
-                    foreach ($summary['delta'] as $table => $count) {
-                        echo sprintf("   · %s: %d\n", $table, $count);
-                    }
-                } else {
-                    echo " - Delta-Export: keine Änderungen\n";
-                }
-            }
-
-            $errors = $tracker->getErrors(5);
-            if ($errors) {
-                echo "\nLetzte Fehler im Protokoll (max. 5):\n";
-                foreach ($errors as $error) {
-                    echo "- [" . ($error['created_at'] ?? '-') . "]";
-                    if (!empty($error['stage'])) {
-                        echo " <{$error['stage']}>";
-                    }
-                    echo " " . ($error['message'] ?? '') . "\n";
-                }
-            }
 
             $mssql->close();
             exit(0);

@@ -235,7 +235,7 @@ entities:
     to:   evo.media_relation
 
     map:
-      evo.media_relation.file_name: afs.Dokument.Dateiname | basename | null_if_empty
+      evo.media_relation.file_name: afs.Dokument.Titel | basename | null_if_empty
       evo.media_relation.entity_type: =article
       evo.media_relation.entity_id:   afs.Dokument.Artikel | trim | null_if_empty
       evo.media_relation.position:    =0
@@ -262,3 +262,175 @@ entities:
         - set:
             evo.media_relation.status: =0
             evo.media_relation.change: =1
+
+  attribute_1:
+    from: afs.Artikel
+    to:   evo.attribute
+
+    map:
+      evo.attribute.name:       afs.Artikel.Zusatzfeld03 | trim | null_if_empty
+      evo.attribute.updated_at: $func.now()
+
+    delta:
+      fields: [name]
+
+  attribute_2:
+    from: afs.Artikel
+    to:   evo.attribute
+
+    map:
+      evo.attribute.name:       afs.Artikel.Zusatzfeld04 | trim | null_if_empty
+      evo.attribute.updated_at: $func.now()
+
+    delta:
+      fields: [name]
+
+  attribute_3:
+    from: afs.Artikel
+    to:   evo.attribute
+
+    map:
+      evo.attribute.name:       afs.Artikel.Zusatzfeld05 | trim | null_if_empty
+      evo.attribute.updated_at: $func.now()
+
+    delta:
+      fields: [name]
+
+  attribute_4:
+    from: afs.Artikel
+    to:   evo.attribute
+
+    map:
+      evo.attribute.name:       afs.Artikel.Zusatzfeld06 | trim | null_if_empty
+      evo.attribute.updated_at: $func.now()
+
+    delta:
+      fields: [name]
+
+  artikel_attribute_1:
+    from: afs.Artikel
+    to:   evo.artikel_attribute
+
+    map:
+      evo.artikel_attribute.id:           afs.Artikel.Artikelnummer | trim | null_if_empty
+      evo.artikel_attribute.attribute_id: afs.Artikel.Zusatzfeld03 | trim | null_if_empty
+      evo.artikel_attribute.value:        afs.Artikel.Zusatzfeld15 | trim | null_if_empty
+      evo.artikel_attribute.status:       =1
+      evo.artikel_attribute.updated_at:   $func.now()
+
+    delta:
+      fields: [value]
+
+  artikel_attribute_2:
+    from: afs.Artikel
+    to:   evo.artikel_attribute
+
+    map:
+      evo.artikel_attribute.id:           afs.Artikel.Artikelnummer | trim | null_if_empty
+      evo.artikel_attribute.attribute_id: afs.Artikel.Zusatzfeld04 | trim | null_if_empty
+      evo.artikel_attribute.value:        afs.Artikel.Zusatzfeld16 | trim | null_if_empty
+      evo.artikel_attribute.status:       =1
+      evo.artikel_attribute.updated_at:   $func.now()
+
+    delta:
+      fields: [value]
+
+  artikel_attribute_3:
+    from: afs.Artikel
+    to:   evo.artikel_attribute
+
+    map:
+      evo.artikel_attribute.id:           afs.Artikel.Artikelnummer | trim | null_if_empty
+      evo.artikel_attribute.attribute_id: afs.Artikel.Zusatzfeld05 | trim | null_if_empty
+      evo.artikel_attribute.value:        afs.Artikel.Zusatzfeld17 | trim | null_if_empty
+      evo.artikel_attribute.status:       =1
+      evo.artikel_attribute.updated_at:   $func.now()
+
+    delta:
+      fields: [value]
+
+  artikel_attribute_4:
+    from: afs.Artikel
+    to:   evo.artikel_attribute
+
+    map:
+      evo.artikel_attribute.id:           afs.Artikel.Artikelnummer | trim | null_if_empty
+      evo.artikel_attribute.attribute_id: afs.Artikel.Zusatzfeld06 | trim | null_if_empty
+      evo.artikel_attribute.value:        afs.Artikel.Zusatzfeld18 | trim | null_if_empty
+      evo.artikel_attribute.status:       =1
+      evo.artikel_attribute.updated_at:   $func.now()
+
+    delta:
+      fields: [value]
+
+  artikel_system:
+    from: afs.Artikel
+    to:   evo.artikel_system
+
+    map:
+      evo.artikel_system.id:     afs.Artikel.Artikelnummer | trim | null_if_empty
+      evo.artikel_system.afs_id: afs.Artikel.Artikel
+
+  category_system:
+    from: afs.Warengruppe
+    to:   evo.category_system
+
+    map:
+      evo.category_system.id:     afs.Warengruppe.Warengruppe
+      evo.category_system.afs_id: afs.Warengruppe.Warengruppe
+
+  attribute_system_1:
+    from: afs.Artikel
+    to:   evo.attribute_system
+
+    map:
+      evo.attribute_system.id: afs.Artikel.Zusatzfeld03 | trim | null_if_empty
+
+  attribute_system_2:
+    from: afs.Artikel
+    to:   evo.attribute_system
+
+    map:
+      evo.attribute_system.id: afs.Artikel.Zusatzfeld04 | trim | null_if_empty
+
+  attribute_system_3:
+    from: afs.Artikel
+    to:   evo.attribute_system
+
+    map:
+      evo.attribute_system.id: afs.Artikel.Zusatzfeld05 | trim | null_if_empty
+
+  attribute_system_4:
+    from: afs.Artikel
+    to:   evo.attribute_system
+
+    map:
+      evo.attribute_system.id: afs.Artikel.Zusatzfeld06 | trim | null_if_empty
+
+  artikel_attribute_system_1:
+    from: afs.Artikel
+    to:   evo.artikel_attribute_system
+
+    map:
+      evo.artikel_attribute_system.id: $func.concat(afs.Artikel.Artikelnummer, ':', afs.Artikel.Zusatzfeld03)
+
+  artikel_attribute_system_2:
+    from: afs.Artikel
+    to:   evo.artikel_attribute_system
+
+    map:
+      evo.artikel_attribute_system.id: $func.concat(afs.Artikel.Artikelnummer, ':', afs.Artikel.Zusatzfeld04)
+
+  artikel_attribute_system_3:
+    from: afs.Artikel
+    to:   evo.artikel_attribute_system
+
+    map:
+      evo.artikel_attribute_system.id: $func.concat(afs.Artikel.Artikelnummer, ':', afs.Artikel.Zusatzfeld05)
+
+  artikel_attribute_system_4:
+    from: afs.Artikel
+    to:   evo.artikel_attribute_system
+
+    map:
+      evo.artikel_attribute_system.id: $func.concat(afs.Artikel.Artikelnummer, ':', afs.Artikel.Zusatzfeld06)

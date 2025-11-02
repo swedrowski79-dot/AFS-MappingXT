@@ -15,6 +15,7 @@
     const startedEl = document.getElementById('status-started');
     const updatedEl = document.getElementById('status-updated');
     const btnStart = document.getElementById('btn-start');
+    const mappingSelect = document.getElementById('mapping-select');
     const btnResetEvo = document.getElementById('btn-reset-evo');
     const btnStatusReset = document.getElementById('btn-status-reset');
     const btnRefresh = document.getElementById('btn-refresh');
@@ -38,6 +39,9 @@
 
     if (btnStart) {
       btnStart.dataset.busy = '0';
+    }
+    if (mappingSelect) {
+      mappingSelect.disabled = true;
     }
 
     let pollingTimer = null;
@@ -272,6 +276,39 @@
     async function refreshStatus() {
       const payload = await fetchJson('sync_status.php');
       renderStatus(payload.data?.status ?? {});
+    }
+
+    async function loadMappings() {
+      try {
+        const payload = await fetchJson('mappings_list.php');
+        const items = payload.data?.mappings || [];
+        if (!mappingSelect) return;
+        const current = mappingSelect.value;
+        mappingSelect.innerHTML = '<option value="" selected>– Mapping auswählen –</option>';
+        items.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item.path;
+          opt.textContent = item.label || item.path;
+          if (item.path === current) opt.selected = true;
+          mappingSelect.appendChild(opt);
+        });
+        mappingSelect.disabled = false;
+      } catch (err) {
+        console.error('Fehler beim Laden der Mappings:', err);
+        if (mappingSelect) mappingSelect.disabled = false;
+      }
+    }
+
+    async function startSelectedMapping(mappingPath) {
+      if (!mappingPath) return;
+      setState('running', `Starte Mapping: ${mappingPath}`);
+      try {
+        await fetchJson('sync_start.php', { method: 'POST', body: JSON.stringify({ mapping: mappingPath }) });
+        await Promise.all([refreshStatus(), refreshLog(), refreshDatabaseStatus()]);
+      } catch (err) {
+        setState('error', err.message);
+        await refreshLog();
+      }
     }
 
     async function refreshLog() {
@@ -523,22 +560,13 @@
       }
     }
 
-    if (btnStart) {
-      btnStart.addEventListener('click', async () => {
-        btnStart.dataset.busy = '1';
-        btnStart.disabled = true;
-        setState('running', 'Synchronisation gestartet...');
-
-        try {
-          await fetchJson('sync_start.php', { method: 'POST' });
-          await Promise.all([refreshStatus(), refreshLog(), refreshDatabaseStatus()]);
-        } catch (err) {
-          setState('error', err.message);
-          await refreshLog();
-        } finally {
-          btnStart.dataset.busy = '0';
-          btnStart.disabled = stateEl.dataset.state === 'running';
-        }
+    if (mappingSelect) {
+      mappingSelect.addEventListener('change', async () => {
+        const value = mappingSelect.value;
+        if (!value) return;
+        mappingSelect.disabled = true;
+        await startSelectedMapping(value);
+        mappingSelect.disabled = false;
       });
     }
 
@@ -711,7 +739,7 @@
 
     // Initialize app
 (async () => {
-      await Promise.all([refreshStatus(), refreshLog(), refreshHealth(), refreshDatabaseStatus()]);
+      await Promise.all([refreshStatus(), refreshLog(), refreshHealth(), refreshDatabaseStatus(), loadMappings()]);
       if (REMOTE_SERVERS_ENABLED) {
         await refreshRemoteStatus();
       }

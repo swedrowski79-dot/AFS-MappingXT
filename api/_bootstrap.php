@@ -188,7 +188,7 @@ function createSyncEnvironment(array $config, string $job = 'categories'): array
     return [$tracker, $evo, $mssql];
 }
 
-function createMappingOnlyEnvironment(array $config, string $job = 'categories'): array
+function createMappingOnlyEnvironment(array $config, string $job = 'categories', ?string $manifestOverride = null): array
 {
     $tracker = createStatusTracker($config, $job);
     $status = $tracker->getStatus();
@@ -202,6 +202,12 @@ function createMappingOnlyEnvironment(array $config, string $job = 'categories')
     $manifestPath = isset($primary['rules']) && is_string($primary['rules']) && $primary['rules'] !== ''
         ? $primary['rules']
         : afs_prefer_path('afs_evo.yml', 'mapping');
+
+    if (is_string($manifestOverride) && $manifestOverride !== '') {
+        // Allow relative paths from project root
+        $candidate = afs_config_resolve_path($manifestOverride);
+        $manifestPath = is_file($candidate) ? $candidate : $manifestOverride;
+    }
 
     if (!is_file($manifestPath)) {
         throw new AFS_ConfigurationException('Mapping-Manifest nicht gefunden: ' . $manifestPath);
@@ -264,6 +270,18 @@ function createMappingOnlyEnvironment(array $config, string $job = 'categories')
                     'mapper' => SourceMapper::fromFile($schemaPath),
                     'connection' => $connection,
                 ];
+                break;
+
+            case 'sqlite':
+                // Use EVO SQLite as default source for sqlite driver
+                $dbPath = $config['paths']['data_db'] ?? ($projectRoot . '/db/evo.db');
+                $connection = new SQLite_Connection($dbPath);
+                $sourceDefinitions[$sourceId] = [
+                    'type' => 'mapper',
+                    'mapper' => SourceMapper::fromFile($schemaPath),
+                    'connection' => $connection,
+                ];
+                $connectionsToClose[] = $connection;
                 break;
 
             case 'filecatcher':

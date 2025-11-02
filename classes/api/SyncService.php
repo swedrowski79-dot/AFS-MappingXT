@@ -18,17 +18,23 @@ class SyncService
      *
      * @return array<string,mixed>
      */
-    public function run(): array
+    public function run(?string $manifestOverride = null): array
     {
         // createMappingOnlyEnvironment wird in api/_bootstrap.php definiert
-        [$tracker, $engine, $sourceConnections, $pdo] = createMappingOnlyEnvironment($this->config, 'categories');
+        [$tracker, $engine, $sourceConnections, $pdo] = createMappingOnlyEnvironment($this->config, 'categories', $manifestOverride);
         $logger = createMappingLogger($this->config);
 
-        $tracker->begin('mapping', 'Starte Synchronisation');
+        $label = $manifestOverride ? ('Starte Synchronisation: ' . basename($manifestOverride)) : 'Starte Synchronisation';
+        $tracker->begin('mapping', $label);
         $overallStart = microtime(true);
 
         $summary = [];
+
+        $totalSteps = 8; // warengruppe, artikel, artikel_meta, filecatcher, 4x media*
+        $done = 0;
+
         // 1) Warengruppen (optional)
+        $tracker->advance('warengruppen', ['message' => 'Synchronisiere Warengruppen...', 'total' => $totalSteps, 'processed' => $done]);
         try {
             $wg = $engine->syncEntity('warengruppe', $pdo);
             $summary['warengruppe'] = $wg;
@@ -36,12 +42,17 @@ class SyncService
         } catch (Throwable $e) {
             // Entity ggf. nicht definiert – weiter mit Artikeln
         }
+        $done++; $tracker->advance('warengruppen', ['processed' => $done, 'total' => $totalSteps]);
+
         // 2) Artikel
+        $tracker->advance('artikel', ['message' => 'Synchronisiere Artikel...', 'total' => $totalSteps, 'processed' => $done]);
         $art = $engine->syncEntity('artikel', $pdo);
         $summary['artikel'] = $art;
         $tracker->logInfo('Artikel synchronisiert', $art, 'artikel');
+        $done++; $tracker->advance('artikel', ['processed' => $done, 'total' => $totalSteps]);
 
         // 2a) Artikel-Metadaten (FileDB)
+        $tracker->advance('artikel_meta', ['message' => 'Aktualisiere Artikel-Metadaten...', 'total' => $totalSteps, 'processed' => $done]);
         try {
             $artMeta = $engine->syncEntity('artikel_meta', $pdo);
             $summary['artikel_meta'] = $artMeta;
@@ -49,24 +60,29 @@ class SyncService
         } catch (Throwable $e) {
             $tracker->logWarning('Artikel-Metadaten nicht synchronisiert: ' . $e->getMessage(), [], 'artikel_meta');
         }
+        $done++; $tracker->advance('artikel_meta', ['processed' => $done, 'total' => $totalSteps]);
 
         // 3) FileCatcher (Bilder & Dokumente)
+        $tracker->advance('filecatcher', ['message' => 'Analysiere Mediendateien...', 'total' => $totalSteps, 'processed' => $done]);
         $fileCatcherSummary = $this->runFileCatchers($pdo);
         if ($fileCatcherSummary !== []) {
             $summary['filecatcher'] = $fileCatcherSummary;
             foreach ($fileCatcherSummary as $name => $stats) {
                 $tracker->logInfo(sprintf('FileCatcher %s abgeschlossen', $name), $stats, 'filecatcher');
             }
+        }
+        $done++; $tracker->advance('filecatcher', ['processed' => $done, 'total' => $totalSteps]);
 
-            foreach (['media_bilder', 'media_dokumente', 'media_relation_bilder', 'media_relation_dokumente'] as $entity) {
-                try {
-                    $stats = $engine->syncEntity($entity, $pdo);
-                    $summary[$entity] = $stats;
-                    $tracker->logInfo(sprintf('Entity %s synchronisiert', $entity), $stats, $entity);
-                } catch (Throwable $e) {
-                    $tracker->logWarning(sprintf('Entity %s übersprungen: %s', $entity, $e->getMessage()), [], $entity);
-                }
+        foreach (['media_bilder', 'media_dokumente', 'media_relation_bilder', 'media_relation_dokumente'] as $entity) {
+            $tracker->advance($entity, ['message' => 'Synchronisiere ' . $entity . '...', 'total' => $totalSteps, 'processed' => $done]);
+            try {
+                $stats = $engine->syncEntity($entity, $pdo);
+                $summary[$entity] = $stats;
+                $tracker->logInfo(sprintf('Entity %s synchronisiert', $entity), $stats, $entity);
+            } catch (Throwable $e) {
+                $tracker->logWarning(sprintf('Entity %s übersprungen: %s', $entity, $e->getMessage()), [], $entity);
             }
+            $done++; $tracker->advance($entity, ['processed' => $done, 'total' => $totalSteps]);
         }
 
         $overallDuration = microtime(true) - $overallStart;

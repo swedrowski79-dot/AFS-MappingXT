@@ -72,7 +72,10 @@ $debugTables = [
 
       <section class="card controls">
         <h2>Aktionen</h2>
-        <button id="btn-start">🔁 Synchronisation starten</button>
+        <label for="mapping-select" style="display:block;margin-bottom:6px;">Mapping wählen und starten</label>
+        <select id="mapping-select" style="width:100%;padding:8px 10px;border-radius:6px;margin-bottom:8px;">
+          <option value="" selected>– Mapping auswählen –</option>
+        </select>
         <button id="btn-refresh" class="btn-secondary">🔄 Status aktualisieren</button>
         <button id="btn-clear" class="btn-secondary">🧹 Protokoll leeren</button>
         <small style="color: var(--muted);">Maximale Protokollgröße: <?= $maxErrors ?></small>
