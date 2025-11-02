@@ -46,6 +46,13 @@ Die Verbindungsdaten für MSSQL, MySQL, SQLite und Dateipfade werden nicht mehr 
 
 > Hinweis: Die bisherigen `.env`-Variablen wie `AFS_MSSQL_HOST` oder `XT_MYSQL_PASS` dienen nur noch als Fallback. Sobald eine Rolle in `databases.json` hinterlegt ist, überschreibt sie die entsprechenden Werte automatisch.
 
+#### Remote-Server-Verbindungen
+
+- **Speicherort:** `config/databases/remotes/<server-slug>__<hash>.json` (eine Datei je Remote-Server).
+- **Kennzeichnung:** Jede Datei enthält einen Hinweis, dass die Verbindungen für den jeweiligen Remote-Server auf dem Hauptsystem verwaltet werden.
+- **Verwaltung:** Die gleichen Aktionen (Anlegen, Bearbeiten, Löschen, Testen) stehen in der Weboberfläche unter **Einstellungen → Datenbanken & Pfade** zur Verfügung – einfach zuvor den gewünschten Remote-Server auswählen.
+- **Verwendung:** Die abgelegten Definitionen können für YAML-Exporte oder Deployments genutzt werden, ohne dass auf dem Remote-System Dateien erstellt werden müssen.
+
 ### MSSQL-Datenbankverbindung
 
 | Variable | Beschreibung | Default | Beispiel |

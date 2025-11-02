@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 
-require __DIR__ . '/_bootstrap.php';
+require_once __DIR__ . '/_bootstrap.php';
+require_once __DIR__ . '/_database_utils.php';
+require_once __DIR__ . '/../classes/config/RemoteDatabaseConfig.php';
 
 $config = $config ?? ($GLOBALS['config'] ?? require __DIR__ . '/../config.php');
 
@@ -22,16 +24,12 @@ if ($rawInput !== false && $rawInput !== '') {
 
 $serverIndex = $decodedInput['server_index'] ?? $_GET['server_index'] ?? null;
 if ($serverIndex !== null && !is_numeric((string)$serverIndex)) {
-    http_response_code(400);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['ok' => false, 'error' => 'Ungültiger Server-Index.']);
-    exit;
+    api_error('Ungültiger Server-Index.', 400);
 }
 $serverIndex = $serverIndex !== null ? (int)$serverIndex : null;
 
 $servers = $config['remote_servers']['servers'] ?? [];
 
-// Try reading current servers directly from .env to avoid stale config
 $envPath = dirname(__DIR__) . '/.env';
 if (is_file($envPath)) {
     $content = file_get_contents($envPath) ?: '';
@@ -61,73 +59,112 @@ if (is_file($envPath)) {
 }
 
 if ($serverIndex === null) {
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['ok'=>true,'data'=>['servers'=>$servers]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
+    api_ok(['servers' => $servers]);
+    return;
 }
+
 if (!isset($servers[$serverIndex])) {
-    http_response_code(404);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['ok' => false, 'error' => 'Remote-Server nicht gefunden.']);
-    exit;
+    api_error('Remote-Server nicht gefunden.', 404);
 }
 
 $remote = $servers[$serverIndex];
-if (empty($remote['url'])) {
-    http_response_code(400);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['ok' => false, 'error' => 'Remote-Server-URL fehlt.']);
-    exit;
-}
 
-unset($decodedInput['server_index']);
+try {
+    switch ($method) {
+        case 'GET':
+            $data = RemoteDatabaseConfig::load($remote);
+            $connections = [];
+            foreach ($data['connections'] as $connection) {
+                $masked = dbm_mask_connection($connection);
+                $masked['status'] = DatabaseConfig::testConnection($connection);
+                $masked['remote_server'] = [
+                    'name' => $remote['name'] ?? '',
+                    'url' => $remote['url'] ?? '',
+                ];
+                $masked['scope'] = 'remote';
+                $connections[] = $masked;
+            }
 
-$targetUrl = rtrim((string)$remote['url'], '/') . '/api/databases_manage.php';
-if ($method === 'GET') {
-    $query = $_GET;
-    unset($query['server_index']);
-    if ($query) {
-        $targetUrl .= '?' . http_build_query($query);
+            api_ok([
+                'connections' => $connections,
+                'roles' => DatabaseConfig::getAvailableRoles(),
+                'types' => DATABASE_TYPES,
+                'metadata' => $data['server'],
+            ]);
+            return;
+
+        case 'POST':
+            $action = $decodedInput['action'] ?? '';
+            $data = $decodedInput['connection'] ?? null;
+            if (!in_array($action, ['add', 'update'], true)) {
+                api_error('Ungültige Aktion.', 400);
+            }
+            if (!is_array($data)) {
+                api_error('Ungültige Verbindung.', 400);
+            }
+
+            $configData = RemoteDatabaseConfig::load($remote);
+            $connections = $configData['connections'];
+
+            $remoteInfo = [
+                'name' => $remote['name'] ?? '',
+                'url' => $remote['url'] ?? '',
+                'note' => ($remote['name'] ?? '') !== ''
+                    ? sprintf('Verbindung gehört zum Remote-Server "%s"', $remote['name'])
+                    : 'Verbindung für Remote-Server',
+            ];
+
+            if ($action === 'add') {
+                $normalised = dbm_normalise_connection($data, null, $connections);
+                $normalised['remote_server'] = $remoteInfo;
+                $normalised['scope'] = 'remote';
+                $connections[] = $normalised;
+            } else {
+                $id = $data['id'] ?? '';
+                if ($id === '') {
+                    api_error('ID erforderlich für Update.', 400);
+                }
+                $found = false;
+                foreach ($connections as $idx => $existing) {
+                    if (($existing['id'] ?? '') === $id) {
+                        $normalised = dbm_normalise_connection($data, $existing, $connections);
+                        $normalised['remote_server'] = $remoteInfo;
+                        $normalised['scope'] = 'remote';
+                        $connections[$idx] = $normalised;
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    api_error('Verbindung nicht gefunden.', 404);
+                }
+            }
+
+            RemoteDatabaseConfig::save($remote, $connections);
+
+            api_ok(['message' => 'Verbindung für Remote-Server gespeichert.']);
+            return;
+
+        case 'DELETE':
+            $id = $decodedInput['id'] ?? '';
+            if ($id === '') {
+                api_error('ID erforderlich.', 400);
+            }
+
+            $configData = RemoteDatabaseConfig::load($remote);
+            $connections = array_values(array_filter(
+                $configData['connections'],
+                static fn($conn) => ($conn['id'] ?? '') !== $id
+            ));
+
+            RemoteDatabaseConfig::save($remote, $connections);
+
+            api_ok(['message' => 'Verbindung gelöscht.']);
+            return;
+
+        default:
+            api_error('Methode nicht erlaubt.', 405);
     }
+} catch (Throwable $e) {
+    api_error('Fehler bei der Remote-Datenbankverwaltung: ' . $e->getMessage());
 }
-
-$headers = ['Accept: application/json'];
-if (!empty($remote['api_key'])) {
-    $headers[] = 'X-API-Key: ' . $remote['api_key'];
-}
-
-$ch = curl_init($targetUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-if ($method !== 'GET') {
-    $payload = json_encode($decodedInput, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    $headers[] = 'Content-Type: application/json';
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-}
-$timeout = (int)($config['remote_servers']['timeout'] ?? 10);
-curl_setopt($ch, CURLOPT_TIMEOUT, max(3, $timeout));
-$allowInsecure = (bool)($config['remote_servers']['allow_insecure'] ?? false);
-if ($allowInsecure) {
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-}
-$responseBody = curl_exec($ch);
-$error = curl_error($ch);
-$status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE) ?: 500;
-curl_close($ch);
-
-header('Content-Type: application/json; charset=utf-8');
-http_response_code($status);
-
-if ($responseBody === false) {
-    echo json_encode(['ok' => false, 'error' => 'Remote-Anfrage fehlgeschlagen: ' . ($error ?: 'Unbekannter Fehler')]);
-    exit;
-}
-
-$decoded = json_decode($responseBody, true);
-if (!is_array($decoded)) {
-    echo json_encode(['ok' => false, 'error' => 'Ungültige Antwort vom Remote-Server.', 'status' => $status]);
-    exit;
-}
-
-echo json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -888,7 +888,7 @@
         : 'databases_manage.php';
       const response = await fetchJson(endpoint);
       const data = response.data || {};
-      databaseConnections = (data.connections || []).filter((conn) => conn?.status?.ok === true);
+      databaseConnections = Array.isArray(data.connections) ? data.connections : [];
       databaseRoles = data.roles || {};
       databaseTypes = data.types || {};
       renderDatabaseList();
