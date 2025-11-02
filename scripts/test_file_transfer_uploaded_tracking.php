@@ -51,6 +51,35 @@ try {
             ],
             'max_file_size' => 104857600,
             'log_transfers' => false,
+            'pusher' => [
+                'images' => [
+                    'table' => 'media',
+                    'id_column' => 'media_id',
+                    'filename_column' => 'file_name',
+                    'stored_file_column' => 'stored_file',
+                    'stored_path_column' => 'stored_path',
+                    'hash_column' => 'hash',
+                    'flag_column' => 'upload',
+                    'flag_pending' => 1,
+                    'flag_cleared' => 0,
+                    'kind_column' => 'kind',
+                    'kind_value' => 'image',
+                ],
+                'documents' => [
+                    'table' => 'media',
+                    'id_column' => 'media_id',
+                    'title_column' => 'file_name',
+                    'filename_column' => 'file_name',
+                    'stored_file_column' => 'stored_file',
+                    'stored_path_column' => 'stored_path',
+                    'hash_column' => 'hash',
+                    'flag_column' => 'upload',
+                    'flag_pending' => 1,
+                    'flag_cleared' => 0,
+                    'kind_column' => 'kind',
+                    'kind_value' => 'document',
+                ],
+            ],
         ],
     ];
     
@@ -104,8 +133,8 @@ try {
         $testImageId = $pendingImages[0]['id'];
     } else {
         // Insert a test image
-        $testFilename = 'test_image_' . time() . '.jpg';
-        $db->execute('INSERT INTO media (file_name, hash, kind, upload, status, change) VALUES (?, ?, ?, 0, 1, 1)', [$testFilename, sha1($testFilename), 'image']);
+        $testFilename = uniqid('test_image_', true) . '.jpg';
+        $db->execute('INSERT INTO media (file_name, hash, kind, upload, status, change) VALUES (?, ?, ?, 1, 1, 1)', [$testFilename, sha1($testFilename), 'image']);
         $testImageId = $db->lastInsertId();
         echo "  Created test image with ID: {$testImageId}\n";
     }
@@ -113,7 +142,7 @@ try {
     if ($testImageId) {
         // Check current status
         $row = $db->fetchOne('SELECT upload FROM media WHERE media_id = ?', [$testImageId]);
-        $uploadedBefore = (int)($row['uploaded'] ?? 0);
+        $uploadedBefore = (int)($row['upload'] ?? 0);
         echo "  Image ID {$testImageId} uploaded status before: {$uploadedBefore}\n";
 
         // Mark as uploaded
@@ -122,10 +151,10 @@ try {
 
         // Check status after
         $row = $db->fetchOne('SELECT upload FROM media WHERE media_id = ?', [$testImageId]);
-        $uploadedAfter = (int)($row['uploaded'] ?? 0);
+        $uploadedAfter = (int)($row['upload'] ?? 0);
         echo "  Image ID {$testImageId} uploaded status after: {$uploadedAfter}\n";
 
-        if ($uploadedAfter === 1 && $uploadedBefore === 0) {
+        if ($uploadedBefore === 1 && $uploadedAfter === 0) {
             echo "✓ Image marked as uploaded successfully\n";
         } else {
             echo "✗ Failed to mark image as uploaded\n";
@@ -146,8 +175,8 @@ try {
         $testDocumentId = $pendingDocuments[0]['id'];
     } else {
         // Insert a test document
-        $testTitle = 'test_document_' . time() . '.pdf';
-        $db->execute('INSERT INTO media (file_name, hash, kind, upload, status, change) VALUES (?, ?, ?, 0, 1, 1)', [$testTitle, sha1($testTitle), 'document']);
+        $testTitle = uniqid('test_document_', true) . '.pdf';
+        $db->execute('INSERT INTO media (file_name, hash, kind, upload, status, change) VALUES (?, ?, ?, 1, 1, 1)', [$testTitle, sha1($testTitle), 'document']);
         $testDocumentId = $db->lastInsertId();
         echo "  Created test document with ID: {$testDocumentId}\n";
     }
@@ -155,7 +184,7 @@ try {
     if ($testDocumentId) {
         // Check current status
         $row = $db->fetchOne('SELECT upload FROM media WHERE media_id = ?', [$testDocumentId]);
-        $uploadedBefore = (int)($row['uploaded'] ?? 0);
+        $uploadedBefore = (int)($row['upload'] ?? 0);
         echo "  Document ID {$testDocumentId} uploaded status before: {$uploadedBefore}\n";
 
         // Mark as uploaded
@@ -164,10 +193,10 @@ try {
 
         // Check status after
         $row = $db->fetchOne('SELECT upload FROM media WHERE media_id = ?', [$testDocumentId]);
-        $uploadedAfter = (int)($row['uploaded'] ?? 0);
+        $uploadedAfter = (int)($row['upload'] ?? 0);
         echo "  Document ID {$testDocumentId} uploaded status after: {$uploadedAfter}\n";
         
-        if ($uploadedAfter === 1 && $uploadedBefore === 0) {
+        if ($uploadedBefore === 1 && $uploadedAfter === 0) {
             echo "✓ Document marked as uploaded successfully\n";
         } else {
             echo "✗ Failed to mark document as uploaded\n";

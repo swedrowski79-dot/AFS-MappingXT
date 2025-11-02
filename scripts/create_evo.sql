@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS media_relation (
     file_name   TEXT NOT NULL,
     entity_type TEXT NOT NULL,
     entity_id   TEXT NOT NULL,
+    hash        TEXT,
     position    INTEGER NOT NULL DEFAULT 0,
     status      INTEGER NOT NULL DEFAULT 1 CHECK (status IN (0,1)),
     change      INTEGER NOT NULL DEFAULT 0 CHECK (change IN (0,1)),

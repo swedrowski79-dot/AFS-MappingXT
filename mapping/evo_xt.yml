@@ -136,19 +136,19 @@ entities:
       xt.xt_seo_url.store_id: =1
 
   media:
-    from: evo.bilder
+    from: evo.media
     to: xt.xt_media
     map:
-      xt.xt_media.id: bilder.image_id | trim
-      xt.xt_media.external_id: bilder.image_id | trim
-      xt.xt_media.file: bilder.stored_file | null_if_empty
-      xt.xt_media.type: =images
-      xt.xt_media.class: bilder.media_type | case(2->category,1->product,else->media)
-      xt.xt_media.status: bilder.status | to_int
+      xt.xt_media.id: media.file_name | trim
+      xt.xt_media.external_id: media.file_name | trim
+      xt.xt_media.file: media.stored_file | null_if_empty
+      xt.xt_media.type: media.kind
+      xt.xt_media.class: media.kind | case(document->media,else->product)
+      xt.xt_media.status: media.status | to_int
       xt.xt_media.download_status: =0
       xt.xt_media.owner: =1
-      xt.xt_media.date_added: bilder.updated_at | null_if_empty
-      xt.xt_media.last_modified: bilder.updated_at | null_if_empty
+      xt.xt_media.date_added: media.updated_at | null_if_empty
+      xt.xt_media.last_modified: media.updated_at | null_if_empty
     delta:
       fields: [file, class, status, last_modified]
     flags:
@@ -166,32 +166,42 @@ entities:
             xt.xt_media.last_modified: $func.now()
 
   media_description:
-    from: evo.bilder
+    from: evo.media
     to: xt.xt_media_description
     map:
-      xt.xt_media_description.id: bilder.image_id | trim
+      xt.xt_media_description.id: media.file_name | trim
       xt.xt_media_description.language_code: =de
-      xt.xt_media_description.media_name: bilder.file_name | null_if_empty
-      xt.xt_media_description.media_description: bilder.file_name | null_if_empty
+      xt.xt_media_description.media_name: media.file_name | null_if_empty
+      xt.xt_media_description.media_description: media.file_name | null_if_empty
 
   media_link_products:
-    from: evo.artikel_bilder
+    from: evo.media_relation_articles
     to: xt.xt_media_link
     map:
-      xt.xt_media_link.ml_id: $func.concat('prod-', artikel_bilder.id, '-', artikel_bilder.image_id)
-      xt.xt_media_link.m_id: artikel_bilder.image_id | trim
-      xt.xt_media_link.link_id: artikel_bilder.id | trim
+      xt.xt_media_link.ml_id: $func.concat('prod-', media_relation_articles.entity_id, '-', media_relation_articles.file_name)
+      xt.xt_media_link.m_id: media_relation_articles.file_name | trim
+      xt.xt_media_link.link_id: media_relation_articles.entity_id | trim
       xt.xt_media_link.class: =product
       xt.xt_media_link.type: =image
-      xt.xt_media_link.sort_order: artikel_bilder.position | to_int
+      xt.xt_media_link.sort_order: media_relation_articles.position | to_int
+    delta:
+      fields: [link_id]
+    orphan_policy:
+      scope: xt.xt_media_link
+      match_key: [ml_id]
+      actions:
+        - set:
+            xt.xt_media_link.type: =image
 
   media_link_categories:
-    from: evo.category_bilder
+    from: evo.media_relation_categories
     to: xt.xt_media_link
     map:
-      xt.xt_media_link.ml_id: $func.concat('cat-', category_bilder.cat_id, '-', category_bilder.image_id, '-', category_bilder.image_type)
-      xt.xt_media_link.m_id: category_bilder.image_id | trim
-      xt.xt_media_link.link_id: category_bilder.cat_id | trim
+      xt.xt_media_link.ml_id: $func.concat('cat-', media_relation_categories.entity_id, '-', media_relation_categories.file_name)
+      xt.xt_media_link.m_id: media_relation_categories.file_name | trim
+      xt.xt_media_link.link_id: media_relation_categories.entity_id | trim
       xt.xt_media_link.class: =category
-      xt.xt_media_link.type: category_bilder.image_type | case(2->image,else->thumb)
-      xt.xt_media_link.sort_order: category_bilder.image_type | to_int
+      xt.xt_media_link.type: =image
+      xt.xt_media_link.sort_order: media_relation_categories.position | to_int
+    delta:
+      fields: [link_id]

@@ -68,5 +68,34 @@ tables:
       - file_name
       - entity_type
       - entity_id
+      - hash
+      - position
+      - status
+
+  media_relation_articles:
+    source:
+      table: media_relation
+      default_filter:
+        entity_type: article
+    fields:
+      - relation_id
+      - file_name
+      - entity_type
+      - entity_id
+      - hash
+      - position
+      - status
+
+  media_relation_categories:
+    source:
+      table: media_relation
+      default_filter:
+        entity_type: category
+    fields:
+      - relation_id
+      - file_name
+      - entity_type
+      - entity_id
+      - hash
       - position
       - status

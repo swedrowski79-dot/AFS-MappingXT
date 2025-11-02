@@ -269,22 +269,28 @@ class SetupService
             $definition['explicit_unique'] ?? [],
         ];
         foreach ($lists as $candidate) {
-            $columns = $this->normalizeList($candidate);
-            foreach ($columns as $col) {
-                $key = strtolower($col);
-                if ($key === '' || isset($seen[$key])) {
-                    continue;
-                }
-                $seen[$key] = true;
-                $idx = 'uniq_' . strtolower($table . '_' . $col);
-                $pdo->exec(
-                    'CREATE UNIQUE INDEX IF NOT EXISTS '
-                    . $this->quoteIdent($idx)
-                    . ' ON '
-                    . $this->quoteIdent($table)
-                    . ' (' . $this->quoteIdent($col) . ')'
-                );
+            if ($candidate === []) {
+                continue;
             }
+            $columns = $this->normalizeList($candidate);
+            if ($columns === []) {
+                continue;
+            }
+            $normalizedKey = strtolower($table . '_' . implode('_', $columns));
+            if (isset($seen[$normalizedKey])) {
+                continue;
+            }
+            $seen[$normalizedKey] = true;
+
+            $indexName = 'uniq_' . $normalizedKey;
+            $quotedColumns = array_map([$this, 'quoteIdent'], $columns);
+            $pdo->exec(
+                'CREATE UNIQUE INDEX IF NOT EXISTS '
+                . $this->quoteIdent($indexName)
+                . ' ON '
+                . $this->quoteIdent($table)
+                . ' (' . implode(', ', $quotedColumns) . ')'
+            );
         }
     }
 }

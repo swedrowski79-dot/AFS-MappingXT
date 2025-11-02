@@ -39,16 +39,16 @@ function migrateEvoDatabase(string $dbPath): void
             'CREATE INDEX IF NOT EXISTS ix_artikel_update ON Artikel("update") WHERE "update" = 1',
             'CREATE INDEX IF NOT EXISTS ix_artikel_xt_id ON Artikel(XT_ID)',
             'CREATE INDEX IF NOT EXISTS ix_artikel_category ON Artikel(Category)',
-            
-            // Bilder table indexes
-            'CREATE INDEX IF NOT EXISTS ix_bilder_update ON Bilder("update") WHERE "update" = 1',
-            'CREATE INDEX IF NOT EXISTS ix_bilder_xt_id ON Bilder(XT_ID)',
-            
-            // Artikel_Bilder junction table indexes
-            'CREATE INDEX IF NOT EXISTS ix_artikel_bilder_artikel ON Artikel_Bilder(Artikel_ID)',
-            'CREATE INDEX IF NOT EXISTS ix_artikel_bilder_bild ON Artikel_Bilder(Bild_ID)',
-            'CREATE INDEX IF NOT EXISTS ix_artikel_bilder_update ON Artikel_Bilder("update") WHERE "update" = 1',
-            
+
+            // Media table indexes
+            'CREATE INDEX IF NOT EXISTS ix_media_upload ON media(upload) WHERE upload = 1',
+            'CREATE INDEX IF NOT EXISTS ix_media_status ON media(status)',
+            'CREATE INDEX IF NOT EXISTS ix_media_kind ON media(kind)',
+
+            // Media relation indexes
+            'CREATE INDEX IF NOT EXISTS ix_media_relation_entity ON media_relation(entity_type, entity_id)',
+            'CREATE INDEX IF NOT EXISTS ix_media_relation_status ON media_relation(status)',
+
             // Attribute table indexes
             'CREATE INDEX IF NOT EXISTS ix_attribute_update ON Attribute("update") WHERE "update" = 1',
             'CREATE INDEX IF NOT EXISTS ix_attribute_xt_id ON Attribute(XT_Attrib_ID)',
@@ -57,15 +57,6 @@ function migrateEvoDatabase(string $dbPath): void
             'CREATE INDEX IF NOT EXISTS ix_attrib_artikel_artikel ON Attrib_Artikel(Artikel_ID)',
             'CREATE INDEX IF NOT EXISTS ix_attrib_artikel_attribute ON Attrib_Artikel(Attribute_ID)',
             'CREATE INDEX IF NOT EXISTS ix_attrib_artikel_update ON Attrib_Artikel("update") WHERE "update" = 1',
-            
-            // Dokumente table indexes
-            'CREATE INDEX IF NOT EXISTS ix_dokumente_update ON Dokumente("update") WHERE "update" = 1',
-            'CREATE INDEX IF NOT EXISTS ix_dokumente_xt_id ON Dokumente(XT_ID)',
-            
-            // Artikel_Dokumente junction table indexes
-            'CREATE INDEX IF NOT EXISTS ix_artikel_dokumente_artikel ON Artikel_Dokumente(Artikel_ID)',
-            'CREATE INDEX IF NOT EXISTS ix_artikel_dokumente_dokument ON Artikel_Dokumente(Dokument_ID)',
-            'CREATE INDEX IF NOT EXISTS ix_artikel_dokumente_update ON Artikel_Dokumente("update") WHERE "update" = 1',
             
             // Category table indexes
             'CREATE INDEX IF NOT EXISTS ix_category_update ON category("update") WHERE "update" = 1',

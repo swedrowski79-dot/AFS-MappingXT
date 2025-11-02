@@ -237,6 +237,8 @@ class MappingExpressionEvaluator
                 return $this->determineMediaEntityType($args[0] ?? null, $args[1] ?? null, $args[2] ?? null);
             case 'media_entity_id':
                 return $this->determineMediaEntityId($args[0] ?? null, $args[1] ?? null, $args[2] ?? null);
+            case 'coalesce':
+                return $this->coalesce($args);
             case 'tax_map':
                 return $this->mapTaxClass($args[0] ?? null);
             case 'category_meta_title':
@@ -280,6 +282,23 @@ class MappingExpressionEvaluator
             $result .= (string)$part;
         }
         return $result;
+    }
+
+    /**
+     * @param array<int,mixed> $values
+     */
+    private function coalesce(array $values)
+    {
+        foreach ($values as $value) {
+            if ($value === null) {
+                continue;
+            }
+            if (is_string($value) && trim($value) === '') {
+                continue;
+            }
+            return $value;
+        }
+        return null;
     }
 
     private function determineMediaEntityType($type, $article, $category): ?string

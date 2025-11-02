@@ -68,35 +68,81 @@ tables:
       - xt_id           # category.id in XT
       
   media:
-    keys: [hash, kind]
-    business_key: [hash, kind]
+    primary_key: [media_id]
     unique_constraint: [hash, kind]
+    business_key: [hash, kind]
     fields:
-      - media_id
-      - file_name
-      - stored_file
-      - stored_path
-      - mime
-      - file_size
-      - hash
-      - kind
-      - status
-      - change
-      - upload
-      - stored_at
-      - updated_at
+      media_id:
+        type: integer
+        auto_increment: true
+        not_null: true
+      file_name:
+        type: text
+        not_null: true
+      stored_file:
+        type: text
+      stored_path:
+        type: text
+      mime:
+        type: text
+      file_size:
+        type: integer
+      hash:
+        type: text
+        not_null: true
+      kind:
+        type: text
+        not_null: true
+      status:
+        type: integer
+        default: 1
+        not_null: true
+      change:
+        type: integer
+        default: 0
+        not_null: true
+      upload:
+        type: integer
+        default: 0
+        not_null: true
+      stored_at:
+        type: text
+      updated_at:
+        type: text
 
   media_relation:
-    keys: [file_name, entity_type, entity_id]
+    primary_key: [relation_id]
+    unique_constraint: [file_name, entity_type, entity_id]
     fields:
-      - relation_id
-      - file_name
-      - entity_type
-      - entity_id
-      - position
-      - status
-      - change
-      - updated_at
+      relation_id:
+        type: integer
+        auto_increment: true
+        not_null: true
+      file_name:
+        type: text
+        not_null: true
+      entity_type:
+        type: text
+        not_null: true
+      entity_id:
+        type: text
+        not_null: true
+      hash:
+        type: text
+      position:
+        type: integer
+        default: 0
+        not_null: true
+      status:
+        type: integer
+        default: 1
+        not_null: true
+      change:
+        type: integer
+        default: 0
+        not_null: true
+      updated_at:
+        type: text
 
   file_vault:
     keys: [file_name]

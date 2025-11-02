@@ -123,7 +123,7 @@ entities:
     to:   evo.media
 
     map:
-      evo.media.file_name:  file_vault.file_name
+      evo.media.file_name:  $func.coalesce($func.image_guard(file_vault.mime, file_vault.file_name), $func.image_guard(file_vault.mime, file_vault.stored_file), file_vault.file_name)
       evo.media.mime:       file_vault.mime
       evo.media.file_size:  file_vault.size
       evo.media.hash:       $func.image_guard(file_vault.mime, file_vault.checksum)
@@ -162,7 +162,7 @@ entities:
     to:   evo.media
 
     map:
-      evo.media.file_name:  file_vault.file_name
+      evo.media.file_name:  $func.coalesce($func.document_guard(file_vault.mime, file_vault.file_name), $func.document_guard(file_vault.mime, file_vault.stored_file), file_vault.file_name)
       evo.media.mime:       file_vault.mime
       evo.media.file_size:  file_vault.size
       evo.media.hash:       $func.document_guard(file_vault.mime, file_vault.checksum)
@@ -204,12 +204,13 @@ entities:
       evo.media_relation.file_name: file_vault.file_name
       evo.media_relation.entity_type: $func.media_entity_type(file_vault.art_type, file_vault.art_id, file_vault.cat_id)
       evo.media_relation.entity_id:   $func.media_entity_id(file_vault.art_type, file_vault.art_id, file_vault.cat_id)
+      evo.media_relation.hash:        $func.image_guard(file_vault.mime, file_vault.checksum)
       evo.media_relation.position:    =0
       evo.media_relation.status:      =1
       evo.media_relation.change:      =0
 
     delta:
-      fields: [entity_type, entity_id]
+      fields: [entity_type, entity_id, hash]
 
     flags:
       on_insert:

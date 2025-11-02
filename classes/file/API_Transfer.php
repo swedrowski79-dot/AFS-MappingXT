@@ -708,7 +708,7 @@ class API_Transfer
             $map['flag_pending'] = 0;
             $map['flag_cleared'] = 1;
         }
-        $map['title'] = $map['title'] ?? 'title';
+        $map['title'] = $map['title'] ?? 'file_name';
         $map['table'] = $tableName;
         return $this->documentColumnMap = $map;
     }
