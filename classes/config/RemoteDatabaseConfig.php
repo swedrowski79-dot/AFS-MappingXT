@@ -125,7 +125,20 @@ class RemoteDatabaseConfig
     private static function ensureDirectory(): void
     {
         if (!is_dir(self::BASE_DIR)) {
-            mkdir(self::BASE_DIR, 0775, true);
+            if (!@mkdir(self::BASE_DIR, 0775, true) && !is_dir(self::BASE_DIR)) {
+                throw new RuntimeException('Remote-Datenbankverzeichnis konnte nicht erstellt werden: ' . self::BASE_DIR);
+            }
+        }
+        if (!is_writable(self::BASE_DIR)) {
+            // Versuche, die Berechtigung zu erweitern, damit Webserver schreiben kann
+            if (!@chmod(self::BASE_DIR, 0775) && !@chmod(self::BASE_DIR, 0777)) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Remote-Datenbankverzeichnis "%s" ist nicht beschreibbar. Bitte Berechtigungen anpassen (z. B. chmod 775 oder chown).',
+                        self::BASE_DIR
+                    )
+                );
+            }
         }
     }
 
