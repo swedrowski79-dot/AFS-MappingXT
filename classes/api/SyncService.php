@@ -58,41 +58,21 @@ class SyncService
                 $tracker->logInfo(sprintf('FileCatcher %s abgeschlossen', $name), $stats, 'filecatcher');
             }
 
-            try {
-                $bilder = $engine->syncEntity('bilder', $pdo);
-                $summary['bilder'] = $bilder;
-                $tracker->logInfo('Bilder synchronisiert', $bilder, 'bilder');
-            } catch (Throwable $e) {
-                $tracker->logWarning('Bilder-Sync übersprungen: ' . $e->getMessage(), [], 'bilder');
-            }
-
-            try {
-                $dokumente = $engine->syncEntity('dokumente', $pdo);
-                $summary['dokumente'] = $dokumente;
-                $tracker->logInfo('Dokumente synchronisiert', $dokumente, 'dokumente');
-            } catch (Throwable $e) {
-                $tracker->logWarning('Dokumente-Sync übersprungen: ' . $e->getMessage(), [], 'dokumente');
-            }
-
-            try {
-                $mssqlConnection = $this->extractMssqlConnection($sourceConnections);
-                if ($mssqlConnection instanceof MSSQL_Connection) {
-                    $mediaLinkService = new MediaLinkService($pdo, $mssqlConnection);
-                    $mediaSummary = $mediaLinkService->sync();
-                    if ($mediaSummary !== []) {
-                        $summary['media_links'] = $mediaSummary;
-                        $tracker->logInfo('Medien-Verknüpfungen aktualisiert', $mediaSummary, 'media_links');
-                    }
+            foreach (['media_bilder', 'media_dokumente', 'media_relation_bilder', 'media_relation_dokumente'] as $entity) {
+                try {
+                    $stats = $engine->syncEntity($entity, $pdo);
+                    $summary[$entity] = $stats;
+                    $tracker->logInfo(sprintf('Entity %s synchronisiert', $entity), $stats, $entity);
+                } catch (Throwable $e) {
+                    $tracker->logWarning(sprintf('Entity %s übersprungen: %s', $entity, $e->getMessage()), [], $entity);
                 }
-            } catch (Throwable $e) {
-                $tracker->logWarning('Medien-Verknüpfungen übersprungen: ' . $e->getMessage(), [], 'media_links');
             }
         }
 
         $overallDuration = microtime(true) - $overallStart;
         $totProcessed = 0;
         $totErrors = 0;
-        foreach (['warengruppe', 'artikel', 'artikel_meta', 'bilder', 'dokumente'] as $key) {
+        foreach (['warengruppe', 'artikel', 'artikel_meta', 'media_bilder', 'media_dokumente', 'media_relation_bilder', 'media_relation_dokumente'] as $key) {
             $totProcessed += (int)($summary[$key]['processed'] ?? 0);
             $totErrors += (int)($summary[$key]['errors'] ?? 0);
         }
@@ -125,19 +105,6 @@ class SyncService
             'summary' => $summary,
             'duration_seconds' => $overallDuration,
         ];
-    }
-
-    /**
-     * @param array<int,mixed> $connections
-     */
-    private function extractMssqlConnection(array $connections): ?MSSQL_Connection
-    {
-        foreach ($connections as $connection) {
-            if ($connection instanceof MSSQL_Connection) {
-                return $connection;
-            }
-        }
-        return null;
     }
 
     /**

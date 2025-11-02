@@ -105,26 +105,26 @@ try {
     } else {
         // Insert a test image
         $testFilename = 'test_image_' . time() . '.jpg';
-        $db->execute('INSERT INTO Bilder (Bildname, uploaded, "update") VALUES (?, 0, 1)', [$testFilename]);
+        $db->execute('INSERT INTO media (file_name, hash, kind, upload, status, change) VALUES (?, ?, ?, 0, 1, 1)', [$testFilename, sha1($testFilename), 'image']);
         $testImageId = $db->lastInsertId();
         echo "  Created test image with ID: {$testImageId}\n";
     }
-    
+
     if ($testImageId) {
         // Check current status
-        $row = $db->fetchOne('SELECT uploaded FROM Bilder WHERE ID = ?', [$testImageId]);
+        $row = $db->fetchOne('SELECT upload FROM media WHERE media_id = ?', [$testImageId]);
         $uploadedBefore = (int)($row['uploaded'] ?? 0);
         echo "  Image ID {$testImageId} uploaded status before: {$uploadedBefore}\n";
-        
+
         // Mark as uploaded
         $result = $transfer->markImageAsUploaded($testImageId);
         echo "  Mark as uploaded result: " . ($result ? 'success' : 'failed') . "\n";
-        
+
         // Check status after
-        $row = $db->fetchOne('SELECT uploaded FROM Bilder WHERE ID = ?', [$testImageId]);
+        $row = $db->fetchOne('SELECT upload FROM media WHERE media_id = ?', [$testImageId]);
         $uploadedAfter = (int)($row['uploaded'] ?? 0);
         echo "  Image ID {$testImageId} uploaded status after: {$uploadedAfter}\n";
-        
+
         if ($uploadedAfter === 1 && $uploadedBefore === 0) {
             echo "✓ Image marked as uploaded successfully\n";
         } else {
@@ -146,24 +146,24 @@ try {
         $testDocumentId = $pendingDocuments[0]['id'];
     } else {
         // Insert a test document
-        $testTitle = 'test_document_' . time();
-        $db->execute('INSERT INTO Dokumente (Titel, uploaded, "update") VALUES (?, 0, 1)', [$testTitle]);
+        $testTitle = 'test_document_' . time() . '.pdf';
+        $db->execute('INSERT INTO media (file_name, hash, kind, upload, status, change) VALUES (?, ?, ?, 0, 1, 1)', [$testTitle, sha1($testTitle), 'document']);
         $testDocumentId = $db->lastInsertId();
         echo "  Created test document with ID: {$testDocumentId}\n";
     }
-    
+
     if ($testDocumentId) {
         // Check current status
-        $row = $db->fetchOne('SELECT uploaded FROM Dokumente WHERE ID = ?', [$testDocumentId]);
+        $row = $db->fetchOne('SELECT upload FROM media WHERE media_id = ?', [$testDocumentId]);
         $uploadedBefore = (int)($row['uploaded'] ?? 0);
         echo "  Document ID {$testDocumentId} uploaded status before: {$uploadedBefore}\n";
-        
+
         // Mark as uploaded
         $result = $transfer->markDocumentAsUploaded($testDocumentId);
         echo "  Mark as uploaded result: " . ($result ? 'success' : 'failed') . "\n";
-        
+
         // Check status after
-        $row = $db->fetchOne('SELECT uploaded FROM Dokumente WHERE ID = ?', [$testDocumentId]);
+        $row = $db->fetchOne('SELECT upload FROM media WHERE media_id = ?', [$testDocumentId]);
         $uploadedAfter = (int)($row['uploaded'] ?? 0);
         echo "  Document ID {$testDocumentId} uploaded status after: {$uploadedAfter}\n";
         
@@ -177,56 +177,6 @@ try {
 } catch (Throwable $e) {
     echo "✗ Failed: " . $e->getMessage() . "\n";
     exit(1);
-}
-
-// Test 7: Verify uploaded = 0 is set for new images in EVO_ImageSync
-echo "Test 7: Verifying uploaded = 0 for new images...\n";
-try {
-    // Check the SQL in EVO_ImageSync
-    $syncFile = __DIR__ . '/../classes/evo/EVO_ImageSync.php';
-    $content = file_get_contents($syncFile);
-    
-    if (str_contains($content, 'uploaded = 0')) {
-        echo "✓ EVO_ImageSync contains 'uploaded = 0' in SQL statements\n";
-    } else {
-        echo "✗ Warning: EVO_ImageSync may not set uploaded = 0\n";
-    }
-    
-    // Verify the actual SQL pattern
-    if (preg_match('/INSERT INTO Bilder.*uploaded.*0/s', $content) || 
-        preg_match('/uploaded\s*=\s*0/s', $content)) {
-        echo "✓ EVO_ImageSync properly initializes uploaded to 0\n";
-    } else {
-        echo "✗ Warning: Pattern not found in EVO_ImageSync\n";
-    }
-    echo "\n";
-} catch (Throwable $e) {
-    echo "✗ Failed: " . $e->getMessage() . "\n";
-}
-
-// Test 8: Verify uploaded = 0 is set for new documents in EVO_DocumentSync
-echo "Test 8: Verifying uploaded = 0 for new documents...\n";
-try {
-    // Check the SQL in EVO_DocumentSync
-    $syncFile = __DIR__ . '/../classes/evo/EVO_DocumentSync.php';
-    $content = file_get_contents($syncFile);
-    
-    if (str_contains($content, 'uploaded = 0')) {
-        echo "✓ EVO_DocumentSync contains 'uploaded = 0' in SQL statements\n";
-    } else {
-        echo "✗ Warning: EVO_DocumentSync may not set uploaded = 0\n";
-    }
-    
-    // Verify the actual SQL pattern
-    if (preg_match('/INSERT INTO Dokumente.*uploaded.*0/s', $content) || 
-        preg_match('/uploaded\s*=\s*0/s', $content)) {
-        echo "✓ EVO_DocumentSync properly initializes uploaded to 0\n";
-    } else {
-        echo "✗ Warning: Pattern not found in EVO_DocumentSync\n";
-    }
-    echo "\n";
-} catch (Throwable $e) {
-    echo "✗ Failed: " . $e->getMessage() . "\n";
 }
 
 echo "=== All tests completed ===\n";

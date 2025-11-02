@@ -306,6 +306,7 @@ $config = [
             'enabled' => filter_var(getenv('DATA_TRANSFER_ENABLE_DB') ?: 'true', FILTER_VALIDATE_BOOLEAN),
             'source' => getenv('DB_TRANSFER_SOURCE') ?: __DIR__ . '/db/evo_delta.db',
             'target' => getenv('DB_TRANSFER_TARGET') ?: '/tmp/evo_delta.db',
+            'generator_script' => getenv('DB_TRANSFER_GENERATOR') ?: 'scripts/sync_evo_to_xt.php',
         ],
         
         // Images transfer configuration (paths come from per-server settings)
@@ -321,6 +322,7 @@ $config = [
         // Transfer options
         'max_file_size' => (int)(getenv('DATA_TRANSFER_MAX_FILE_SIZE') ?: 104857600), // 100MB
         'log_transfers' => filter_var(getenv('DATA_TRANSFER_LOG_TRANSFERS') ?: 'true', FILTER_VALIDATE_BOOLEAN),
+        'php_binary' => getenv('DATA_TRANSFER_PHP_BINARY') ?: PHP_BINARY,
     ],
 
 

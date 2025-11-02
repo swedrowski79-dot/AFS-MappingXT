@@ -24,6 +24,7 @@ class API_Transfer
     private ?SQLite_Connection $db = null;
     private ?array $imageColumnMap = null;
     private ?array $documentColumnMap = null;
+    private bool $deltaGenerated = false;
 
     public function __construct(array $config, ?STATUS_MappingLogger $logger = null, ?SQLite_Connection $db = null)
     {
@@ -58,6 +59,8 @@ class API_Transfer
      */
     public function transferDatabase(): array
     {
+        $this->regenerateDeltaDatabase();
+
         $dbConfig = $this->transferConfig['database'] ?? [];
         
         if (!($dbConfig['enabled'] ?? false)) {
@@ -119,11 +122,67 @@ class API_Transfer
         return $result;
     }
 
+    private function regenerateDeltaDatabase(): void
+    {
+        if ($this->deltaGenerated) {
+            return;
+        }
+        $this->deltaGenerated = true;
+
+        $dbConfig = $this->transferConfig['database'] ?? [];
+        $scriptPath = $dbConfig['generator_script'] ?? (__DIR__ . '/../../scripts/sync_evo_to_xt.php');
+        if (!is_string($scriptPath) || $scriptPath === '') {
+            return;
+        }
+
+        $resolvedScript = $scriptPath;
+        if (!preg_match('#^([A-Za-z]:[\\\\/]|/)#', $resolvedScript)) {
+            $root = $this->appConfig['paths']['root'] ?? dirname(__DIR__, 2);
+            $resolvedScript = rtrim((string)$root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . ltrim($resolvedScript, DIRECTORY_SEPARATOR);
+        }
+        if (!is_file($resolvedScript) || !is_readable($resolvedScript)) {
+            return;
+        }
+
+        $phpBinary = $this->transferConfig['php_binary'] ?? PHP_BINARY;
+        $command = sprintf(
+            '%s %s',
+            escapeshellcmd((string)$phpBinary),
+            escapeshellarg($resolvedScript)
+        );
+
+        $descriptorSpec = [
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+        $process = proc_open($command, $descriptorSpec, $pipes, $this->appConfig['paths']['root'] ?? dirname(__DIR__, 2));
+        if (!is_resource($process)) {
+            throw new RuntimeException('Delta-Generierung konnte nicht gestartet werden.');
+        }
+
+        $stdout = stream_get_contents($pipes[1]) ?: '';
+        $stderr = stream_get_contents($pipes[2]) ?: '';
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+
+        if ($exitCode !== 0) {
+            throw new RuntimeException(sprintf(
+                'Generierung der Delta-Datenbank fehlgeschlagen (Exit-Code %d): %s',
+                $exitCode,
+                trim($stderr !== '' ? $stderr : $stdout)
+            ));
+        }
+    }
+
     /**
      * Transfer images from source to target directory
      */
     public function transferImages(): array
     {
+        if ($this->db !== null && isset($this->transferConfig['pusher']['images'])) {
+            return $this->transferPendingImages();
+        }
         return $this->transferDirectory('images');
     }
 
@@ -132,6 +191,9 @@ class API_Transfer
      */
     public function transferDocuments(): array
     {
+        if ($this->db !== null && isset($this->transferConfig['pusher']['documents'])) {
+            return $this->transferPendingDocuments();
+        }
         return $this->transferDirectory('documents');
     }
 
@@ -200,8 +262,10 @@ class API_Transfer
         // Optional override per transfer section
         $pathOverride = $transferSection['path'] ?? null;
 
-        $source = $pathOverride ?: ($mediaConfig['source'] ?? '');
-        $target = $pathOverride ?: ($mediaConfig['target'] ?? ($mediaConfig['source'] ?? ''));
+        $source = $pathOverride
+            ?: ($transferSection['source'] ?? ($mediaConfig['source'] ?? ''));
+        $target = $pathOverride
+            ?: ($transferSection['target'] ?? ($mediaConfig['target'] ?? ($mediaConfig['source'] ?? '')));
 
         if ($source === '') {
             throw new AFS_ConfigurationException(ucfirst($type) . '-Pfad (Quelle) ist nicht konfiguriert');
@@ -389,10 +453,19 @@ class API_Transfer
         $table = $this->db->quoteIdent($map['table']);
         $flagExpr = $this->db->quoteIdent($map['flag']);
 
+        $conditions = [$flagExpr . ' = :pending'];
+        $params = [':pending' => $map['flag_pending']];
+
+        if (!empty($map['filter_column']) && isset($map['filter_value'])) {
+            $kindExpr = $this->db->quoteIdent((string)$map['filter_column']);
+            $conditions[] = $kindExpr . ' = :filter_kind';
+            $params[':filter_kind'] = (string)$map['filter_value'];
+        }
+
         $sql = sprintf(
             'SELECT %s AS id, %s AS filename, %s AS stored_file, %s AS stored_path, %s AS hash
              FROM %s
-             WHERE %s = :pending
+             WHERE %s
              ORDER BY %s',
             $idExpr,
             $filenameExpr,
@@ -400,11 +473,11 @@ class API_Transfer
             $storedPathExpr,
             $hashExpr,
             $table,
-            $flagExpr,
+            implode(' AND ', $conditions),
             $idExpr
         );
 
-        $rows = $this->db->fetchAll($sql, [':pending' => $map['flag_pending']]);
+        $rows = $this->db->fetchAll($sql, $params);
         $result = [];
         foreach ($rows as $row) {
             $result[] = [
@@ -447,10 +520,19 @@ class API_Transfer
         $table = $this->db->quoteIdent($map['table']);
         $flagExpr = $this->db->quoteIdent($map['flag']);
 
+        $conditions = [$flagExpr . ' = :pending'];
+        $params = [':pending' => $map['flag_pending']];
+
+        if (!empty($map['filter_column']) && isset($map['filter_value'])) {
+            $kindExpr = $this->db->quoteIdent((string)$map['filter_column']);
+            $conditions[] = $kindExpr . ' = :filter_kind';
+            $params[':filter_kind'] = (string)$map['filter_value'];
+        }
+
         $sql = sprintf(
             'SELECT %s AS id, %s AS title, %s AS filename, %s AS stored_file, %s AS stored_path, %s AS hash
              FROM %s
-             WHERE %s = :pending
+             WHERE %s
              ORDER BY %s',
             $idExpr,
             $titleExpr,
@@ -459,11 +541,11 @@ class API_Transfer
             $storedPathExpr,
             $hashExpr,
             $table,
-            $flagExpr,
+            implode(' AND ', $conditions),
             $idExpr
         );
 
-        $rows = $this->db->fetchAll($sql, [':pending' => $map['flag_pending']]);
+        $rows = $this->db->fetchAll($sql, $params);
         $result = [];
         foreach ($rows as $row) {
             $result[] = [
@@ -656,6 +738,14 @@ class API_Transfer
         $map['flag'] = $map['flag'] ?? 'upload';
         $map['flag_pending'] = isset($config['flag_pending']) ? (int)$config['flag_pending'] : ($map['flag'] === 'upload' ? 1 : 0);
         $map['flag_cleared'] = isset($config['flag_cleared']) ? (int)$config['flag_cleared'] : ($map['flag'] === 'upload' ? 0 : 1);
+        $filterColumn = $config['kind_column'] ?? null;
+        if (is_string($filterColumn) && $filterColumn !== '') {
+            $map['filter_column'] = $filterColumn;
+            $filterValue = $config['kind_value'] ?? null;
+            if (is_string($filterValue) || is_numeric($filterValue)) {
+                $map['filter_value'] = (string)$filterValue;
+            }
+        }
         return $map;
     }
 
@@ -722,24 +812,32 @@ class API_Transfer
             : "''";
         $flagExpr = $this->db->quoteIdent($map['flag']);
 
+        $conditions = [$idExpr . ' = :id', $flagExpr . ' = :pending'];
+        $params = [
+            ':id' => $imageId,
+            ':pending' => $map['flag_pending'],
+        ];
+
+        if (!empty($map['filter_column']) && isset($map['filter_value'])) {
+            $kindExpr = $this->db->quoteIdent((string)$map['filter_column']);
+            $conditions[] = $kindExpr . ' = :filter_kind';
+            $params[':filter_kind'] = (string)$map['filter_value'];
+        }
+
         $sql = sprintf(
             'SELECT %s AS id, %s AS filename, %s AS stored_file, %s AS stored_path
              FROM %s
-             WHERE %s = :id AND %s = :pending
+             WHERE %s
              LIMIT 1',
             $idExpr,
             $filenameExpr,
             $storedFileExpr,
             $storedPathExpr,
             $table,
-            $idExpr,
-            $flagExpr
+            implode(' AND ', $conditions)
         );
 
-        $image = $this->db->fetchOne($sql, [
-            ':id' => $imageId,
-            ':pending' => $map['flag_pending'],
-        ]);
+        $image = $this->db->fetchOne($sql, $params);
 
         if (!$image) {
             return [
@@ -859,10 +957,22 @@ class API_Transfer
             : "''";
         $flagExpr = $this->db->quoteIdent($map['flag']);
 
+        $conditions = [$idExpr . ' = :id', $flagExpr . ' = :pending'];
+        $params = [
+            ':id' => $documentId,
+            ':pending' => $map['flag_pending'],
+        ];
+
+        if (!empty($map['filter_column']) && isset($map['filter_value'])) {
+            $kindExpr = $this->db->quoteIdent((string)$map['filter_column']);
+            $conditions[] = $kindExpr . ' = :filter_kind';
+            $params[':filter_kind'] = (string)$map['filter_value'];
+        }
+
         $sql = sprintf(
             'SELECT %s AS id, %s AS title, %s AS filename, %s AS stored_file, %s AS stored_path
              FROM %s
-             WHERE %s = :id AND %s = :pending
+             WHERE %s
              LIMIT 1',
             $idExpr,
             $titleExpr,
@@ -870,13 +980,9 @@ class API_Transfer
             $storedFileExpr,
             $storedPathExpr,
             $table,
-            $idExpr,
-            $flagExpr
+            implode(' AND ', $conditions)
         );
-        $document = $this->db->fetchOne($sql, [
-            ':id' => $documentId,
-            ':pending' => $map['flag_pending'],
-        ]);
+        $document = $this->db->fetchOne($sql, $params);
 
         if (!$document) {
             return [
@@ -1005,6 +1111,8 @@ class API_Transfer
 
         $results['duration'] = round(microtime(true) - $startTime, 3);
         $results['timestamp'] = date('Y-m-d H:i:s');
+        $results['files_copied'] = $results['transferred'];
+        $results['mode'] = 'pending';
 
         $this->logTransfer('images_pending', $results);
 
@@ -1052,6 +1160,8 @@ class API_Transfer
 
         $results['duration'] = round(microtime(true) - $startTime, 3);
         $results['timestamp'] = date('Y-m-d H:i:s');
+        $results['files_copied'] = $results['transferred'];
+        $results['mode'] = 'pending';
 
         $this->logTransfer('documents_pending', $results);
 

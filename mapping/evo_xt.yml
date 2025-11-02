@@ -1,0 +1,197 @@
+version: 1
+
+sources:
+  evo:
+    schema: "schemas/evo-source.yml"
+
+target:
+  xt:
+    schema: "schemas/xt-remote.yml"
+
+options:
+  default_language: de
+
+entities:
+  categories:
+    from: evo.category
+    to: xt.xt_categories
+    map:
+      xt.xt_categories.categories_id: category.cat_id | trim
+      xt.xt_categories.external_id: category.cat_id | trim
+      xt.xt_categories.categories_owner: =1
+      xt.xt_categories.permission_id: =1
+      xt.xt_categories.categories_level: category.level | to_int
+      xt.xt_categories.categories_status: category.status | to_int
+      xt.xt_categories.categories_image: category.image | null_if_empty
+      xt.xt_categories.categories_template: =default
+      xt.xt_categories.listing_template: =default
+      xt.xt_categories.category_custom_link_type: =0
+      xt.xt_categories.category_custom_link_id: =0
+      xt.xt_categories.google_product_cat: category.cat_id | trim
+      xt.xt_categories.date_added: category.updated_at | null_if_empty
+      xt.xt_categories.last_modified: category.updated_at | null_if_empty
+    delta:
+      fields: [categories_level, categories_status, categories_image, date_added, last_modified]
+    flags:
+      on_insert:
+        xt.xt_categories.date_added: $func.now()
+        xt.xt_categories.last_modified: $func.now()
+      on_update_when_delta_changed:
+        xt.xt_categories.last_modified: $func.now()
+    orphan_policy:
+      scope: xt.xt_categories
+      match_key: [external_id]
+      actions:
+        - set:
+            xt.xt_categories.categories_status: =0
+            xt.xt_categories.last_modified: $func.now()
+
+  categories_description:
+    from: evo.category
+    to: xt.xt_categories_description
+    map:
+      xt.xt_categories_description.categories_id: category.cat_id | trim
+      xt.xt_categories_description.language_code: =de
+      xt.xt_categories_description.categories_name: category.name | null_if_empty
+      xt.xt_categories_description.categories_heading_title: category.name | null_if_empty
+      xt.xt_categories_description.categories_description: category.description_html | null_if_empty
+      xt.xt_categories_description.categories_description_bottom: category.description | null_if_empty
+      xt.xt_categories_description.categories_store_id: =1
+    delta:
+      fields: [categories_name, categories_description, categories_description_bottom]
+
+  products:
+    from: evo.artikel
+    to: xt.xt_products
+    map:
+      xt.xt_products.products_id: artikel.model | trim
+      xt.xt_products.external_id: artikel.model | trim
+      xt.xt_products.products_model: artikel.model | trim
+      xt.xt_products.products_owner: =1
+      xt.xt_products.permission_id: =1
+      xt.xt_products.products_status: artikel.status | to_int
+      xt.xt_products.products_price: artikel.price | to_decimal
+      xt.xt_products.products_tax_class_id: artikel.tax_class_id | to_int
+      xt.xt_products.products_weight: artikel.gross_weight | to_decimal
+      xt.xt_products.products_master_flag: artikel.is_master | to_int
+      xt.xt_products.products_master_model: artikel.master_model | null_if_empty
+      xt.xt_products.products_image: artikel.products_image | null_if_empty
+      xt.xt_products.products_quantity: =0
+      xt.xt_products.products_unit: =stk
+      xt.xt_products.products_ean: artikel.ean | null_if_empty
+      xt.xt_products.date_added: artikel.updated_at | null_if_empty
+      xt.xt_products.last_modified: artikel.updated_at | null_if_empty
+    delta:
+      fields: [products_status, products_price, products_tax_class_id, products_weight, products_image, last_modified]
+    flags:
+      on_insert:
+        xt.xt_products.date_added: $func.now()
+        xt.xt_products.last_modified: $func.now()
+      on_update_when_delta_changed:
+        xt.xt_products.last_modified: $func.now()
+    orphan_policy:
+      scope: xt.xt_products
+      match_key: [external_id]
+      actions:
+        - set:
+            xt.xt_products.products_status: =0
+            xt.xt_products.last_modified: $func.now()
+
+  products_description:
+    from: evo.artikel
+    to: xt.xt_products_description
+    map:
+      xt.xt_products_description.products_id: artikel.model | trim
+      xt.xt_products_description.language_code: =de
+      xt.xt_products_description.products_name: artikel.products_name | null_if_empty
+      xt.xt_products_description.products_description: artikel.products_description | null_if_empty
+      xt.xt_products_description.products_short_description: artikel.promo_html | null_if_empty
+      xt.xt_products_description.products_keywords: artikel.name | null_if_empty
+      xt.xt_products_description.products_url: artikel.seo_slug | null_if_empty
+      xt.xt_products_description.products_store_id: =1
+    delta:
+      fields: [products_name, products_description, products_short_description, products_keywords, products_url]
+
+  products_to_categories:
+    from: evo.artikel
+    to: xt.xt_products_to_categories
+    map:
+      xt.xt_products_to_categories.products_id: artikel.model | trim
+      xt.xt_products_to_categories.categories_id: artikel.category | trim
+      xt.xt_products_to_categories.master_link: artikel.is_master | to_int
+      xt.xt_products_to_categories.store_id: =1
+
+  seo_url:
+    from: evo.artikel
+    to: xt.xt_seo_url
+    map:
+      xt.xt_seo_url.url_md5: artikel.seo_slug | trim
+      xt.xt_seo_url.url_text: artikel.seo_slug | trim
+      xt.xt_seo_url.language_code: =de
+      xt.xt_seo_url.link_type: =product
+      xt.xt_seo_url.link_id: artikel.model | trim
+      xt.xt_seo_url.meta_title: artikel.meta_title | null_if_empty
+      xt.xt_seo_url.meta_description: artikel.meta_description | null_if_empty
+      xt.xt_seo_url.meta_keywords: artikel.name | null_if_empty
+      xt.xt_seo_url.store_id: =1
+
+  media:
+    from: evo.bilder
+    to: xt.xt_media
+    map:
+      xt.xt_media.id: bilder.image_id | trim
+      xt.xt_media.external_id: bilder.image_id | trim
+      xt.xt_media.file: bilder.stored_file | null_if_empty
+      xt.xt_media.type: =images
+      xt.xt_media.class: bilder.media_type | case(2->category,1->product,else->media)
+      xt.xt_media.status: bilder.status | to_int
+      xt.xt_media.download_status: =0
+      xt.xt_media.owner: =1
+      xt.xt_media.date_added: bilder.updated_at | null_if_empty
+      xt.xt_media.last_modified: bilder.updated_at | null_if_empty
+    delta:
+      fields: [file, class, status, last_modified]
+    flags:
+      on_insert:
+        xt.xt_media.date_added: $func.now()
+        xt.xt_media.last_modified: $func.now()
+      on_update_when_delta_changed:
+        xt.xt_media.last_modified: $func.now()
+    orphan_policy:
+      scope: xt.xt_media
+      match_key: [external_id]
+      actions:
+        - set:
+            xt.xt_media.status: =0
+            xt.xt_media.last_modified: $func.now()
+
+  media_description:
+    from: evo.bilder
+    to: xt.xt_media_description
+    map:
+      xt.xt_media_description.id: bilder.image_id | trim
+      xt.xt_media_description.language_code: =de
+      xt.xt_media_description.media_name: bilder.file_name | null_if_empty
+      xt.xt_media_description.media_description: bilder.file_name | null_if_empty
+
+  media_link_products:
+    from: evo.artikel_bilder
+    to: xt.xt_media_link
+    map:
+      xt.xt_media_link.ml_id: $func.concat('prod-', artikel_bilder.id, '-', artikel_bilder.image_id)
+      xt.xt_media_link.m_id: artikel_bilder.image_id | trim
+      xt.xt_media_link.link_id: artikel_bilder.id | trim
+      xt.xt_media_link.class: =product
+      xt.xt_media_link.type: =image
+      xt.xt_media_link.sort_order: artikel_bilder.position | to_int
+
+  media_link_categories:
+    from: evo.category_bilder
+    to: xt.xt_media_link
+    map:
+      xt.xt_media_link.ml_id: $func.concat('cat-', category_bilder.cat_id, '-', category_bilder.image_id, '-', category_bilder.image_type)
+      xt.xt_media_link.m_id: category_bilder.image_id | trim
+      xt.xt_media_link.link_id: category_bilder.cat_id | trim
+      xt.xt_media_link.class: =category
+      xt.xt_media_link.type: category_bilder.image_type | case(2->image,else->thumb)
+      xt.xt_media_link.sort_order: category_bilder.image_type | to_int

@@ -16,28 +16,34 @@ if (!is_array($config)) {
 }
 
 try {
-    $pdo = createEvoPdo($config);
-    $mssql = createMssql($config);
+    [$tracker, $engine, $sourceConnections, $pdo] = createMappingOnlyEnvironment($config, 'media');
+    $entities = ['media_bilder', 'media_dokumente', 'media_relation_bilder', 'media_relation_dokumente'];
+
+    $summary = [];
+    foreach ($entities as $entity) {
+        try {
+            $stats = $engine->syncEntity($entity, $pdo);
+            $summary[$entity] = $stats;
+            printf("%s: verarbeitet=%d, Fehler=%d, Waisen=%d\n",
+                $entity,
+                (int)($stats['processed'] ?? 0),
+                (int)($stats['errors'] ?? 0),
+                (int)($stats['orphans'] ?? 0)
+            );
+        } catch (Throwable $e) {
+            fprintf(STDERR, "%s fehlgeschlagen: %s\n", $entity, $e->getMessage());
+        }
+    }
+
+    foreach ($sourceConnections as $connection) {
+        if ($connection instanceof MSSQL_Connection) {
+            $connection->close();
+        }
+    }
+
+    $pdo = null;
+    echo "Medien-Synchronisation abgeschlossen.\n";
 } catch (Throwable $e) {
-    fwrite(STDERR, "Verbindungsfehler: " . $e->getMessage() . "\n");
+    fwrite(STDERR, "Fehler während der Medien-Synchronisation: " . $e->getMessage() . "\n");
     exit(1);
 }
-
-try {
-    $service = new MediaLinkService($pdo, $mssql);
-    $summary = $service->sync();
-
-    echo "Medien-Verknüpfungen aktualisiert." . PHP_EOL;
-    echo "Artikelbilder:   " . ($summary['bilder']['article_links'] ?? 0) . PHP_EOL;
-    echo "Kategoriebilder: " . ($summary['bilder']['category_links'] ?? 0) . PHP_EOL;
-    echo "Fehlende Bilder: " . (($summary['bilder']['missing_images'] ?? 0) + ($summary['bilder']['missing_cat_images'] ?? 0)) . PHP_EOL;
-    echo "Artikeldokumente: " . ($summary['dokumente']['article_links'] ?? 0) . PHP_EOL;
-    echo "Fehlende Dokumente: " . ($summary['dokumente']['missing_documents'] ?? 0) . PHP_EOL;
-} catch (Throwable $e) {
-    fwrite(STDERR, "Fehler beim Aktualisieren der Verknüpfungen: " . $e->getMessage() . "\n");
-    $mssql->close();
-    exit(1);
-}
-
-$mssql->close();
-$pdo = null;

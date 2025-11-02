@@ -67,95 +67,36 @@ tables:
       - afs_id          # category.cat_id in AFS
       - xt_id           # category.id in XT
       
-  bilder:
-    keys: [hash]         # dedupe per Datei-Hash
+  media:
+    keys: [hash, kind]
+    business_key: [hash, kind]
+    unique_constraint: [hash, kind]
     fields:
-      - image_id         # surrogate PK (Auto-Inc; introspektiert)
-      - file_name        # Dateiname
-      - mime             # MIME-Typ
-      - file_size        # Dateigröße
-      - hash             # Dateihash
-      - stored_file 
+      - media_id
+      - file_name
+      - stored_file
       - stored_path
+      - mime
+      - file_size
+      - hash
+      - kind
+      - status
+      - change
+      - upload
       - stored_at
-      - status        # bilder.status
-      - change        # bilder.change
-      - upload        # Upload-Flag
-      - updated_at    # bilder.updated_at
-      - media_type    # 1 = Artikelbild, 2 = Warengruppenbild
-      - art_id        # Artikelnummer/Bildzuordnung
-      - cat_id        # Warengruppen-ID/Bildzuordnung
+      - updated_at
 
-  bilder_system:
-    keys: [id]
+  media_relation:
+    keys: [file_name, entity_type, entity_id]
     fields:
-      - id            # bilder.id in EVO
-      - xt_id         # bilder.image_id in XT
-
-  category_bilder:
-    keys: [cat_id, image_id, image_type]
-    fields:
-      - cat_id
-      - image_id
-      - image_type
+      - relation_id
+      - file_name
+      - entity_type
+      - entity_id
+      - position
       - status
       - change
       - updated_at
-
-  artikel_bilder:
-    keys: [id, image_id]
-    fields:
-      - id              # artikel.id
-      - image_id        # artikel.model + artikel_bilder.image_id
-      - position        # Sortierreihenfolge
-      - status          # artikel_bilder.status
-      - change          # artikel_bilder.change
-      - updated_at      # artikel_bilder.updated_at
-
-    artikel_bilder_system:
-      keys: [id]
-      fields:
-        - id              # artikel_bilder.id in EVO
-        - xt_id           # artikel_bilder.image_id in XT
-
-  dokumente:
-    keys: [hash]
-    fields:
-      - doc_id        # surrogate PK (Auto-Inc; introspektiert)
-      - file_name     # Dateiname
-      - title         # Dokumenttitel
-      - kind          # AFS.Dokument.Art
-      - mime          # MIME-Typ
-      - file_size     # Dateigröße
-      - hash          # Dateihash
-      - stored_file
-      - stored_path
-      - stored_at
-      - status        # dokumente.status
-      - change        # dokumente.change
-      - upload        # ← NEU für Upload-Flag
-      - updated_at    # dokumente.updated_at
-
-  dokumente_system:
-    keys: [id]
-    fields:
-      - id          # dokumente.id in EVO
-      - xt_id       # dokumente.doc_id in XT
-
-  artikel_dokumente:
-    keys: [id, doc_id]
-    fields:
-      - id          # artikel.id
-      - doc_id      # artikel.doc_id
-      - status      # artikel_dokumente.status
-      - change      # artikel_dokumente.change
-      - updated_at  # artikel_dokumente.updated_at
-
-  artikel_dokumente_system:
-    keys: [id]
-    fields:
-      - id             # artikel_dokumente.id in EVO
-      - xt_id          # artikel_dokumente.doc_id in XT
 
   file_vault:
     keys: [file_name]

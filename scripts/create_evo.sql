@@ -44,40 +44,6 @@ CREATE INDEX IF NOT EXISTS ix_artikel_update ON Artikel("update") WHERE "update"
 CREATE INDEX IF NOT EXISTS ix_artikel_xt_id ON Artikel(XT_ID);
 CREATE INDEX IF NOT EXISTS ix_artikel_category ON Artikel(Category);
 
-CREATE TABLE IF NOT EXISTS Bilder (
-    ID        INTEGER PRIMARY KEY AUTOINCREMENT,
-    XT_ID     INTEGER,
-    Bildname  TEXT NOT NULL,
-    md5       TEXT,
-    "update"  INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
-    uploaded  INTEGER NOT NULL DEFAULT 0 CHECK (uploaded IN (0,1)),
-    last_imported_hash TEXT,
-    last_seen_hash TEXT
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_bilder_bildname ON Bilder(Bildname);
-CREATE UNIQUE INDEX IF NOT EXISTS ux_bilder_md5 ON Bilder(md5) WHERE md5 IS NOT NULL;
-CREATE INDEX IF NOT EXISTS ix_bilder_imported_hash ON Bilder(last_imported_hash);
-CREATE INDEX IF NOT EXISTS ix_bilder_update ON Bilder("update") WHERE "update" = 1;
-CREATE INDEX IF NOT EXISTS ix_bilder_xt_id ON Bilder(XT_ID);
-
-CREATE TABLE IF NOT EXISTS Artikel_Bilder (
-    ID           INTEGER PRIMARY KEY AUTOINCREMENT,
-    XT_ARTIKEL_ID INTEGER,
-    XT_Bild_ID    INTEGER,
-    Artikel_ID    INTEGER NOT NULL,
-    Bild_ID       INTEGER NOT NULL,
-    Bildnummer    INTEGER,
-    "update"      INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
-    FOREIGN KEY (Artikel_ID) REFERENCES Artikel(ID) ON DELETE CASCADE,
-    FOREIGN KEY (Bild_ID)    REFERENCES Bilder(ID)  ON DELETE CASCADE
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_artikel_bilder_unique ON Artikel_Bilder(Artikel_ID, Bild_ID);
-CREATE INDEX IF NOT EXISTS ix_artikel_bilder_artikel ON Artikel_Bilder(Artikel_ID);
-CREATE INDEX IF NOT EXISTS ix_artikel_bilder_bild ON Artikel_Bilder(Bild_ID);
-CREATE INDEX IF NOT EXISTS ix_artikel_bilder_update ON Artikel_Bilder("update") WHERE "update" = 1;
-
 CREATE TABLE IF NOT EXISTS Attribute (
     ID          INTEGER PRIMARY KEY AUTOINCREMENT,
     XT_Attrib_ID INTEGER,
@@ -109,40 +75,6 @@ CREATE INDEX IF NOT EXISTS ix_attrib_artikel_artikel ON Attrib_Artikel(Artikel_I
 CREATE INDEX IF NOT EXISTS ix_attrib_artikel_attribute ON Attrib_Artikel(Attribute_ID);
 CREATE INDEX IF NOT EXISTS ix_attrib_artikel_update ON Attrib_Artikel("update") WHERE "update" = 1;
 
-CREATE TABLE IF NOT EXISTS Dokumente (
-    ID        INTEGER PRIMARY KEY AUTOINCREMENT,
-    XT_ID     INTEGER,
-    Titel     TEXT NOT NULL,
-    Dateiname TEXT,
-    Art       INTEGER,
-    md5       TEXT,
-    "update"  INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
-    uploaded  INTEGER NOT NULL DEFAULT 0 CHECK (uploaded IN (0,1)),
-    last_imported_hash TEXT,
-    last_seen_hash TEXT
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_dokumente_titel ON Dokumente(Titel);
-CREATE INDEX IF NOT EXISTS ix_dokumente_imported_hash ON Dokumente(last_imported_hash);
-CREATE INDEX IF NOT EXISTS ix_dokumente_update ON Dokumente("update") WHERE "update" = 1;
-CREATE INDEX IF NOT EXISTS ix_dokumente_xt_id ON Dokumente(XT_ID);
-
-CREATE TABLE IF NOT EXISTS Artikel_Dokumente (
-    ID          INTEGER PRIMARY KEY AUTOINCREMENT,
-    Artikel_ID  INTEGER NOT NULL,
-    Dokument_ID INTEGER NOT NULL,
-    XT_ARTIKEL_ID INTEGER,
-    XT_Dokument_ID INTEGER,
-    "update"    INTEGER NOT NULL DEFAULT 0 CHECK ("update" IN (0,1)),
-    FOREIGN KEY (Artikel_ID)  REFERENCES Artikel(ID)  ON DELETE CASCADE,
-    FOREIGN KEY (Dokument_ID) REFERENCES Dokumente(ID) ON DELETE CASCADE
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_artikel_dokument_unique ON Artikel_Dokumente(Artikel_ID, Dokument_ID);
-CREATE INDEX IF NOT EXISTS ix_artikel_dokumente_artikel ON Artikel_Dokumente(Artikel_ID);
-CREATE INDEX IF NOT EXISTS ix_artikel_dokumente_dokument ON Artikel_Dokumente(Dokument_ID);
-CREATE INDEX IF NOT EXISTS ix_artikel_dokumente_update ON Artikel_Dokumente("update") WHERE "update" = 1;
-
 CREATE TABLE IF NOT EXISTS category (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     Parent INTEGER,
@@ -171,19 +103,37 @@ CREATE INDEX IF NOT EXISTS ix_category_update ON category("update") WHERE "updat
 CREATE INDEX IF NOT EXISTS ix_category_xtid ON category(xtid);
 CREATE INDEX IF NOT EXISTS ix_category_online ON category(online);
 
--- Erweiterungen für Medientransfer
-ALTER TABLE bilder ADD COLUMN media_type INTEGER DEFAULT 0;
-ALTER TABLE bilder ADD COLUMN art_id TEXT;
-ALTER TABLE bilder ADD COLUMN cat_id TEXT;
-ALTER TABLE bilder ADD COLUMN image_id TEXT;
-ALTER TABLE dokumente ADD COLUMN doc_id TEXT;
-
-CREATE TABLE IF NOT EXISTS category_bilder (
-    cat_id TEXT NOT NULL,
-    image_id TEXT NOT NULL,
-    image_type INTEGER NOT NULL DEFAULT 1,
-    status INTEGER NOT NULL DEFAULT 1,
-    change INTEGER NOT NULL DEFAULT 1,
-    updated_at TEXT,
-    PRIMARY KEY (cat_id, image_id, image_type)
+CREATE TABLE IF NOT EXISTS media (
+    media_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_name  TEXT NOT NULL,
+    stored_file TEXT,
+    stored_path TEXT,
+    mime        TEXT,
+    file_size   INTEGER,
+    hash        TEXT NOT NULL,
+    kind        TEXT NOT NULL,
+    status      INTEGER NOT NULL DEFAULT 1 CHECK (status IN (0,1)),
+    change      INTEGER NOT NULL DEFAULT 0 CHECK (change IN (0,1)),
+    upload      INTEGER NOT NULL DEFAULT 0 CHECK (upload IN (0,1)),
+    stored_at   TEXT,
+    updated_at  TEXT
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_media_hash_kind ON media(hash, kind);
+CREATE INDEX IF NOT EXISTS ix_media_file_name ON media(file_name);
+CREATE INDEX IF NOT EXISTS ix_media_upload ON media(upload) WHERE upload = 1;
+
+CREATE TABLE IF NOT EXISTS media_relation (
+    relation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_name   TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id   TEXT NOT NULL,
+    position    INTEGER NOT NULL DEFAULT 0,
+    status      INTEGER NOT NULL DEFAULT 1 CHECK (status IN (0,1)),
+    change      INTEGER NOT NULL DEFAULT 0 CHECK (change IN (0,1)),
+    updated_at  TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_media_relation_unique ON media_relation(file_name, entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS ix_media_relation_entity ON media_relation(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS ix_media_relation_status ON media_relation(status);

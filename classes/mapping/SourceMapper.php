@@ -19,6 +19,11 @@ class SourceMapper
     private array $cache = [];
     private string $driver;
 
+    /** @var string */
+    private string $identifierQuoteStart = '[';
+    /** @var string */
+    private string $identifierQuoteEnd = ']';
+
     public function __construct(array $config)
     {
         $this->config = $config;
@@ -26,6 +31,21 @@ class SourceMapper
         $this->driver = $driver === '' ? 'mssql' : $driver;
         $tables = $config['tables'] ?? [];
         $this->tables = is_array($tables) ? $tables : [];
+
+        switch ($this->driver) {
+            case 'sqlite':
+                $this->identifierQuoteStart = '"';
+                $this->identifierQuoteEnd = '"';
+                break;
+            case 'mysql':
+                $this->identifierQuoteStart = '`';
+                $this->identifierQuoteEnd = '`';
+                break;
+            default:
+                $this->identifierQuoteStart = '[';
+                $this->identifierQuoteEnd = ']';
+                break;
+        }
     }
 
     /**
@@ -68,6 +88,12 @@ class SourceMapper
                 throw new RuntimeException('SourceMapper expects FileDB_Connection for driver filedb.');
             }
             $rows = $connection->fetchTable($tableName, $tableConfig);
+        } elseif ($this->driver === 'sqlite') {
+            if (!$connection instanceof SQLite_Connection) {
+                throw new RuntimeException('SourceMapper expects SQLite_Connection for driver sqlite.');
+            }
+            $selectInfo = $this->buildSelect($tableConfig);
+            $rows = $connection->fetchAll($selectInfo['sql'], $selectInfo['params']);
         } else {
             if (!$connection instanceof MSSQL_Connection) {
                 throw new RuntimeException('SourceMapper expects MSSQL_Connection for SQL drivers.');
@@ -289,7 +315,9 @@ class SourceMapper
                 $quoted[] = '*';
                 continue;
             }
-            $quoted[] = '[' . str_replace(']', ']]', $part) . ']';
+            $quoted[] = $this->identifierQuoteStart
+                . str_replace($this->identifierQuoteEnd, $this->identifierQuoteEnd . $this->identifierQuoteEnd, $part)
+                . $this->identifierQuoteEnd;
         }
         return implode('.', $quoted);
     }

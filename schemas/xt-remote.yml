@@ -1,5 +1,6 @@
 version: 1
 connection: xt
+driver: sqlite
 description: >
   Remote XT-Commerce Schema. Diese Datei wird schrittweise erweitert. Die Tabellen
   werden direkt vom Remote-Server introspektiert (scripts/export_remote_table.php).
@@ -8,6 +9,12 @@ tables:
   xt_media:
     source:
       table: xt_media
+    primary_key:
+      - id
+    business_key:
+      - external_id
+    unique_constraint:
+      - external_id
     fields:
       - id
       - file
@@ -27,6 +34,9 @@ tables:
   xt_media_description:
     source:
       table: xt_media_description
+    unique_constraint:
+      - id
+      - language_code
     fields:
       - id
       - language_code
@@ -36,6 +46,8 @@ tables:
   xt_media_gallery:
     source:
       table: xt_media_gallery
+    primary_key:
+      - mg_id
     fields:
       - mg_id
       - parent_id
@@ -47,6 +59,11 @@ tables:
   xt_media_link:
     source:
       table: xt_media_link
+    unique_constraint:
+      - m_id
+      - link_id
+      - class
+      - type
     fields:
       - ml_id
       - m_id
@@ -58,6 +75,9 @@ tables:
   xt_media_to_media_gallery:
     source:
       table: xt_media_to_media_gallery
+    unique_constraint:
+      - m_id
+      - mg_id
     fields:
       - ml_id
       - m_id
@@ -66,6 +86,12 @@ tables:
   xt_categories:
     source:
       table: xt_categories
+    primary_key:
+      - categories_id
+    business_key:
+      - external_id
+    unique_constraint:
+      - external_id
     fields:
       - categories_id
       - external_id
@@ -94,6 +120,9 @@ tables:
   xt_categories_description:
     source:
       table: xt_categories_description
+    unique_constraint:
+      - categories_id
+      - language_code
     fields:
       - categories_id
       - language_code
@@ -106,6 +135,12 @@ tables:
   xt_products:
     source:
       table: xt_products
+    primary_key:
+      - products_id
+    business_key:
+      - external_id
+    unique_constraint:
+      - external_id
     fields:
       - products_id
       - external_id
@@ -175,6 +210,9 @@ tables:
   xt_products_description:
     source:
       table: xt_products_description
+    unique_constraint:
+      - products_id
+      - language_code
     fields:
       - products_id
       - language_code
@@ -189,6 +227,9 @@ tables:
   xt_products_to_categories:
     source:
       table: xt_products_to_categories
+    unique_constraint:
+      - products_id
+      - categories_id
     fields:
       - products_id
       - categories_id
@@ -198,6 +239,8 @@ tables:
   xt_seo_url:
     source:
       table: xt_seo_url
+    unique_constraint:
+      - url_md5
     fields:
       - url_md5
       - url_text

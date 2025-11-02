@@ -118,85 +118,146 @@ entities:
       on_update_when_no_change:
         evo.category.change: =0
 
-  bilder:
+  media_bilder:
     from: afs_bilder.file_vault
-    to:   evo.bilder
+    to:   evo.media
 
     map:
-      evo.bilder.file_name: file_vault.file_name
-      evo.bilder.mime:      file_vault.mime
-      evo.bilder.file_size: file_vault.size
-      evo.bilder.hash:      $func.image_guard(file_vault.mime, file_vault.checksum)
-      evo.bilder.stored_file: $func.image_guard(file_vault.mime, file_vault.stored_file)
-      evo.bilder.stored_path: $func.image_guard(file_vault.mime, file_vault.stored_path)
-      evo.bilder.stored_at:   $func.image_guard(file_vault.mime, file_vault.stored_at)
-      evo.bilder.status:    =1
-      evo.bilder.change:    =0
-      evo.bilder.media_type: file_vault.art_type | to_int
-      evo.bilder.art_id:     file_vault.art_id | trim | null_if_empty
-      evo.bilder.cat_id:     file_vault.cat_id | trim | null_if_empty
+      evo.media.file_name:  file_vault.file_name
+      evo.media.mime:       file_vault.mime
+      evo.media.file_size:  file_vault.size
+      evo.media.hash:       $func.image_guard(file_vault.mime, file_vault.checksum)
+      evo.media.stored_file: $func.image_guard(file_vault.mime, file_vault.stored_file)
+      evo.media.stored_path: $func.image_guard(file_vault.mime, file_vault.stored_path)
+      evo.media.stored_at:   $func.image_guard(file_vault.mime, file_vault.stored_at)
+      evo.media.kind:       =image
+      evo.media.status:     =1
+      evo.media.change:     =0
 
     delta:
-      fields: [file_name, mime, file_size, stored_file, stored_path, media_type, art_id, cat_id]
+      fields: [file_name, mime, file_size, stored_file, stored_path]
 
     flags:
       on_insert:
-        evo.bilder.change:     =1
-        evo.bilder.upload:     =1
-        evo.bilder.updated_at: $func.now()
+        evo.media.change:     =1
+        evo.media.upload:     =1
+        evo.media.updated_at: $func.now()
       on_update_when_delta_changed:
-        evo.bilder.change:     =1
-        evo.bilder.upload:     =1
-        evo.bilder.updated_at: $func.now()
+        evo.media.change:     =1
+        evo.media.upload:     =1
+        evo.media.updated_at: $func.now()
       on_update_when_no_change:
-        evo.bilder.change:     =0
+        evo.media.change:     =0
 
     orphan_policy:
-      scope: evo.bilder
-      match_key: [hash]
+      scope: evo.media
+      match_key: [hash, kind]
       actions:
         - set:
-            evo.bilder.status: =0
-            evo.bilder.change: =1
-            # evo.bilder.upload: =0
+            evo.media.status: =0
+            evo.media.change: =1
 
-  dokumente:
+  media_dokumente:
     from: afs_dokumente.file_vault
-    to:   evo.dokumente
+    to:   evo.media
 
     map:
-      evo.dokumente.file_name: file_vault.file_name
-      evo.dokumente.title:     file_vault.file_name | normalize_title
-      evo.dokumente.mime:      file_vault.mime
-      evo.dokumente.file_size: file_vault.size
-      evo.dokumente.hash:      $func.document_guard(file_vault.mime, file_vault.checksum)
-      evo.dokumente.stored_file: file_vault.stored_file
-      evo.dokumente.stored_path: file_vault.stored_path
-      evo.dokumente.stored_at:   file_vault.stored_at
-      evo.dokumente.kind:      =0
-      evo.dokumente.status:    =1
-      evo.dokumente.change:    =0
+      evo.media.file_name:  file_vault.file_name
+      evo.media.mime:       file_vault.mime
+      evo.media.file_size:  file_vault.size
+      evo.media.hash:       $func.document_guard(file_vault.mime, file_vault.checksum)
+      evo.media.stored_file: file_vault.stored_file
+      evo.media.stored_path: file_vault.stored_path
+      evo.media.stored_at:   file_vault.stored_at
+      evo.media.kind:       =document
+      evo.media.status:     =1
+      evo.media.change:     =0
 
     delta:
-      fields: [file_name, title, mime, file_size, kind, stored_file, stored_path]
+      fields: [file_name, mime, file_size, stored_file, stored_path]
 
     flags:
       on_insert:
-        evo.dokumente.change:     =1
-        evo.dokumente.upload:     =1
-        evo.dokumente.updated_at: $func.now()
+        evo.media.change:     =1
+        evo.media.upload:     =1
+        evo.media.updated_at: $func.now()
       on_update_when_delta_changed:
-        evo.dokumente.change:     =1
-        evo.dokumente.upload:     =1
-        evo.dokumente.updated_at: $func.now()
+        evo.media.change:     =1
+        evo.media.upload:     =1
+        evo.media.updated_at: $func.now()
       on_update_when_no_change:
-        evo.dokumente.change:     =0
+        evo.media.change:     =0
 
     orphan_policy:
-      scope: evo.dokumente
-      match_key: [hash]
+      scope: evo.media
+      match_key: [hash, kind]
       actions:
         - set:
-            evo.dokumente.status: =0
-            evo.dokumente.change: =1
-            # evo.dokumente.upload: =0
+            evo.media.status: =0
+            evo.media.change: =1
+
+  media_relation_bilder:
+    from: afs_bilder.file_vault
+    to:   evo.media_relation
+
+    map:
+      evo.media_relation.file_name: file_vault.file_name
+      evo.media_relation.entity_type: $func.media_entity_type(file_vault.art_type, file_vault.art_id, file_vault.cat_id)
+      evo.media_relation.entity_id:   $func.media_entity_id(file_vault.art_type, file_vault.art_id, file_vault.cat_id)
+      evo.media_relation.position:    =0
+      evo.media_relation.status:      =1
+      evo.media_relation.change:      =0
+
+    delta:
+      fields: [entity_type, entity_id]
+
+    flags:
+      on_insert:
+        evo.media_relation.change:     =1
+        evo.media_relation.updated_at: $func.now()
+      on_update_when_delta_changed:
+        evo.media_relation.change:     =1
+        evo.media_relation.updated_at: $func.now()
+      on_update_when_no_change:
+        evo.media_relation.change:     =0
+
+    orphan_policy:
+      scope: evo.media_relation
+      match_key: [file_name, entity_type, entity_id]
+      actions:
+        - set:
+            evo.media_relation.status: =0
+            evo.media_relation.change: =1
+
+  media_relation_dokumente:
+    from: afs.Dokument
+    to:   evo.media_relation
+
+    map:
+      evo.media_relation.file_name: afs.Dokument.Dateiname | basename | null_if_empty
+      evo.media_relation.entity_type: =article
+      evo.media_relation.entity_id:   afs.Dokument.Artikel | trim | null_if_empty
+      evo.media_relation.position:    =0
+      evo.media_relation.status:      =1
+      evo.media_relation.change:      =0
+
+    delta:
+      fields: [entity_id]
+
+    flags:
+      on_insert:
+        evo.media_relation.change:     =1
+        evo.media_relation.updated_at: $func.now()
+      on_update_when_delta_changed:
+        evo.media_relation.change:     =1
+        evo.media_relation.updated_at: $func.now()
+      on_update_when_no_change:
+        evo.media_relation.change:     =0
+
+    orphan_policy:
+      scope: evo.media_relation
+      match_key: [file_name, entity_type, entity_id]
+      actions:
+        - set:
+            evo.media_relation.status: =0
+            evo.media_relation.change: =1

@@ -231,6 +231,12 @@ class MappingExpressionEvaluator
                 return $this->transformRegistry->apply('rtf_to_html', $args[0] ?? null);
             case 'now':
                 return date(DATE_ATOM);
+            case 'concat':
+                return $this->concatValues($args);
+            case 'media_entity_type':
+                return $this->determineMediaEntityType($args[0] ?? null, $args[1] ?? null, $args[2] ?? null);
+            case 'media_entity_id':
+                return $this->determineMediaEntityId($args[0] ?? null, $args[1] ?? null, $args[2] ?? null);
             case 'tax_map':
                 return $this->mapTaxClass($args[0] ?? null);
             case 'category_meta_title':
@@ -255,6 +261,72 @@ class MappingExpressionEvaluator
                 $value = $args[0] ?? null;
                 return $this->transformRegistry->apply($name, $value);
         }
+    }
+
+    /**
+     * @param array<int,mixed> $parts
+     */
+    private function concatValues(array $parts): string
+    {
+        $result = '';
+        foreach ($parts as $part) {
+            if ($part === null) {
+                continue;
+            }
+            if (is_bool($part)) {
+                $result .= $part ? '1' : '0';
+                continue;
+            }
+            $result .= (string)$part;
+        }
+        return $result;
+    }
+
+    private function determineMediaEntityType($type, $article, $category): ?string
+    {
+        $resolved = $this->resolveMediaRelation($type, $article, $category);
+        return $resolved['type'] !== '' ? $resolved['type'] : null;
+    }
+
+    private function determineMediaEntityId($type, $article, $category): ?string
+    {
+        $resolved = $this->resolveMediaRelation($type, $article, $category);
+        return $resolved['id'] !== '' ? $resolved['id'] : null;
+    }
+
+    /**
+     * @param mixed $type
+     * @param mixed $article
+     * @param mixed $category
+     * @return array{type:string,id:string}
+     */
+    private function resolveMediaRelation($type, $article, $category): array
+    {
+        $normalizedType = null;
+        if (is_numeric($type)) {
+            $normalizedType = (int)$type;
+        } elseif (is_string($type) && $type !== '') {
+            $normalizedType = (int)$type;
+        }
+
+        $articleId = trim((string)($article ?? ''));
+        $categoryId = trim((string)($category ?? ''));
+
+        if ($normalizedType === 1) {
+            return $articleId !== '' ? ['type' => 'article', 'id' => $articleId] : ['type' => '', 'id' => ''];
+        }
+        if ($normalizedType === 2) {
+            return $categoryId !== '' ? ['type' => 'category', 'id' => $categoryId] : ['type' => '', 'id' => ''];
+        }
+
+        if ($articleId !== '') {
+            return ['type' => 'article', 'id' => $articleId];
+        }
+        if ($categoryId !== '') {
+            return ['type' => 'category', 'id' => $categoryId];
+        }
+
+        return ['type' => '', 'id' => ''];
     }
 
     private function normalizeMediaPath($value): string

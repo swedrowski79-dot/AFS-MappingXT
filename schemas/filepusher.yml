@@ -1,8 +1,8 @@
 version: 1
 
 images:
-  table: bilder
-  id_column: rowid
+  table: media
+  id_column: media_id
   filename_column: file_name
   stored_file_column: stored_file
   stored_path_column: stored_path
@@ -10,11 +10,13 @@ images:
   flag_column: upload
   flag_pending: 1
   flag_cleared: 0
+  kind_column: kind
+  kind_value: image
 
 documents:
-  table: dokumente
-  id_column: rowid
-  title_column: title
+  table: media
+  id_column: media_id
+  title_column: file_name
   filename_column: file_name
   stored_file_column: stored_file
   stored_path_column: stored_path
@@ -22,3 +24,5 @@ documents:
   flag_column: upload
   flag_pending: 1
   flag_cleared: 0
+  kind_column: kind
+  kind_value: document

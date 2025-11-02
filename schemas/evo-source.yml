@@ -1,0 +1,72 @@
+version: 1
+driver: sqlite
+
+tables:
+  artikel:
+    source:
+      table: artikel
+      order: "model"
+    fields:
+      - model
+      - name
+      - ean
+      - status
+      - price
+      - tax_class_id
+      - gross_weight
+      - updated_at
+      - is_master
+      - master_model
+      - products_image
+      - products_name
+      - products_description
+      - promo_html
+      - meta_title
+      - meta_description
+      - category
+      - seo_slug
+
+  category:
+    source:
+      table: category
+      order: "cat_id"
+    fields:
+      - cat_id
+      - name
+      - status
+      - level
+      - image
+      - image_large
+      - description
+      - description_html
+      - meta_title
+      - meta_description
+      - updated_at
+
+  media:
+    source:
+      table: media
+      order: "media_id"
+    fields:
+      - media_id
+      - file_name
+      - stored_file
+      - stored_path
+      - mime
+      - file_size
+      - hash
+      - kind
+      - status
+      - upload
+      - updated_at
+
+  media_relation:
+    source:
+      table: media_relation
+    fields:
+      - relation_id
+      - file_name
+      - entity_type
+      - entity_id
+      - position
+      - status
