@@ -4,7 +4,7 @@
         "url": "http://10.0.1.82/afs",
         "database": "",
         "note": "Konfiguration für Remote-Server \"XT\" (auf Hauptserver gespeichert)",
-        "updated_at": "2025-11-02T15:13:15+01:00",
+        "updated_at": "2025-11-02T15:06:37+01:00",
         "stored_on": "main"
     },
     "connections": [
@@ -27,11 +27,7 @@
                 "url": "http://10.0.1.82/afs",
                 "note": "Verbindung gehört zum Remote-Server \"XT\""
             },
-            "scope": "remote",
-            "last_status": {
-                "ok": null,
-                "message": "Noch kein Verbindungstest durchgeführt."
-            }
+            "scope": "remote"
         }
     ]
 }

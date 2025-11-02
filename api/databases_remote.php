@@ -74,22 +74,32 @@ try {
         case 'GET':
             $data = RemoteDatabaseConfig::load($remote);
             $connections = [];
-            foreach ($data['connections'] as $connection) {
+            $storedConnections = $data['connections'];
+            $didUpdate = false;
+            foreach ($storedConnections as $idx => $connection) {
                 $meta = $connection['remote_server'] ?? [];
-                $status = $connection['last_status'] ?? [
+                $previousStatus = $connection['last_status'] ?? [
                     'ok' => null,
                     'message' => 'Noch kein Verbindungstest durchgeführt.',
                 ];
+                $currentStatus = dbm_test_remote_connection($remote, $connection, $config);
+                if ($currentStatus !== $previousStatus) {
+                    $storedConnections[$idx]['last_status'] = $currentStatus;
+                    $didUpdate = true;
+                }
                 $connectionForMask = $connection;
                 unset($connectionForMask['remote_server'], $connectionForMask['scope'], $connectionForMask['last_status']);
                 $masked = dbm_mask_connection($connectionForMask);
-                $masked['status'] = $status;
+                $masked['status'] = $currentStatus;
                 $masked['remote_server'] = [
                     'name' => $meta['name'] ?? ($remote['name'] ?? ''),
                     'url' => $meta['url'] ?? ($remote['url'] ?? ''),
                 ];
                 $masked['scope'] = 'remote';
                 $connections[] = $masked;
+            }
+            if ($didUpdate) {
+                RemoteDatabaseConfig::save($remote, $storedConnections);
             }
 
             api_ok([

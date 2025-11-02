@@ -175,13 +175,37 @@
     }
   }
 
+  function aggregateStatus(connections) {
+    if (!Array.isArray(connections) || !connections.length) {
+      return { class: 'warning', label: 'Keine Verbindungen' };
+    }
+    let hasOk = false;
+    let hasError = false;
+    connections.forEach((connection) => {
+      const st = connection && connection.status ? connection.status : null;
+      if (st && st.ok === true) {
+        hasOk = true;
+      } else if (st && st.ok === false) {
+        hasError = true;
+      }
+    });
+    if (hasError) {
+      return { class: 'error', label: 'Fehler' };
+    }
+    if (hasOk) {
+      return { class: 'ok', label: 'OK' };
+    }
+    return { class: 'warning', label: 'Unbekannt' };
+  }
+
   async function loadRemoteConnections(item, badge, listContainer, server, index) {
     try {
       const payload = await requestJson(`${apiBase}databases_remote.php?server_index=${index}`);
       const data = (payload && payload.data) ? payload.data : {};
       const connections = data.connections || [];
-      item.dataset.status = 'ok';
-      badge.textContent = 'API OK';
+      const summary = aggregateStatus(connections);
+      item.dataset.status = summary.class;
+      badge.textContent = summary.label;
       renderRemoteConnections(listContainer, server, connections);
     } catch (error) {
       item.dataset.status = 'error';

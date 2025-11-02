@@ -229,3 +229,94 @@ if (!function_exists('dbm_id_exists')) {
         return false;
     }
 }
+
+if (!function_exists('dbm_prepare_remote_payload')) {
+    /**
+     * Entfernt Metadaten bevor eine Verbindung an den Remote-Server geschickt wird.
+     *
+     * @param array<string,mixed> $connection
+     * @return array<string,mixed>
+     */
+    function dbm_prepare_remote_payload(array $connection): array
+    {
+        unset(
+            $connection['remote_server'],
+            $connection['scope'],
+            $connection['last_status'],
+            $connection['status']
+        );
+        return $connection;
+    }
+}
+
+if (!function_exists('dbm_test_remote_connection')) {
+    /**
+     * Führt einen Verbindungstest auf dem Remote-Server aus.
+     *
+     * @param array<string,mixed> $remote
+     * @param array<string,mixed> $connection
+     * @param array<string,mixed> $config
+     * @return array{ok: bool|null, message: string}
+     */
+    function dbm_test_remote_connection(array $remote, array $connection, array $config): array
+    {
+        $targetUrl = rtrim((string)($remote['url'] ?? ''), '/');
+        if ($targetUrl === '') {
+            return ['ok' => false, 'message' => 'Remote-URL fehlt.'];
+        }
+        $targetUrl .= '/api/databases_test.php';
+
+        $payload = [
+            'connection' => dbm_prepare_remote_payload($connection),
+        ];
+
+        $headers = ['Accept: application/json', 'Content-Type: application/json'];
+        if (!empty($remote['api_key'])) {
+            $headers[] = 'X-API-Key: ' . $remote['api_key'];
+        }
+
+        $timeout = max(3, (int)($config['remote_servers']['timeout'] ?? 10));
+        $allowInsecure = (bool)($config['remote_servers']['allow_insecure'] ?? false);
+
+        $ch = curl_init($targetUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => $timeout,
+        ]);
+        if ($allowInsecure) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        }
+
+        $responseBody = curl_exec($ch);
+        $curlError = curl_error($ch);
+        $status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE) ?: 500;
+        curl_close($ch);
+
+        if ($responseBody === false) {
+            return ['ok' => false, 'message' => 'Remote-Test fehlgeschlagen: ' . ($curlError ?: 'Unbekannter Fehler')];
+        }
+
+        $decoded = json_decode($responseBody, true);
+        if (!is_array($decoded)) {
+            return ['ok' => false, 'message' => 'Ungültige Antwort vom Remote-Server (HTTP ' . $status . ').'];
+        }
+        $statusData = $decoded['data']['status'] ?? null;
+        if (!is_array($statusData)) {
+            return ['ok' => false, 'message' => 'Keine Statusdaten vom Remote-Server erhalten.'];
+        }
+
+        $ok = $statusData['ok'] ?? null;
+        if ($ok === true || $ok === 1 || $ok === '1' || $ok === 'true') {
+            return ['ok' => true, 'message' => (string)($statusData['message'] ?? 'Verbindung erfolgreich getestet.')];
+        }
+        if ($ok === false || $ok === 0 || $ok === '0' || $ok === 'false') {
+            return ['ok' => false, 'message' => (string)($statusData['message'] ?? 'Verbindung fehlgeschlagen.')];
+        }
+
+        return ['ok' => null, 'message' => (string)($statusData['message'] ?? 'Status unbekannt.')];
+    }
+}
