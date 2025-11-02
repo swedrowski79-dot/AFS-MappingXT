@@ -75,14 +75,18 @@ try {
             $data = RemoteDatabaseConfig::load($remote);
             $connections = [];
             foreach ($data['connections'] as $connection) {
-                $masked = dbm_mask_connection($connection);
-                $masked['status'] = [
+                $meta = $connection['remote_server'] ?? [];
+                $status = $connection['last_status'] ?? [
                     'ok' => null,
-                    'message' => 'Remote-Verbindung – Prüfung erfolgt auf dem Zielsystem.',
+                    'message' => 'Noch kein Verbindungstest durchgeführt.',
                 ];
+                $connectionForMask = $connection;
+                unset($connectionForMask['remote_server'], $connectionForMask['scope'], $connectionForMask['last_status']);
+                $masked = dbm_mask_connection($connectionForMask);
+                $masked['status'] = $status;
                 $masked['remote_server'] = [
-                    'name' => $remote['name'] ?? '',
-                    'url' => $remote['url'] ?? '',
+                    'name' => $meta['name'] ?? ($remote['name'] ?? ''),
+                    'url' => $meta['url'] ?? ($remote['url'] ?? ''),
                 ];
                 $masked['scope'] = 'remote';
                 $connections[] = $masked;
@@ -121,6 +125,10 @@ try {
                 $normalised = dbm_normalise_connection($data, null, $connections);
                 $normalised['remote_server'] = $remoteInfo;
                 $normalised['scope'] = 'remote';
+                $normalised['last_status'] = [
+                    'ok' => null,
+                    'message' => 'Noch kein Verbindungstest durchgeführt.',
+                ];
                 $connections[] = $normalised;
             } else {
                 $id = $data['id'] ?? '';
@@ -133,6 +141,10 @@ try {
                         $normalised = dbm_normalise_connection($data, $existing, $connections);
                         $normalised['remote_server'] = $remoteInfo;
                         $normalised['scope'] = 'remote';
+                        $normalised['last_status'] = $existing['last_status'] ?? [
+                            'ok' => null,
+                            'message' => 'Noch kein Verbindungstest durchgeführt.',
+                        ];
                         $connections[$idx] = $normalised;
                         $found = true;
                         break;

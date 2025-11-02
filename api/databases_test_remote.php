@@ -60,11 +60,13 @@ if (!isset($servers[$serverIndex])) {
 $remote = $servers[$serverIndex];
 $remoteConfig = RemoteDatabaseConfig::load($remote);
 $connection = null;
+$connectionIndex = null;
 
 if (!empty($payload['id'])) {
-    foreach ($remoteConfig['connections'] as $candidate) {
+    foreach ($remoteConfig['connections'] as $idx => $candidate) {
         if (($candidate['id'] ?? '') === $payload['id']) {
             $connection = $candidate;
+            $connectionIndex = $idx;
             break;
         }
     }
@@ -77,11 +79,63 @@ if (!empty($payload['id'])) {
     api_error('Es wurde keine Verbindung angegeben.', 400);
 }
 
-$result = [
-    'ok' => null,
-    'message' => 'Remote-Verbindung – Test wird direkt auf dem Remote-Server durchgeführt.',
+$targetUrl = rtrim((string)$remote['url'], '/') . '/api/databases_test.php';
+
+$payloadForRemote = [
+    'connection' => $connection,
 ];
+unset(
+    $payloadForRemote['connection']['remote_server'],
+    $payloadForRemote['connection']['scope'],
+    $payloadForRemote['connection']['last_status'],
+    $payloadForRemote['connection']['status']
+);
+
+$headers = ['Accept: application/json', 'Content-Type: application/json'];
+if (!empty($remote['api_key'])) {
+    $headers[] = 'X-API-Key: ' . $remote['api_key'];
+}
+
+$ch = curl_init($targetUrl);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_CUSTOMREQUEST => 'POST',
+    CURLOPT_POSTFIELDS => json_encode($payloadForRemote, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    CURLOPT_HTTPHEADER => $headers,
+    CURLOPT_TIMEOUT => max(3, (int)($config['remote_servers']['timeout'] ?? 10)),
+]);
+$allowInsecure = (bool)($config['remote_servers']['allow_insecure'] ?? false);
+if ($allowInsecure) {
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+}
+$responseBody = curl_exec($ch);
+$curlError = curl_error($ch);
+$status = curl_getinfo($ch, CURLINFO_RESPONSE_CODE) ?: 500;
+curl_close($ch);
+
+if ($responseBody === false) {
+    api_error('Remote-Test fehlgeschlagen: ' . ($curlError ?: 'Unbekannter Fehler'));
+}
+
+$decoded = json_decode($responseBody, true);
+if (!is_array($decoded)) {
+    api_error('Ungültige Antwort vom Remote-Server (HTTP ' . $status . ').', 502);
+}
+
+$remoteResult = $decoded['data']['status'] ?? null;
+if (!is_array($remoteResult)) {
+    $remoteResult = [
+        'ok' => null,
+        'message' => 'Keine Statusinformationen vom Remote-Server erhalten.',
+    ];
+}
+
+if ($connectionIndex !== null) {
+    $remoteConfig['connections'][$connectionIndex]['last_status'] = $remoteResult;
+    RemoteDatabaseConfig::save($remote, $remoteConfig['connections']);
+}
 
 api_ok([
-    'status' => $result,
+    'status' => $remoteResult,
 ]);

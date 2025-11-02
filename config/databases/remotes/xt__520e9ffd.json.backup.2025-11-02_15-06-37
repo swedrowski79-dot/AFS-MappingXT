@@ -4,7 +4,7 @@
         "url": "http://10.0.1.82/afs",
         "database": "",
         "note": "Konfiguration für Remote-Server \"XT\" (auf Hauptserver gespeichert)",
-        "updated_at": "2025-11-02T15:06:37+01:00",
+        "updated_at": "2025-11-02T14:36:54+01:00",
         "stored_on": "main"
     },
     "connections": [
