@@ -85,6 +85,55 @@ function getRemoteServers(): array
 }
 
 /**
+ * Collapse whitespace to keep log entries compact.
+ */
+function collapseWhitespace(string $value): string
+{
+    $normalized = preg_replace('/\s+/', ' ', trim($value));
+    return $normalized === null ? '' : $normalized;
+}
+
+/**
+ * Truncate long strings that would otherwise spam the log.
+ */
+function truncateForLog(string $value, int $maxLength = 400): string
+{
+    if (strlen($value) <= $maxLength) {
+        return $value;
+    }
+
+    return substr($value, 0, $maxLength) . '...';
+}
+
+/**
+ * Persist debugging information for remote requests.
+ *
+ * @param array<mixed> $context
+ */
+function logRemoteRequestDebug(array $context): void
+{
+    try {
+        global $config;
+        $root = dirname(__DIR__);
+        $logDir = $config['paths']['log_dir'] ?? ($root . '/logs');
+
+        if (!is_dir($logDir) || !is_writable($logDir)) {
+            return;
+        }
+
+        $logPath = rtrim($logDir, "/\\") . '/remote_requests.log';
+        $payload = array_merge(['timestamp' => date('c')], $context);
+        $line = json_encode($payload);
+
+        if (is_string($line)) {
+            error_log($line . PHP_EOL, 3, $logPath);
+        }
+    } catch (\Throwable $e) {
+        // Logging failures should not affect API behaviour.
+    }
+}
+
+/**
  * Make HTTP request to remote server
  */
 function makeRemoteRequest(string $url, string $apiKey, string $method = 'GET', ?array $body = null, int $timeout = 10): array
@@ -119,25 +168,64 @@ function makeRemoteRequest(string $url, string $apiKey, string $method = 'GET', 
     }
     
     $response = curl_exec($ch);
+    $info = curl_getinfo($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);
-    curl_close($ch);
-    
+    $responseSnippet = '';
+
+    if (is_string($response) && $response !== '') {
+        $responseSnippet = truncateForLog(collapseWhitespace($response));
+    }
+
+    $logContext = [
+        'method' => $method,
+        'url' => $url,
+        'http_code' => $httpCode ?: null,
+        'body_keys' => is_array($body) ? array_keys($body) : null,
+        'response_preview' => $responseSnippet,
+        'curl_info' => $info,
+    ];
+
     if ($response === false || !empty($error)) {
-        throw new \Exception('Verbindungsfehler: ' . ($error ?: 'Unbekannter Fehler'));
+        logRemoteRequestDebug(array_merge($logContext, [
+            'stage' => 'curl_error',
+            'curl_error' => $error ?: 'unknown',
+        ]));
+
+        curl_close($ch);
+        throw new \Exception('Verbindungsfehler beim Aufruf von ' . $method . ' ' . $url . ': ' . ($error ?: 'Unbekannter Fehler'));
     }
     
     if ($httpCode !== 200) {
-        throw new \Exception("HTTP-Fehler: {$httpCode}");
+        logRemoteRequestDebug(array_merge($logContext, [
+            'stage' => 'http_error',
+        ]));
+
+        curl_close($ch);
+
+        $message = "HTTP-Fehler: {$httpCode} bei {$method} {$url}";
+        if ($responseSnippet !== '') {
+            $message .= ' - Antwortauszug: ' . $responseSnippet;
+        }
+        throw new \Exception($message);
     }
+
+    curl_close($ch);
     
     $data = json_decode($response, true);
     
     if (json_last_error() !== JSON_ERROR_NONE) {
+        logRemoteRequestDebug(array_merge($logContext, [
+            'stage' => 'invalid_json',
+        ]));
         throw new \Exception('Ungültige JSON-Antwort vom Server');
     }
     
     if (!isset($data['ok']) || !$data['ok']) {
+        logRemoteRequestDebug(array_merge($logContext, [
+            'stage' => 'remote_error_response',
+            'remote_error' => $data['error'] ?? 'unknown',
+        ]));
         throw new \Exception($data['error'] ?? 'Fehler auf Remote-Server');
     }
     
