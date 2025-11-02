@@ -1,0 +1,12 @@
+version: 1
+connection: xt
+description: >
+  Remote XT-Commerce Schema. Wird schrittweise befüllt. Die Spalten lassen sich
+  über scripts/export_remote_table.php automatisiert auslesen, sobald der Remote-Server
+  das Introspektions-API ausliefert.
+
+tables:
+  xt_media:
+    source:
+      table: xt_media
+    fields: []
