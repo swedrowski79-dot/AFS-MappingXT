@@ -74,6 +74,76 @@ require __DIR__ . '/_bootstrap_web.php';
     </div>
   </div>
 
+  <div class="modal-overlay" id="database-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="db-modal-title">Verbindung hinzufügen</h3>
+        <button type="button" class="modal-close" id="db-modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="db-title" class="form-label">Titel *</label>
+          <input type="text" id="db-title" class="form-input" placeholder="z. B. XT MySQL">
+        </div>
+        <div class="form-group">
+          <label for="db-type" class="form-label">Typ *</label>
+          <select id="db-type" class="form-input"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rollen</label>
+          <div id="db-form-roles" class="db-form-roles"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Einstellungen</label>
+          <div id="db-form-fields"></div>
+        </div>
+        <div id="db-form-status" class="status-message"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="db-btn-test">🔍 Verbindung testen</button>
+        <button type="button" class="btn-primary" id="db-btn-save">💾 Speichern</button>
+        <button type="button" class="btn-secondary" id="db-btn-cancel">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="server-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="form-title">Remote-Server verwalten</h3>
+        <button type="button" class="modal-close" id="modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="display: flex; justify-content: flex-end;">
+          <button type="button" class="btn-primary" id="btn-add-server">➕ Server hinzufügen</button>
+        </div>
+        <div id="server-list" class="server-list"></div>
+        <form id="server-form" style="display: none;">
+          <div class="form-group">
+            <label for="server-name" class="form-label">Name *</label>
+            <input type="text" id="server-name" class="form-input" placeholder="z. B. Remote XT-Shop">
+          </div>
+          <div class="form-group">
+            <label for="server-url" class="form-label">Basis-URL *</label>
+            <input type="text" id="server-url" class="form-input" placeholder="https://remote.example.com">
+          </div>
+          <div class="form-group">
+            <label for="server-api-key" class="form-label">API-Key</label>
+            <input type="text" id="server-api-key" class="form-input" placeholder="Optional">
+          </div>
+          <div class="form-group">
+            <label for="server-database" class="form-label">Datenbank-Bezeichnung</label>
+            <input type="text" id="server-database" class="form-input" placeholder="Optional">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-primary" id="btn-form-save">💾 Speichern</button>
+            <button type="button" class="btn-secondary" id="btn-form-cancel">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script>
     window.APP_CONFIG = { apiBase: <?= json_encode($API_BASE, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> };
   </script>
