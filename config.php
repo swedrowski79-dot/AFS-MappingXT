@@ -198,7 +198,7 @@ $config = [
         'mapping_version' => getenv('AFS_MAPPING_VERSION') ?: '1.0.0',          // Mapping-Konfigurationsversion für Logging
         'log_rotation_days' => (int)(getenv('AFS_LOG_ROTATION_DAYS') ?: 30),   // Log-Dateien älter als X Tage werden gelöscht
         'enable_file_logging' => (bool)(getenv('AFS_ENABLE_FILE_LOGGING') !== false ? getenv('AFS_ENABLE_FILE_LOGGING') : true), // JSON-Logging in tägliche Dateien aktivieren
-        'log_level' => getenv('AFS_LOG_LEVEL') ?: 'warning',                    // Minimaler Log-Level: 'info', 'warning', 'error' (lean: nur warnings und errors)
+        'log_level' => getenv('AFS_LOG_LEVEL') ?: 'info',                    // Minimaler Log-Level: 'info', 'warning', 'error' (lean: nur warnings und errors)
         'sample_size' => (int)(getenv('AFS_LOG_SAMPLE_SIZE') ?: 5),            // Anzahl der Beispiele in Error-Arrays (schlank: 5 statt 10-15)
     ],
 

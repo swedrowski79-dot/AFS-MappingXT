@@ -160,11 +160,18 @@ function applyEvoSchemaFromYaml(PDO $pdo, array $yaml): array
                     $fields = $fieldsList;
                 }
             }
+            $bk = normalizeList($def['business_key'] ?? []);
+            $keysList = normalizeList($def['keys'] ?? []);
+            $pkList = normalizeList($def['primary_key'] ?? []);
+            if ($pkList === [] && count($keysList) === 1 && strcasecmp((string)$keysList[0], 'id') === 0) {
+                $pkList = ['id'];
+                $keysList = [];
+            }
             $definitions[$tableName] = [
                 'fields' => $fields,
-                'primary_key' => [],
-                'business_key' => normalizeList($def['business_key'] ?? []),
-                'unique_constraint' => normalizeList($def['keys'] ?? []),
+                'primary_key' => $pkList,
+                'business_key' => $bk,
+                'unique_constraint' => $keysList,
             ];
         }
     }
@@ -388,7 +395,13 @@ function buildColumnDefinitionSql(string $column, array $definition, array $prim
         $parts[] = 'PRIMARY KEY AUTOINCREMENT';
         $autoPrimaryColumns[] = $column;
     } elseif (!$forAlter && $allowPrimaryClause && in_array($column, $primaryKey, true) && count($primaryKey) === 1) {
-        $parts[] = 'PRIMARY KEY';
+        if (strcasecmp($column, 'id') === 0) {
+            // Force INTEGER PRIMARY KEY AUTOINCREMENT for typical id primary key
+            $parts = [quoteIdent($column), 'INTEGER', 'PRIMARY KEY AUTOINCREMENT'];
+            $autoPrimaryColumns[] = $column;
+        } else {
+            $parts[] = 'PRIMARY KEY';
+        }
     }
 
     $nullable = true;

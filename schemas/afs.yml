@@ -70,7 +70,7 @@ tables:
       table: Warengruppe
       default_filter:
         Mandant: { eq: 1 }
-        Internet: { eq: 1 }
+        Internet: { eq: 0 }
       on_update_column: Update   # laut deiner Angabe onUpdate="Update"
 
     fields:

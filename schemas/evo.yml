@@ -4,14 +4,15 @@ introspect: true
 
 tables:
   artikel:
-    keys: [id]
+    primary_key: [id]
     business_key: [model]
-    explicit_unique: [model]
     unique_constraint: [model]
     fields:
       - id                # surrogate PK (Auto-Inc; introspektiert)
-      - model             # = AFS.Artikelnummer
-      - name              # = AFS.Bezeichnung1
+      - afs_id            # afs.artikel (ID in AFS)
+      - xt_id             # XT Product.id
+      - model             # AFS.Artikelnummer
+      - name              # AFS.Bezeichnung1
       - ean               # EAN
       - description_html  # Beschreibung → HTML
       - promo_html        # Werbetext1 → HTML
@@ -35,20 +36,18 @@ tables:
       - source_hash       # Hash aller Quellfelder
       - updated_at        # artikel.updated_at
 
-  artikel_system:
-    keys: [id]
-    fields:
-      - id                # artikel.id in EVO
-      - afs_id            # artikel_id in AFS
-      - xt_id             # artikel.id in XT
-
   category:
-    keys: [cat_id]
+    primary_key: [id]
+    business_key: [afs_id]
+    unique_constraint: [afs_id]
     fields:
-      - cat_id           # AFS.Warengruppe
+      - id              # surrogate PK (Auto-Inc; introspektiert)
+      - afs_id          # AFS.Warengruppe (ID in AFS)
+      - xt_id           # xt category.id
       - name
       - level            # AFS.Ebene
       - attachment       # AFS.Anhang
+      - parent_id       # Parent-ID (AFS.Anhang)
       - status
       - image            # Bild
       - image_large      # Bild_gross
@@ -56,21 +55,15 @@ tables:
       - description      # Beschreibung (Text/HTML)
       - meta_description # Meta-Beschreibung
       - meta_title       # Meta-Titel
+      - seo_slug         # SEO-URL: de/<pfad>
       - change
       - source_hash
       - updated_at
-
-  category_system:
-    keys: [id]
-    fields:
-      - id              # category.id in EVO
-      - afs_id          # category.cat_id in AFS
-      - xt_id           # category.id in XT
       
   media:
     primary_key: [media_id]
-    unique_constraint: [hash, kind]
-    business_key: [hash, kind]
+    unique_constraint: [hash, class, type]
+    business_key: [hash, class, type]
     fields:
       media_id:
         type: integer
@@ -90,7 +83,10 @@ tables:
       hash:
         type: text
         not_null: true
-      kind:
+      class:
+        type: text
+        not_null: true
+      type:
         type: text
         not_null: true
       status:
@@ -147,44 +143,111 @@ tables:
   file_vault:
     keys: [file_name]
     fields:
-      - file_name     # eindeutiger Dateiname im Vault
-      - checksum      # Dateiprüfziffer
-      - md5           # MD5-Hash
-      - size          # Dateigröße
-      - mtime         # Änderungsdatum
-      - ext           # Dateiendung
-      - mime          # MIME-Typ
+      - file_name
+      - checksum
+      - md5
+      - size
+      - mtime
+      - ext
+      - mime
       - source_path
       - stored_file
-      - stored_path   
-      - stored_at     
-      - change        # Datei geändert am              
-      - updated_at    # Datei aktualisiert am
+      - stored_path
+      - stored_at
+      - change
+      - updated_at
+
+  file_vault_images:
+    keys: [file_name]
+    fields:
+      - file_name
+      - checksum
+      - md5
+      - size
+      - mtime
+      - ext
+      - mime
+      - source_path
+      - stored_file
+      - stored_path
+      - stored_at
+      - change
+      - updated_at
+
+  file_vault_bilder:
+    keys: [file_name]
+    fields:
+      - file_name
+      - checksum
+      - md5
+      - size
+      - mtime
+      - ext
+      - mime
+      - source_path
+      - stored_file
+      - stored_path
+      - stored_at
+      - change
+      - updated_at
+
+  file_vault_documents:
+    keys: [file_name]
+    fields:
+      - file_name
+      - checksum
+      - md5
+      - size
+      - mtime
+      - ext
+      - mime
+      - source_path
+      - stored_file
+      - stored_path
+      - stored_at
+      - change
+      - updated_at
+
+  file_vault_dokumente:
+    keys: [file_name]
+    fields:
+      - file_name
+      - checksum
+      - md5
+      - size
+      - mtime
+      - ext
+      - mime
+      - source_path
+      - stored_file
+      - stored_path
+      - stored_at
+      - change
+      - updated_at
 
   attribute:              # einfache Attribut-Stammtabelle (Name dedupliziert)
+    primary_key: [id]
     keys: [name]
+    unique_constraint: [name]
     fields:
-      - attribute_id  # attribute_id in EVO(Auto-Inc; introspektiert)
-      - name          # Attributname
-      - updated_at    # Attribut aktualisiert am
-
-  attribute_system:
-    keys: [id]
-    fields:
-      - id         # attribute.id in EVO
-      - xt_id      # attribute.attribute_id in XT
+      id:
+        type: integer
+        auto_increment: true
+        not_null: true
+      xt_id:
+        type: integer
+      name:
+        type: text
+      updated_at:
+        type: text
 
   artikel_attribute:      # M:N: Artikel ↔ Attribut (einfach: eine Value-Spalte)
-    keys: [id, attribute_id]
+    keys: [artikel_id, attribute_id]
     fields:
-      - id            # artikel.id
+      - artikel_id    # artikel.id
       - attribute_id  # attribute.attribute_id
       - status        # artikel_attribute.status
       - value         # Attributwert
       - updated_at    # Attribut aktualisiert am
 
-  artikel_attribute_system:
-    keys: [id]
-    fields:
-      - id         # artikel_attribute.id in EVO
-      - xt_id      # artikel_attribute.attribute_id in XT
+  

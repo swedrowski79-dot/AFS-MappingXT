@@ -15,6 +15,7 @@ class TransformRegistry
      * @var array
      */
     private array $transformations = [];
+    private ?\PDO $sqlite = null;
 
     /**
      * Constructor - registers default transformations
@@ -90,14 +91,22 @@ class TransformRegistry
             if ($str === '') {
                 return '';
             }
+            // German specifics and symbols
+            $str = strtr($str, [
+                '&' => ' und ',
+                'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue',
+                'ß' => 'ss',
+            ]);
             if (function_exists('iconv')) {
                 $converted = @iconv('UTF-8', 'ASCII//TRANSLIT', $str);
                 if ($converted !== false) {
-                    $str = $converted;
+                    $str = strtolower($converted);
                 }
             }
+            // Replace any non a-z0-9 with hyphen and collapse duplicates
             $str = preg_replace('/[^a-z0-9]+/', '-', $str ?? '') ?? '';
             $str = trim($str, '-');
+            $str = preg_replace('/-+/', '-', $str) ?? $str;
             return $str;
         });
 
@@ -154,6 +163,107 @@ class TransformRegistry
             }
             return 0;
         });
+
+        $self = $this;
+
+        $this->register('resolve_category_id', function($value) use ($self) {
+            static $cache = [];
+            $key = trim((string)$value);
+            if ($key === '') {
+                return 0;
+            }
+            if (array_key_exists($key, $cache)) {
+                return $cache[$key];
+            }
+            try {
+                $stmt = $self->sqlite()->prepare('SELECT id FROM category WHERE afs_id = :id LIMIT 1');
+                if ($stmt && $stmt->execute([':id' => $key])) {
+                    $id = $stmt->fetchColumn();
+                    if ($id !== false && $id !== null) {
+                        return $cache[$key] = (int)$id;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // ignore
+            }
+            return $cache[$key] = 0;
+        });
+
+        $this->register('article_seo_slug', function($model, $warengruppe, $name, $masterModel = null) use ($self) {
+            $modelStr = trim((string)$model);
+            if ($modelStr !== '') {
+                try {
+                    $stmt = $self->sqlite()->prepare('SELECT seo_slug FROM artikel WHERE model = :m LIMIT 1');
+                    if ($stmt && $stmt->execute([':m' => $modelStr])) {
+                        $existing = $stmt->fetchColumn();
+                        if (is_string($existing) && trim($existing) !== '') {
+                            return trim($existing);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+
+            $categoryId = $self->resolveCategoryIdValue($warengruppe);
+
+            $masterStr = trim((string)$masterModel);
+            if ($masterStr !== '' && strcasecmp($masterStr, 'master') !== 0) {
+                try {
+                    $stmt = $self->sqlite()->prepare('SELECT category FROM artikel WHERE model = :m LIMIT 1');
+                    if ($stmt && $stmt->execute([':m' => $masterStr])) {
+                        $cat = $stmt->fetchColumn();
+                        if ($cat !== false && $cat !== null) {
+                            $categoryId = (int)$cat;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+
+            $categorySlug = $self->lookupCategorySlug($categoryId);
+            if ($categorySlug === '') {
+                $categorySlug = 'de';
+            }
+
+            $articleSlug = $self->slugify((string)$name);
+            $base = trim($categorySlug, '/');
+            $full = $base !== '' ? $base : 'de';
+            if ($articleSlug !== '') {
+                $full .= '/' . $articleSlug;
+            }
+            return $full;
+        });
+
+        $this->register('article_meta_title_default', function($name) {
+            return trim((string)$name);
+        });
+
+        $this->register('article_meta_description_default', function($name) {
+            $value = trim((string)$name);
+            if ($value === '') {
+                return '';
+            }
+            return $value . ' &Iota; hohe Qualität &#2705; schnelle Lieferung &#2705; langlebig &#2705; &#10148; Jetzt bei Welafix kaufen!';
+        });
+
+        $this->register('category_meta_title_default', function($name) {
+            $value = trim((string)$name);
+            if ($value === '') {
+                return '';
+            }
+            return $value . ' &Iota; Hier Produktvielfalt entdecken!';
+        });
+
+        $this->register('category_meta_description_default', function($name) {
+            $value = trim((string)$name);
+            if ($value === '') {
+                return '';
+            }
+            return $value . ' &Iota; breites Sortiment &#2705; schnelle Lieferung &#2705; langlebig &#2705; &#10148; Jetzt bei Welafix kaufen!';
+        });
+
     }
 
     /**
@@ -429,5 +539,76 @@ class TransformRegistry
         }
 
         return 'CP1252';
+    }
+
+    private function sqlite(): \PDO
+    {
+        if ($this->sqlite === null) {
+            $path = dirname(__DIR__, 2) . '/db/evo.db';
+            $pdo = new \PDO('sqlite:' . $path);
+            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            $pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+            $this->sqlite = $pdo;
+        }
+        return $this->sqlite;
+    }
+
+    private function resolveCategoryIdValue($value): int
+    {
+        $key = trim((string)$value);
+        if ($key === '') {
+            return 0;
+        }
+        try {
+            $stmt = $this->sqlite()->prepare('SELECT id FROM category WHERE afs_id = :id LIMIT 1');
+            if ($stmt && $stmt->execute([':id' => $key])) {
+                $id = $stmt->fetchColumn();
+                if ($id !== false && $id !== null) {
+                    return (int)$id;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+        return 0;
+    }
+
+    private function lookupCategorySlug(int $categoryId): string
+    {
+        if ($categoryId <= 0) {
+            return '';
+        }
+        try {
+            $stmt = $this->sqlite()->prepare('SELECT seo_slug FROM category WHERE id = :id LIMIT 1');
+            if ($stmt && $stmt->execute([':id' => $categoryId])) {
+                $slug = $stmt->fetchColumn();
+                if (is_string($slug) && trim($slug) !== '') {
+                    return trim($slug);
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+        return '';
+    }
+
+    private function slugify(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+        if (function_exists('mb_strtolower')) {
+            $value = mb_strtolower($value, 'UTF-8');
+        } else {
+            $value = strtolower($value);
+        }
+        $value = strtr($value, [
+            'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue',
+            'Ä' => 'ae', 'Ö' => 'oe', 'Ü' => 'ue',
+            'ß' => 'ss',
+        ]);
+        $value = preg_replace('/[^a-z0-9]+/u', '-', $value) ?? '';
+        return trim($value, '-');
     }
 }

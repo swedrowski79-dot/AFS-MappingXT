@@ -17,13 +17,13 @@ target:
     schema: "schemas/evo.yml"
 
 entities:
-
   artikel:
     from: afs.Artikel
     to:   evo.artikel
 
     map:
       evo.artikel.model:             afs.Artikel.Artikelnummer | trim
+      evo.artikel.afs_id:            afs.Artikel.Artikel | trim | null_if_empty
       evo.artikel.name:              afs.Artikel.Bezeichnung | trim | null_if_empty
       evo.artikel.ean:               afs.Artikel.EANNummer
       evo.artikel.description_html:  $func.transform_rtf_to_html(afs.Artikel.Langtext)
@@ -35,11 +35,13 @@ entities:
       evo.artikel.tax_class_id:      $func.tax_map(afs.Artikel.Umsatzsteuer)
       evo.artikel.stock:             afs.Artikel.Bestand | to_int
       evo.artikel.status:            $func.bool_to_int(afs.Artikel.Internet)
-      evo.artikel.category:          afs.Artikel.Warengruppe
-      evo.artikel.seo_slug:          afs.Artikel.Bezeichnung | slugify
+      evo.artikel.category:          $func.resolve_category_id(afs.Artikel.Warengruppe)
+      evo.artikel.seo_slug:          $func.article_seo_slug(afs.Artikel.Artikelnummer, afs.Artikel.Warengruppe, afs.Artikel.Bezeichnung, afs.Artikel.Zusatzfeld07 | trim)
+      evo.artikel.meta_title:        $func.article_meta_title_default(afs.Artikel.Bezeichnung)
+      evo.artikel.meta_description:  $func.article_meta_description_default(afs.Artikel.Bezeichnung)
       evo.artikel.is_master:         $func.article_master_flag(afs.Artikel.Zusatzfeld07 | trim)
       evo.artikel.master_model:      $func.article_master_number(afs.Artikel.Zusatzfeld07 | trim)
-      evo.artikel.products_image:    afs.Artikel.Bild1 | trim | null_if_empty
+      evo.artikel.products_image:    afs.Artikel.Bild1 | basename | null_if_empty
       evo.artikel.products_name:     afs.Artikel.Bezeichnung | trim | null_if_empty
       evo.artikel.products_description: $func.transform_rtf_to_html(afs.Artikel.Langtext)
       evo.artikel.source_hash:       afs.Artikel.Update
@@ -91,22 +93,24 @@ entities:
     to:   evo.category
 
     map:
-      evo.category.cat_id:           afs.Warengruppe.Warengruppe
+      evo.category.afs_id:           afs.Warengruppe.Warengruppe | to_int
       evo.category.name:             afs.Warengruppe.Bezeichnung | trim | null_if_empty
       evo.category.level:            afs.Warengruppe.Ebene
       evo.category.attachment:       afs.Warengruppe.Anhang
+      evo.category.parent_id:        $func.case(afs.Warengruppe.Anhang, 0->null, else->afs.Warengruppe.Anhang)
       evo.category.description_html: $func.transform_rtf_to_html(afs.Warengruppe.Beschreibung)
       evo.category.description:      $func.transform_rtf_to_html(afs.Warengruppe.Beschreibung)
       evo.category.status:           $func.bool_to_int(afs.Warengruppe.Internet)
-      evo.category.image:            afs.Warengruppe.Bild
-      evo.category.image_large:      afs.Warengruppe.Bild_gross
-      evo.category.meta_title:       $func.category_meta_title(afs.Warengruppe.Bezeichnung | trim, null)
-      evo.category.meta_description: $func.category_meta_description(afs.Warengruppe.Bezeichnung | trim, null)
+      evo.category.image:            afs.Warengruppe.Bild | basename | null_if_empty
+      evo.category.image_large:      afs.Warengruppe.Bild_gross | basename | null_if_empty
+      evo.category.meta_title:       $func.category_meta_title_default(afs.Warengruppe.Bezeichnung)
+      evo.category.meta_description: $func.category_meta_description_default(afs.Warengruppe.Bezeichnung)
       evo.category.source_hash:      afs.Warengruppe.Update
+      evo.category.seo_slug:         $func.category_slug(afs.Warengruppe.Warengruppe)
       evo.category.change:           =0
 
     delta:
-      fields: [name, level, attachment, description_html, description, status, image, image_large, meta_title, meta_description, source_hash]
+      fields: [name, level, attachment, parent_id, description_html, description, status, image, image_large, meta_title, meta_description, seo_slug, source_hash]
 
     flags:
       on_insert:
@@ -123,19 +127,20 @@ entities:
     to:   evo.media
 
     map:
-      evo.media.file_name:  $func.coalesce($func.image_guard(file_vault.mime, file_vault.file_name), $func.image_guard(file_vault.mime, file_vault.stored_file), file_vault.file_name)
+      evo.media.file_name:  $func.image_guard(file_vault.mime, $func.coalesce(file_vault.file_name, file_vault.stored_file, file_vault.checksum))
       evo.media.mime:       file_vault.mime
       evo.media.file_size:  file_vault.size
-      evo.media.hash:       $func.image_guard(file_vault.mime, file_vault.checksum)
-      evo.media.stored_file: $func.image_guard(file_vault.mime, file_vault.stored_file)
-      evo.media.stored_path: $func.image_guard(file_vault.mime, file_vault.stored_path)
-      evo.media.stored_at:   $func.image_guard(file_vault.mime, file_vault.stored_at)
-      evo.media.kind:       =image
+      evo.media.hash:       $func.image_guard(file_vault.mime, $func.coalesce(file_vault.checksum, file_vault.file_name, file_vault.stored_file))
+      evo.media.stored_file: file_vault.stored_file
+      evo.media.stored_path: file_vault.stored_path
+      evo.media.stored_at:   file_vault.stored_at
+      evo.media.class:      $func.case($func.media_detect_type(file_vault.source_path), 1->Product, 2->Category, else->Product)
+      evo.media.type:       =images
       evo.media.status:     =1
       evo.media.change:     =0
 
     delta:
-      fields: [file_name, mime, file_size, stored_file, stored_path]
+      fields: [file_name, mime, file_size, stored_file, stored_path, class, type]
 
     flags:
       on_insert:
@@ -151,30 +156,31 @@ entities:
 
     orphan_policy:
       scope: evo.media
-      match_key: [hash, kind]
+      match_key: [hash, class, type]
       actions:
         - set:
             evo.media.status: =0
             evo.media.change: =1
 
   media_dokumente:
-    from: afs_dokumente.file_vault
+    from: afs_dokumente.file_vault_documents
     to:   evo.media
 
     map:
-      evo.media.file_name:  $func.coalesce($func.document_guard(file_vault.mime, file_vault.file_name), $func.document_guard(file_vault.mime, file_vault.stored_file), file_vault.file_name)
+      evo.media.file_name:  $func.document_guard(file_vault.mime, $func.coalesce(file_vault.file_name, file_vault.stored_file, file_vault.checksum))
       evo.media.mime:       file_vault.mime
       evo.media.file_size:  file_vault.size
-      evo.media.hash:       $func.document_guard(file_vault.mime, file_vault.checksum)
+      evo.media.hash:       $func.document_guard(file_vault.mime, $func.coalesce(file_vault.checksum, file_vault.file_name, file_vault.stored_file))
       evo.media.stored_file: file_vault.stored_file
       evo.media.stored_path: file_vault.stored_path
       evo.media.stored_at:   file_vault.stored_at
-      evo.media.kind:       =document
+      evo.media.class:      $func.case($func.media_detect_type(file_vault.source_path), 1->Product, 2->Category, else->Product)
+      evo.media.type:       =files
       evo.media.status:     =1
       evo.media.change:     =0
 
     delta:
-      fields: [file_name, mime, file_size, stored_file, stored_path]
+      fields: [file_name, mime, file_size, stored_file, stored_path, class, type]
 
     flags:
       on_insert:
@@ -190,18 +196,18 @@ entities:
 
     orphan_policy:
       scope: evo.media
-      match_key: [hash, kind]
+      match_key: [hash, class, type]
       actions:
         - set:
             evo.media.status: =0
             evo.media.change: =1
 
   media_relation_bilder:
-    from: afs_bilder.file_vault
+    from: afs_bilder.file_vault_images
     to:   evo.media_relation
 
     map:
-      evo.media_relation.file_name: file_vault.file_name
+      evo.media_relation.file_name:   file_vault.file_name
       evo.media_relation.entity_type: $func.media_entity_type(file_vault.art_type, file_vault.art_id, file_vault.cat_id)
       evo.media_relation.entity_id:   $func.media_entity_id(file_vault.art_type, file_vault.art_id, file_vault.cat_id)
       evo.media_relation.hash:        $func.image_guard(file_vault.mime, file_vault.checksum)
@@ -312,7 +318,7 @@ entities:
     to:   evo.artikel_attribute
 
     map:
-      evo.artikel_attribute.id:           afs.Artikel.Artikelnummer | trim | null_if_empty
+      evo.artikel_attribute.artikel_id:   afs.Artikel.Artikelnummer | trim | null_if_empty
       evo.artikel_attribute.attribute_id: afs.Artikel.Zusatzfeld03 | trim | null_if_empty
       evo.artikel_attribute.value:        afs.Artikel.Zusatzfeld15 | trim | null_if_empty
       evo.artikel_attribute.status:       =1
@@ -326,7 +332,7 @@ entities:
     to:   evo.artikel_attribute
 
     map:
-      evo.artikel_attribute.id:           afs.Artikel.Artikelnummer | trim | null_if_empty
+      evo.artikel_attribute.artikel_id:   afs.Artikel.Artikelnummer | trim | null_if_empty
       evo.artikel_attribute.attribute_id: afs.Artikel.Zusatzfeld04 | trim | null_if_empty
       evo.artikel_attribute.value:        afs.Artikel.Zusatzfeld16 | trim | null_if_empty
       evo.artikel_attribute.status:       =1
@@ -340,7 +346,7 @@ entities:
     to:   evo.artikel_attribute
 
     map:
-      evo.artikel_attribute.id:           afs.Artikel.Artikelnummer | trim | null_if_empty
+      evo.artikel_attribute.artikel_id:   afs.Artikel.Artikelnummer | trim | null_if_empty
       evo.artikel_attribute.attribute_id: afs.Artikel.Zusatzfeld05 | trim | null_if_empty
       evo.artikel_attribute.value:        afs.Artikel.Zusatzfeld17 | trim | null_if_empty
       evo.artikel_attribute.status:       =1
@@ -354,7 +360,7 @@ entities:
     to:   evo.artikel_attribute
 
     map:
-      evo.artikel_attribute.id:           afs.Artikel.Artikelnummer | trim | null_if_empty
+      evo.artikel_attribute.artikel_id:   afs.Artikel.Artikelnummer | trim | null_if_empty
       evo.artikel_attribute.attribute_id: afs.Artikel.Zusatzfeld06 | trim | null_if_empty
       evo.artikel_attribute.value:        afs.Artikel.Zusatzfeld18 | trim | null_if_empty
       evo.artikel_attribute.status:       =1
@@ -363,74 +369,58 @@ entities:
     delta:
       fields: [value]
 
-  artikel_system:
-    from: afs.Artikel
-    to:   evo.artikel_system
+  file_vault_bilder:
+    from: afs_bilder.file_vault
+    to:   evo.file_vault_images
 
     map:
-      evo.artikel_system.id:     afs.Artikel.Artikelnummer | trim | null_if_empty
-      evo.artikel_system.afs_id: afs.Artikel.Artikel
+      evo.file_vault_images.file_name:   file_vault.file_name | trim
+      evo.file_vault_images.checksum:    file_vault.checksum
+      evo.file_vault_images.size:        file_vault.size
+      evo.file_vault_images.mime:        file_vault.mime
+      evo.file_vault_images.source_path: file_vault.source_path
+      evo.file_vault_images.stored_file: file_vault.stored_file
+      evo.file_vault_images.stored_path: file_vault.stored_path
+      evo.file_vault_images.stored_at:   file_vault.stored_at
+      evo.file_vault_images.change:      =0
 
-  category_system:
-    from: afs.Warengruppe
-    to:   evo.category_system
+    delta:
+      fields: [checksum, size, stored_file, stored_path, stored_at]
 
-    map:
-      evo.category_system.id:     afs.Warengruppe.Warengruppe
-      evo.category_system.afs_id: afs.Warengruppe.Warengruppe
+    flags:
+      on_insert:
+        evo.file_vault_images.change:     =1
+        evo.file_vault_images.updated_at: $func.now()
+      on_update_when_delta_changed:
+        evo.file_vault_images.change:     =1
+        evo.file_vault_images.updated_at: $func.now()
+      on_update_when_no_change:
+        evo.file_vault_images.change:     =0
 
-  attribute_system_1:
-    from: afs.Artikel
-    to:   evo.attribute_system
-
-    map:
-      evo.attribute_system.id: afs.Artikel.Zusatzfeld03 | trim | null_if_empty
-
-  attribute_system_2:
-    from: afs.Artikel
-    to:   evo.attribute_system
-
-    map:
-      evo.attribute_system.id: afs.Artikel.Zusatzfeld04 | trim | null_if_empty
-
-  attribute_system_3:
-    from: afs.Artikel
-    to:   evo.attribute_system
+  file_vault_dokumente:
+    from: afs_dokumente.file_vault
+    to:   evo.file_vault_documents
 
     map:
-      evo.attribute_system.id: afs.Artikel.Zusatzfeld05 | trim | null_if_empty
+      evo.file_vault_documents.file_name:   file_vault.file_name | trim
+      evo.file_vault_documents.checksum:    file_vault.checksum
+      evo.file_vault_documents.size:        file_vault.size
+      evo.file_vault_documents.mime:        file_vault.mime
+      evo.file_vault_documents.source_path: file_vault.source_path
+      evo.file_vault_documents.stored_file: file_vault.stored_file
+      evo.file_vault_documents.stored_path: file_vault.stored_path
+      evo.file_vault_documents.stored_at:   file_vault.stored_at
+      evo.file_vault_documents.change:      =0
 
-  attribute_system_4:
-    from: afs.Artikel
-    to:   evo.attribute_system
+    delta:
+      fields: [checksum, size, stored_file, stored_path, stored_at]
 
-    map:
-      evo.attribute_system.id: afs.Artikel.Zusatzfeld06 | trim | null_if_empty
-
-  artikel_attribute_system_1:
-    from: afs.Artikel
-    to:   evo.artikel_attribute_system
-
-    map:
-      evo.artikel_attribute_system.id: $func.concat(afs.Artikel.Artikelnummer, ':', afs.Artikel.Zusatzfeld03)
-
-  artikel_attribute_system_2:
-    from: afs.Artikel
-    to:   evo.artikel_attribute_system
-
-    map:
-      evo.artikel_attribute_system.id: $func.concat(afs.Artikel.Artikelnummer, ':', afs.Artikel.Zusatzfeld04)
-
-  artikel_attribute_system_3:
-    from: afs.Artikel
-    to:   evo.artikel_attribute_system
-
-    map:
-      evo.artikel_attribute_system.id: $func.concat(afs.Artikel.Artikelnummer, ':', afs.Artikel.Zusatzfeld05)
-
-  artikel_attribute_system_4:
-    from: afs.Artikel
-    to:   evo.artikel_attribute_system
-
-    map:
-      evo.artikel_attribute_system.id: $func.concat(afs.Artikel.Artikelnummer, ':', afs.Artikel.Zusatzfeld06)
+    flags:
+      on_insert:
+        evo.file_vault_documents.change:     =1
+        evo.file_vault_documents.updated_at: $func.now()
+      on_update_when_delta_changed:
+        evo.file_vault_documents.change:     =1
+        evo.file_vault_documents.updated_at: $func.now()
+      on_update_when_no_change:
+        evo.file_vault_documents.change:     =0

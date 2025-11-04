@@ -378,6 +378,27 @@ function createMappingOnlyEnvironmentCli(array $config, string $job, int $maxErr
     return [ 'tracker' => $tracker, 'engine' => $engine, 'connections' => $connectionsToClose, 'pdo' => $pdo ];
 }
 
+if (!function_exists('createMappingOnlyEnvironment')) {
+    /**
+     * Wrapper, damit SyncService::run() im CLI-Kontext verfügbar ist.
+     *
+     * @return array{0:STATUS_Tracker,1:MappingSyncEngine,2:array<int,object>,3:PDO}
+     */
+    function createMappingOnlyEnvironment(array $config, string $job = 'categories', ?string $manifestOverride = null): array
+    {
+        $maxErrors = (int)($config['status']['max_errors'] ?? 200);
+        $env = createMappingOnlyEnvironmentCli($config, $job, $maxErrors, $manifestOverride);
+        return [$env['tracker'], $env['engine'], $env['connections'], $env['pdo']];
+    }
+}
+
+if (!function_exists('createMappingLogger')) {
+    function createMappingLogger(array $config): ?STATUS_MappingLogger
+    {
+        return createMappingLoggerCli($config);
+    }
+}
+
 function printStatus(array $status): void
 {
     $state = $status['state'] ?? 'unknown';
@@ -523,52 +544,30 @@ switch ($args->command) {
 
         try {
             if ($mappingOverride) {
-                // Mapping-only Lauf mit Manifest
-                $env = createMappingOnlyEnvironmentCli($config, $job, $maxErrors, $mappingOverride);
-                /** @var STATUS_Tracker $tracker */
-                $tracker = $env['tracker'];
-                /** @var MappingSyncEngine $engine */
-                $engine = $env['engine'];
-                /** @var PDO $pdo */
-                $pdo = $env['pdo'];
-                $connections = $env['connections'];
-
                 echo "Starte Mapping: {$mappingOverride}\n";
-                $tracker->begin('mapping', 'CLI-Start');
-                $overallStart = microtime(true);
-
-                $totalSteps = 8; $done = 0;
-                $summary = [];
-                // Warengruppen
-                $tracker->advance('warengruppen', ['message' => 'Synchronisiere Warengruppen...', 'total' => $totalSteps, 'processed' => $done]);
-                try { $summary['warengruppe'] = $engine->syncEntity('warengruppe', $pdo); } catch (Throwable $e) {}
-                $done++; $tracker->advance('warengruppen', ['processed' => $done, 'total' => $totalSteps]);
-                // Artikel
-                $tracker->advance('artikel', ['message' => 'Synchronisiere Artikel...', 'total' => $totalSteps, 'processed' => $done]);
-                $summary['artikel'] = $engine->syncEntity('artikel', $pdo);
-                $done++; $tracker->advance('artikel', ['processed' => $done, 'total' => $totalSteps]);
-                // Artikel-Meta
-                $tracker->advance('artikel_meta', ['message' => 'Aktualisiere Artikel-Metadaten...', 'total' => $totalSteps, 'processed' => $done]);
-                try { $summary['artikel_meta'] = $engine->syncEntity('artikel_meta', $pdo); } catch (Throwable $e) {}
-                $done++; $tracker->advance('artikel_meta', ['processed' => $done, 'total' => $totalSteps]);
-                // Filecatcher + Media
-                $tracker->advance('filecatcher', ['message' => 'Analysiere Mediendateien...', 'total' => $totalSteps, 'processed' => $done]);
-                $done++; $tracker->advance('filecatcher', ['processed' => $done, 'total' => $totalSteps]);
-                foreach (['media_bilder','media_dokumente','media_relation_bilder','media_relation_dokumente'] as $entity) {
-                    $tracker->advance($entity, ['message' => 'Synchronisiere ' . $entity . '...', 'total' => $totalSteps, 'processed' => $done]);
-                    try { $summary[$entity] = $engine->syncEntity($entity, $pdo); } catch (Throwable $e) {}
-                    $done++; $tracker->advance($entity, ['processed' => $done, 'total' => $totalSteps]);
-                }
-
-                $duration = microtime(true) - $overallStart;
-                $tracker->complete(['message' => sprintf('Mapping abgeschlossen (%.2fs)', $duration)]);
+                $service = new SyncService($config);
+                $result = $service->run($mappingOverride);
 
                 echo "\nSynchronisation abgeschlossen.\n";
                 echo str_repeat('=', 48) . "\n";
-                printStatus($tracker->getStatus());
+                $status = is_array($result['status'] ?? null) ? $result['status'] : [];
+                printStatus($status);
 
-                // Verbindungen schließen
-                foreach ($connections as $conn) { if ($conn instanceof MSSQL_Connection) { $conn->close(); } }
+                $summary = $result['summary'] ?? null;
+                if (is_array($summary) && $summary !== []) {
+                    echo "\nZusammenfassung:\n";
+                    foreach ($summary as $stage => $stats) {
+                        if (!is_array($stats)) {
+                            continue;
+                        }
+                        $processed = (int)($stats['processed'] ?? 0);
+                        $inserted = (int)($stats['inserted'] ?? 0);
+                        $updated = (int)($stats['updated'] ?? 0);
+                        $errors = (int)($stats['errors'] ?? 0);
+                        printf("  %-30s verarbeitet=%d, inserted=%d, updated=%d, errors=%d\n", $stage, $processed, $inserted, $updated, $errors);
+                    }
+                }
+
                 exit(0);
             }
 

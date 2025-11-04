@@ -27,6 +27,7 @@ final class FileCatcherEngine
     private array $logicConfig;
     private int $dirMode;
     private int $fileMode;
+    private bool $mimeByExtension = false;
 
     /** @var array<string,mixed> */
     private array $rowCache = [];
@@ -58,6 +59,7 @@ final class FileCatcherEngine
         }
         $this->recursive = (bool)($source['recursive'] ?? true);
         $this->followSymlinks = (bool)($source['follow_symlinks'] ?? false);
+        $this->mimeByExtension = (bool)($source['mime_by_extension'] ?? false);
         $includeExt = $source['include_ext'] ?? [];
         if (is_string($includeExt)) {
             $includeExt = [$includeExt];
@@ -251,7 +253,7 @@ final class FileCatcherEngine
             $iterator = new \IteratorIterator(new \DirectoryIterator($this->sourcePath));
         }
 
-        $finfo = extension_loaded('fileinfo') ? new \finfo(FILEINFO_MIME_TYPE) : null;
+        $finfo = (!$this->mimeByExtension && extension_loaded('fileinfo')) ? new \finfo(FILEINFO_MIME_TYPE) : null;
 
         foreach ($iterator as $fileInfo) {
             if (!$fileInfo instanceof \SplFileInfo) {
@@ -270,9 +272,17 @@ final class FileCatcherEngine
             $mtime = $fileInfo->getMTime();
             $basename = $fileInfo->getBasename();
 
-            $mime = $finfo ? $finfo->file($fullPath) : null;
-            if (!$mime && function_exists('mime_content_type')) {
-                $mime = @mime_content_type($fullPath) ?: null;
+            $mime = null;
+            if ($this->mimeByExtension) {
+                $mime = $this->mimeFromExtension($extension);
+            } else {
+                $mime = $finfo ? $finfo->file($fullPath) : null;
+                if (!$mime && function_exists('mime_content_type')) {
+                    $mime = @mime_content_type($fullPath) ?: null;
+                }
+                if (!$mime) {
+                    $mime = $this->mimeFromExtension($extension);
+                }
             }
 
             $files[] = [
@@ -1011,5 +1021,15 @@ final class FileCatcherEngine
             throw new RuntimeException('filecatcher: Upsert-Statement konnte nicht vorbereitet werden: ' . $sql);
         }
         return $stmt;
+    }
+
+    private function mimeFromExtension(string $ext): string
+    {
+        $map = [
+            'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp',
+            'pdf' => 'application/pdf', 'doc' => 'application/msword', 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel', 'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ];
+        return $map[$ext] ?? 'application/octet-stream';
     }
 }

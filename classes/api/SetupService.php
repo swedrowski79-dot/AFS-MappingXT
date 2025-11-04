@@ -122,11 +122,31 @@ class SetupService
                         }
                     }
                 }
+                $keysList = $def['keys'] ?? [];
+                $pkList = $def['primary_key'] ?? [];
+                // Promote keys: [id] to real primary key when no primary_key is given
+                if (($pkList === [] || $pkList === null) && is_array($keysList)) {
+                    $normKeys = [];
+                    foreach ($keysList as $k) { $k = trim((string)$k); if ($k !== '') { $normKeys[] = strtolower($k); } }
+                    if (count($normKeys) === 1 && $normKeys[0] === 'id') {
+                        $pkList = ['id'];
+                        $keysList = [];
+                    }
+                }
+                // If still no PK, promote the first auto_increment field as PK (e.g., attribute_id, media_id)
+                if (($pkList === [] || $pkList === null) && is_array($fields)) {
+                    foreach ($fields as $fname => $fdef) {
+                        if (is_array($fdef) && !empty($fdef['auto_increment'])) {
+                            $pkList = [(string)$fname];
+                            break;
+                        }
+                    }
+                }
                 $definitions[(string)$tableName] = [
                     'fields' => $fields,
-                    'primary_key' => $def['primary_key'] ?? [],
+                    'primary_key' => $pkList,
                     'business_key' => $def['business_key'] ?? [],
-                    'unique_constraint' => $def['unique_constraint'] ?? ($def['keys'] ?? []),
+                    'unique_constraint' => $def['unique_constraint'] ?? $keysList,
                     'explicit_unique' => $def['explicit_unique'] ?? [],
                     'foreign_keys' => $def['foreign_keys'] ?? [],
                 ];
@@ -174,9 +194,7 @@ class SetupService
         if ($primaryKey && empty($autoPrimaryColumns)) {
             $constraints[] = 'PRIMARY KEY (' . implode(', ', array_map([$this,'quoteIdent'], $primaryKey)) . ')';
         }
-        if ($uniqueConstraint) {
-            $constraints[] = 'UNIQUE (' . implode(', ', array_map([$this,'quoteIdent'], $uniqueConstraint)) . ')';
-        }
+        // Create unique indexes after table creation to avoid SQLite expression issues
         if (is_array($foreignKeys)) {
             foreach ($foreignKeys as $fk) {
                 if (!is_array($fk)) continue;
@@ -251,12 +269,20 @@ class SetupService
         $auto = (bool)($def['auto_increment'] ?? false);
         $type = $this->mapSqliteType($def['type'] ?? null);
         $isPk = in_array($name, $pk, true);
+        // Special-case: single primary key named "id" should be INTEGER PRIMARY KEY AUTOINCREMENT
+        if ($allowAutoPk && $isPk && !$forAlter && strcasecmp($name, 'id') === 0) {
+            $autoPk[] = $name;
+            return implode(' ', [$this->quoteIdent($name), 'INTEGER', 'PRIMARY KEY AUTOINCREMENT']);
+        }
         $parts = [$this->quoteIdent($name), $type];
         if ($auto && $allowAutoPk && $isPk && $type === 'INTEGER') {
             $parts[] = 'PRIMARY KEY AUTOINCREMENT';
             $autoPk[] = $name;
+        } elseif (!$forAlter && $allowAutoPk && $isPk && count($pk) === 1) {
+            // Ensure single-column PKs are marked PRIMARY KEY
+            $parts[] = 'PRIMARY KEY';
         }
-        if (!empty($def['not_null'])) $parts[] = 'NOT NULL';
+        if (!empty($def['not_null']) && !$forAlter) $parts[] = 'NOT NULL';
         if (array_key_exists('default', $def)) $parts[] = 'DEFAULT ' . (is_numeric($def['default']) ? (string)$def['default'] : ('"' . str_replace('"','""',(string)$def['default']) . '"'));
         if (!$forAlter && !empty($def['unique'])) $parts[] = 'UNIQUE';
         return implode(' ', $parts);

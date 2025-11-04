@@ -259,6 +259,32 @@ class MappingExpressionEvaluator
                 return $this->guardImageValue($args[0] ?? null, $args[1] ?? null);
             case 'document_guard':
                 return $this->guardDocumentValue($args[0] ?? null, $args[1] ?? null);
+            case 'category_path':
+                $id = $args[0] ?? null;
+                $idStr = is_scalar($id) ? trim((string)$id) : '';
+                $paths = $context['__category_paths'] ?? null;
+                if (is_array($paths) && $idStr !== '' && isset($paths[$idStr])) {
+                    return (string)$paths[$idStr];
+                }
+                return $idStr !== '' ? $idStr : null;
+            case 'category_slug':
+                $id = $args[0] ?? null;
+                $idStr = is_scalar($id) ? trim((string)$id) : '';
+                $paths = $context['__category_paths'] ?? null;
+                if (is_array($paths) && $idStr !== '' && isset($paths[$idStr])) {
+                    return 'de/' . (string)$paths[$idStr];
+                }
+                return $idStr !== '' ? ('de/' . $idStr) : null;
+            case 'resolve_category_id':
+            case 'article_meta_title_default':
+            case 'article_meta_description_default':
+            case 'category_meta_title_default':
+            case 'category_meta_description_default':
+                $fn = $this->transformRegistry->get($name);
+                return $fn ? $fn($args[0] ?? null) : null;
+            case 'article_seo_slug':
+                $fn = $this->transformRegistry->get($name);
+                return $fn ? $fn($args[0] ?? null, $args[1] ?? null, $args[2] ?? null, $args[3] ?? null) : null;
             default:
                 $value = $args[0] ?? null;
                 return $this->transformRegistry->apply($name, $value);

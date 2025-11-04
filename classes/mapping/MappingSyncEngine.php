@@ -10,6 +10,45 @@ declare(strict_types=1);
 class MappingSyncEngine
 {
     /**
+     * Liefert die Entity-Namen in der im Manifest definierten Reihenfolge.
+     *
+     * @return array<int,string>
+     */
+    public function listEntityNames(): array
+    {
+        $entities = $this->manifest['entities'] ?? [];
+        if (!is_array($entities) || $entities === []) {
+            return [];
+        }
+        $names = array_keys($entities);
+        $priority = [
+            'warengruppe' => 10,
+            'artikel' => 20,
+        ];
+        usort($names, static function (string $a, string $b) use ($priority): int {
+            $pa = $priority[$a] ?? 100;
+            $pb = $priority[$b] ?? 100;
+            if ($pa === $pb) {
+                return strcmp($a, $b);
+            }
+            return $pa <=> $pb;
+        });
+        return $names;
+    }
+
+    /**
+     * True, wenn im Manifest Quellen vom Typ "filecatcher" registriert sind.
+     */
+    public function hasFileCatcherSources(): bool
+    {
+        foreach ($this->sources as $def) {
+            if (($def['type'] ?? 'mapper') === 'filecatcher') {
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
      * @var array<string,array<string,mixed>>
      *   - type: mapper|filecatcher
      *   - mapper: SourceMapper (bei type=mapper)
@@ -23,6 +62,9 @@ class MappingSyncEngine
     private array $manifest;
 
     private MappingExpressionEvaluator $expressionEvaluator;
+
+    /** @var array<string,string>|null */
+    private ?array $categoryPaths = null;
 
     /** @var array<string,array<int,string>> */
     private array $uniqueKeyCache = [];
@@ -70,6 +112,20 @@ class MappingSyncEngine
         $compiledMap = $this->getCompiledMap($entityName, $entityConfig);
 
         $rows = $this->fetchSourceRows($sourceId, $sourceTable, $sourceDef, $targetDb);
+        if ($entityName === 'artikel') {
+            usort($rows, static function (array $a, array $b): int {
+                $aVal = trim((string)($a['Zusatzfeld07'] ?? ''));
+                $bVal = trim((string)($b['Zusatzfeld07'] ?? ''));
+                $aPriority = (strcasecmp($aVal, 'master') === 0 || $aVal === '') ? 0 : 1;
+                $bPriority = (strcasecmp($bVal, 'master') === 0 || $bVal === '') ? 0 : 1;
+                if ($aPriority === $bPriority) {
+                    $aKey = (string)($a['Artikelnummer'] ?? '');
+                    $bKey = (string)($b['Artikelnummer'] ?? '');
+                    return strcmp($aKey, $bKey);
+                }
+                return $aPriority <=> $bPriority;
+            });
+        }
 
         $stats = [
             'processed' => 0,
@@ -85,6 +141,9 @@ class MappingSyncEngine
             $startedTransaction = true;
         }
 
+        /** @var array<string,array<string,bool>> $uniqueSeen */
+        $uniqueSeen = [];
+
         try {
             foreach ($rows as $row) {
                 $stats['processed']++;
@@ -98,10 +157,38 @@ class MappingSyncEngine
                             $stats['skipped']++;
                             continue;
                         }
+                        // Ensure media.file_name is present; fallback to hash or skip
+                        if ($table === 'media') {
+                            $fn = $payload['file_name'] ?? null;
+                            if (!is_string($fn) || trim($fn) === '') {
+                                $h = $payload['hash'] ?? null;
+                                if (is_string($h) && trim($h) !== '') {
+                                    $payload['file_name'] = $h;
+                                } else {
+                                    $stats['skipped']++;
+                                    continue;
+                                }
+                            }
+                        }
                         $uniqueKeys = $this->getTargetUniqueKeys($table);
+                        if ($uniqueKeys !== []) {
+                            $payload = $this->resolveForeignKeyPolicy($targetDb, $table, $payload);
+                        }
                         if ($uniqueKeys !== [] && !$this->hasAllUniqueKeyValues($payload, $uniqueKeys)) {
                             $stats['skipped']++;
                             continue;
+                        }
+
+                        $dedupeKey = null;
+                        if ($uniqueKeys !== [] && $table === 'attribute') {
+                            $keyValues = $this->resolveKeyValues($uniqueKeys, $payload, null);
+                            if ($keyValues !== null) {
+                                $dedupeKey = $this->buildCacheKeyFromValues($uniqueKeys, $keyValues);
+                                if (($uniqueSeen[$table][$dedupeKey] ?? false) === true) {
+                                    $stats['skipped']++;
+                                    continue;
+                                }
+                            }
                         }
 
                         $needsExisting = $uniqueKeys !== [] && $this->requiresExistingRow($entityConfig);
@@ -112,8 +199,17 @@ class MappingSyncEngine
                         $deltaChanged = $this->isDeltaChanged($entityConfig, $payload, $existingRow);
                         $payload = $this->applyFlags($entityConfig, $payload, $context, $existingRow, $deltaChanged);
 
+                        // Enforce SEO slug policy (keep existing, ensure uniqueness)
+                        $payload = $this->enforceSeoSlugPolicy($targetDb, $table, $payload, $existingRow, $uniqueKeys);
+
                         $this->targetMapper->upsert($targetDb, $table, $payload);
                         $this->storeRowInCache($table, $uniqueKeys, $payload, $existingRow);
+                        if ($dedupeKey !== null && $table === 'attribute') {
+                            if (!isset($uniqueSeen[$table])) {
+                                $uniqueSeen[$table] = [];
+                            }
+                            $uniqueSeen[$table][$dedupeKey] = true;
+                        }
 
                         if ($uniqueKeys !== []) {
                             $keyValues = $this->resolveKeyValues($uniqueKeys, $payload, $existingRow);
@@ -231,6 +327,15 @@ class MappingSyncEngine
         $context[strtoupper($sourceId)] = [$table => $row];
         $context[$table] = $row;
         $context[strtoupper($table)] = $row;
+
+        // Provide category path lookup for functions
+        if ($this->categoryPaths === null) {
+            $this->categoryPaths = $this->buildCategoryPaths();
+        }
+        if ($this->categoryPaths !== null && $this->categoryPaths !== []) {
+            $context['__category_paths'] = $this->categoryPaths;
+        }
+
         return $context;
     }
 
@@ -468,6 +573,248 @@ class MappingSyncEngine
         }
         $flags = $entityConfig['flags'] ?? [];
         return is_array($flags) && $flags !== [];
+    }
+
+    /**
+     * Build slugified category paths using AFS Warengruppe (id: Warengruppe, parent: Anhang, name: Bezeichnung)
+     * @return array<string,string>
+     */
+    private function buildCategoryPaths(): array
+    {
+        foreach ($this->sources as $srcId => $def) {
+            if (($def['type'] ?? 'mapper') !== 'mapper') {
+                continue;
+            }
+            /** @var SourceMapper $mapper */
+            $mapper = $def['mapper'];
+            $connection = $def['connection'];
+            try {
+                $rows = $mapper->fetch($connection, 'Warengruppe');
+            } catch (\Throwable $e) {
+                continue;
+            }
+            if (!is_array($rows) || $rows === []) {
+                continue;
+            }
+
+            $nodes = [];
+            foreach ($rows as $r) {
+                $id = (string)($r['Warengruppe'] ?? '');
+                if ($id === '') { continue; }
+                $parent = trim((string)($r['Anhang'] ?? ''));
+                if ($parent === '0') { $parent = ''; }
+                $name = trim((string)($r['Bezeichnung'] ?? ''));
+                $nodes[$id] = ['p' => $parent, 'n' => $name];
+            }
+
+            $cache = [];
+            $slugify = function (string $value): string {
+                $v = strtolower(trim($value));
+                if ($v === '') { return ''; }
+                $v = strtr($v, [
+                    '&' => ' und ',
+                    'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue',
+                    'ß' => 'ss',
+                ]);
+                if (function_exists('iconv')) {
+                    $c = @iconv('UTF-8', 'ASCII//TRANSLIT', $v);
+                    if ($c !== false) { $v = strtolower($c); }
+                }
+                $v = preg_replace('/[^a-z0-9]+/', '-', $v ?? '') ?? '';
+                $v = preg_replace('/-+/', '-', $v) ?? $v;
+                return trim($v, '-');
+            };
+            $resolve = function ($id) use (&$nodes, &$cache, $slugify, &$resolve): string {
+                $id = (string)$id;
+                if (isset($cache[$id])) { return $cache[$id]; }
+                $node = $nodes[$id] ?? null;
+                if ($node === null) { return $cache[$id] = $id; }
+                $seg = $slugify($node['n'] ?? '');
+                $parent = $node['p'] ?? '';
+                if ($parent === '' || !isset($nodes[$parent])) { return $cache[$id] = $seg; }
+                $pp = $resolve($parent);
+                return $cache[$id] = ($pp !== '' ? ($pp . '/' . $seg) : $seg);
+            };
+
+            $paths = [];
+            foreach ($nodes as $id => $_) {
+                $paths[$id] = $resolve($id);
+            }
+            return $paths;
+        }
+        return [];
+    }
+
+    /**
+     * Enforce SEO slug rules: don't overwrite existing slugs; ensure uniqueness by appending -%i
+     * @param array<int,string> $uniqueKeys
+     */
+    private function resolveForeignKeyPolicy(PDO $pdo, string $table, array $payload): array
+    {
+        // artikel_system.id expects EVO artikel.id, map from model when given
+        if ($table === 'artikel_system') {
+            if (isset($payload['artikel_id']) && is_string($payload['artikel_id'])) {
+                $model = trim($payload['artikel_id']);
+                if ($model !== '') {
+                    $stmt = $pdo->prepare('SELECT id FROM "artikel" WHERE "model" = :m LIMIT 1');
+                    if ($stmt && $stmt->execute([':m' => $model])) {
+                        $id = $stmt->fetchColumn();
+                        if ($id !== false && $id !== null) {
+                            $payload['artikel_id'] = (int)$id;
+                        }
+                    }
+                }
+            }
+        }
+        // artikel_attribute: map id (model->id) and attribute_id (name->attribute_id)
+        if ($table === 'artikel_attribute') {
+            if (isset($payload['artikel_id']) && is_string($payload['artikel_id'])) {
+                $model = trim($payload['artikel_id']);
+                if ($model !== '') {
+                    $stmt = $pdo->prepare('SELECT id FROM "artikel" WHERE "model" = :m LIMIT 1');
+                    if ($stmt && $stmt->execute([':m' => $model])) {
+                        $id = $stmt->fetchColumn();
+                        if ($id !== false && $id !== null) {
+                            $payload['artikel_id'] = (int)$id;
+                        }
+                    }
+                }
+            }
+            if (isset($payload['attribute_id']) && is_string($payload['attribute_id'])) {
+                $name = trim($payload['attribute_id']);
+                if ($name !== '') {
+                    $stmt = $pdo->prepare('SELECT id FROM "attribute" WHERE "name" = :n LIMIT 1');
+                    if ($stmt && $stmt->execute([':n' => $name])) {
+                        $aid = $stmt->fetchColumn();
+                        if ($aid !== false && $aid !== null) {
+                            $payload['attribute_id'] = (int)$aid;
+                        }
+                    }
+                }
+            }
+        }
+        // artikel: resolve category via afs_id lookup
+        if ($table === 'artikel') {
+            if (array_key_exists('category', $payload)) {
+                $cat = $payload['category'];
+                $code = is_int($cat) ? (string)$cat : trim((string)$cat);
+                $resolved = 0;
+                if ($code !== '') {
+                    $stmt = $pdo->prepare('SELECT id FROM "category" WHERE "afs_id" = :c LIMIT 1');
+                    if ($stmt && $stmt->execute([':c' => $code])) {
+                        $cid = $stmt->fetchColumn();
+                        if ($cid !== false && $cid !== null) {
+                            $resolved = (int)$cid;
+                        }
+                    }
+                }
+                $payload['category'] = $resolved;
+            }
+        }
+        // category_system: resolve category_id via seo_slug lookup
+        if ($table === 'category_system') {
+            if (isset($payload['category_id']) && is_string($payload['category_id'])) {
+                $slug = trim($payload['category_id']);
+                if ($slug !== '') {
+                    $stmt = $pdo->prepare('SELECT cat_id FROM "category" WHERE "seo_slug" = :s LIMIT 1');
+                    if ($stmt && $stmt->execute([':s' => $slug])) {
+                        $cid = $stmt->fetchColumn();
+                        if ($cid !== false && $cid !== null) {
+                            $payload['category_id'] = (int)$cid;
+                        }
+                    }
+                }
+            }
+        }
+        // artikel_attribute_system: resolve artikel_id (model->id) and attribute_id (name->attribute_id)
+        if ($table === 'artikel_attribute_system') {
+            if (isset($payload['artikel_id']) && is_string($payload['artikel_id'])) {
+                $model = trim($payload['artikel_id']);
+                if ($model !== '') {
+                    $stmt = $pdo->prepare('SELECT id FROM "artikel" WHERE "model" = :m LIMIT 1');
+                    if ($stmt && $stmt->execute([':m' => $model])) {
+                        $id = $stmt->fetchColumn();
+                        if ($id !== false && $id !== null) {
+                            $payload['artikel_id'] = (int)$id;
+                        }
+                    }
+                }
+            }
+            if (isset($payload['attribute_id']) && is_string($payload['attribute_id'])) {
+                $name = trim($payload['attribute_id']);
+                if ($name !== '') {
+                    $stmt = $pdo->prepare('SELECT id FROM "attribute" WHERE "name" = :n LIMIT 1');
+                    if ($stmt && $stmt->execute([':n' => $name])) {
+                        $aid = $stmt->fetchColumn();
+                        if ($aid !== false && $aid !== null) {
+                            $payload['attribute_id'] = (int)$aid;
+                        }
+                    }
+                }
+            }
+        }
+        return $payload;
+    }
+
+    private function enforceSeoSlugPolicy(PDO $pdo, string $table, array $payload, ?array $existingRow, array $uniqueKeys): array
+    {
+        if (!array_key_exists('seo_slug', $payload)) {
+            return $payload;
+        }
+
+        $existing = $existingRow['seo_slug'] ?? null;
+        if (is_string($existing) && trim($existing) !== '') {
+            // Keep existing slug, do not overwrite
+            unset($payload['seo_slug']);
+            return $payload;
+        }
+
+        $candidate = $payload['seo_slug'];
+        $base = is_string($candidate) ? trim($candidate) : '';
+        if ($base === '') {
+            unset($payload['seo_slug']);
+            return $payload;
+        }
+
+        // Build exclusion for current row if keys available
+        $excludeSql = '';
+        $excludeParams = [];
+        if ($uniqueKeys !== []) {
+            $clauses = [];
+            $idx = 0;
+            foreach ($uniqueKeys as $key) {
+                $val = $payload[$key] ?? ($existingRow[$key] ?? null);
+                if ($val === null) { $clauses = []; break; }
+                $param = ':k' . $idx++;
+                $clauses[] = $this->quoteIdentifier($key) . ' = ' . $param;
+                $excludeParams[$param] = $val;
+            }
+            if ($clauses !== []) {
+                $excludeSql = ' AND NOT (' . implode(' AND ', $clauses) . ')';
+            }
+        }
+
+        $slug = $base;
+        $i = 0;
+        while (true) {
+            $sql = sprintf(
+                'SELECT 1 FROM %s WHERE %s = :slug%s LIMIT 1',
+                $this->quoteIdentifier($table),
+                $this->quoteIdentifier('seo_slug'),
+                $excludeSql
+            );
+            $stmt = $pdo->prepare($sql);
+            if ($stmt === false) { break; }
+            $params = array_merge([':slug' => $slug], $excludeParams);
+            $ok = $stmt->execute($params);
+            $exists = $ok ? ($stmt->fetchColumn() !== false) : false;
+            if (!$exists) { break; }
+            $i++;
+            $slug = $base . '-' . $i;
+        }
+
+        $payload['seo_slug'] = $slug;
+        return $payload;
     }
 
     private function quoteIdentifier(string $identifier): string
@@ -774,4 +1121,5 @@ class MappingSyncEngine
 
         $this->existingRowCache[$table][$cacheKey] = $row;
     }
+
 }

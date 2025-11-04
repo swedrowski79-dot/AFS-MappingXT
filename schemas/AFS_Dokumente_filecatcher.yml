@@ -18,7 +18,7 @@ vault:
     encode: "plain"
 
 table:
-  name: file_vault
+  name: file_vault_dokumente
   keys: [file_name]
 
   fields:
