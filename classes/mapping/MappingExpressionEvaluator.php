@@ -104,7 +104,7 @@ class MappingExpressionEvaluator
 
         $value = $this->resolveReference($compiled['base'], $context);
         foreach ($compiled['transforms'] as $segment) {
-            $value = $this->applyTransformation($segment, $value);
+            $value = $this->applyTransformation($segment, $value, $context);
         }
 
         return $value;
@@ -484,23 +484,31 @@ class MappingExpressionEvaluator
         return (int)round($normalized);
     }
 
-    private function applyTransformation(string $segment, $value)
+    private function applyTransformation(string $segment, $value, array $context = [])
     {
         $segment = trim($segment);
         if ($segment === '') {
             return $value;
         }
 
+        // Check for function syntax: name(args)
         if (preg_match('/^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$/', $segment, $matches)) {
             $name = $matches[1];
             $args = trim($matches[2]);
-            return $this->applyFunction($name, $value, $args);
+            return $this->applyFunction($name, $value, $args, $context);
+        }
+
+        // Check for colon syntax: name:args (e.g., default:'text')
+        if (preg_match('/^([a-zA-Z_][a-zA-Z0-9_]*):(.+)$/s', $segment, $matches)) {
+            $name = $matches[1];
+            $args = $matches[2]; // Don't trim here to preserve leading/trailing spaces in expressions
+            return $this->applyFunction($name, $value, $args, $context);
         }
 
         return $this->transformRegistry->apply($segment, $value);
     }
 
-    private function applyFunction(string $name, $value, string $args)
+    private function applyFunction(string $name, $value, string $args, array $context = [])
     {
         switch (strtolower($name)) {
             case 'round':
@@ -511,6 +519,8 @@ class MappingExpressionEvaluator
                 return round((float)$value, $precision);
             case 'case':
                 return $this->evaluateCase($value, $args);
+            case 'default':
+                return $this->evaluateDefault($value, $args, $context);
             default:
                 // Versuch, Funktionen ohne Parameter-Parsing über Registry abzudecken
                 return $this->transformRegistry->apply($name, $value);
@@ -539,6 +549,66 @@ class MappingExpressionEvaluator
             }
         }
         return $elseValue;
+    }
+
+    /**
+     * Evaluates default pipe: returns the fallback if value is null or empty string.
+     * Supports static values and dynamic expressions like $func.concat(...) or afs.Field
+     */
+    private function evaluateDefault($value, string $fallbackExpression, array $context = [])
+    {
+        // Check if value is null or empty string
+        if ($value !== null && (!is_string($value) || trim($value) !== '')) {
+            return $value;
+        }
+
+        $fallbackExpression = trim($fallbackExpression);
+        if ($fallbackExpression === '') {
+            return $value;
+        }
+
+        // Check if fallback is a dynamic expression that should be evaluated
+        // Look for: $func., field references (contains .), function calls (contains ()),
+        // or arithmetic operators (+)
+        if ($this->isDynamicExpression($fallbackExpression)) {
+            // Evaluate as expression with provided context
+            return $this->evaluate($fallbackExpression, $context);
+        }
+
+        // Static value - parse as literal
+        return $this->parseLiteral($fallbackExpression);
+    }
+
+    /**
+     * Check if an expression should be evaluated dynamically
+     */
+    private function isDynamicExpression(string $expression): bool
+    {
+        $expression = trim($expression);
+        
+        // Check for function calls: $func.
+        if (str_starts_with($expression, '$func.')) {
+            return true;
+        }
+        
+        // Check for field references (contains dot but not wrapped in quotes)
+        if (str_contains($expression, '.') && 
+            !((str_starts_with($expression, '"') && str_ends_with($expression, '"')) ||
+              (str_starts_with($expression, "'") && str_ends_with($expression, "'")))) {
+            return true;
+        }
+        
+        // Check for function call syntax (contains parentheses)
+        if (str_contains($expression, '(') && str_contains($expression, ')')) {
+            return true;
+        }
+        
+        // Check for arithmetic operators (but not at start for negative numbers)
+        if (preg_match('/[^0-9\s][+\-*\/]/', $expression)) {
+            return true;
+        }
+        
+        return false;
     }
 
     private function compareCaseKey(string $value, string $key): bool
